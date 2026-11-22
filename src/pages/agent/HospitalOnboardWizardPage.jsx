@@ -35,6 +35,9 @@ import axiosInstance from '../../api/axiosInstance'
 import PresignedDropzone from '../../features/agent/components/PresignedDropzone'
 import { getMediaUrl } from '../../utils/mediaUtils'
 
+const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
+
 const INITIAL_HOSPITAL_FORM = {
   name: '',
   name_bn: '',
@@ -667,14 +670,369 @@ export default function HospitalOnboardWizardPage() {
   }
 
   // Selected names for review step
-  const selectedDivisionName = divisions.find(d => String(d.id) === String(formData.division_id))?.name || ''
-  const selectedDistrictName = districts.find(d => String(d.id) === String(formData.district_id))?.name || ''
-  const selectedUpazilaName = upazilas.find(u => String(u.id) === String(formData.upazila_id))?.name || ''
-  const selectedUnionName = unions.find(u => String(u.id) === String(formData.union_id))?.name || ''
+  const selectedDivision = divisions.find(d => String(d.id) === String(formData.division_id))
+  const selectedDistrict = districts.find(d => String(d.id) === String(formData.district_id))
+  const selectedUpazila = upazilas.find(u => String(u.id) === String(formData.upazila_id))
+  const selectedUnion = unions.find(u => String(u.id) === String(formData.union_id))
+
+  const formatLocationPart = (item) => {
+    if (!item) return ''
+    const bn = item.bangla_name || item.name_bn
+    return bn ? `${item.name} (${bn})` : item.name
+  }
+
+  const locationBreadcrumb = [
+    formatLocationPart(selectedDivision),
+    formatLocationPart(selectedDistrict),
+    formatLocationPart(selectedUpazila),
+    formatLocationPart(selectedUnion),
+  ].filter(Boolean)
 
   return (
     <div style={{ minHeight: '100%', background: '#F8FAFC' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px 48px' }}>
+      <style>{`
+        .hospital-wizard-container {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 24px 20px 48px;
+        }
+        .hospital-wizard-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+          gap: 16px;
+        }
+        .hospital-wizard-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+          flex: 1;
+        }
+        .hospital-wizard-title-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #00B875 0%, #0284c7 100%);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.3);
+          flex-shrink: 0;
+        }
+        .hospital-wizard-title-h1 {
+          font-size: 22px;
+          font-weight: 900;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.02em;
+        }
+        .hospital-wizard-subtitle {
+          font-size: 13px;
+          color: #64748B;
+          margin: 3px 0 0;
+        }
+        .hospital-wizard-badges {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        .hospital-wizard-stepper-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 20px;
+          padding: 20px 24px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+          margin-bottom: 24px;
+          position: relative;
+        }
+        .hospital-wizard-main-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 24px;
+          padding: 32px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          margin-bottom: 32px;
+        }
+        .hospital-wizard-nav-controls {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 32px;
+          padding-top: 24px;
+          border-top: 1px solid #F1F5F9;
+        }
+        .hospital-grid-col-full {
+          grid-column: span 2;
+        }
+        .hospital-gps-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 14px;
+        }
+        .hospital-doc-card {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 18px 20px;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .hospital-doc-guidance {
+          background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%);
+          border: 1.5px solid #A7F3D0;
+          border-radius: 14px;
+          padding: 12px 14px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 20px;
+          box-shadow: 0 2px 6px rgba(16, 185, 129, 0.06);
+        }
+        .hospital-doc-title {
+          font-size: 13.5px;
+          font-weight: 800;
+          color: #0F172A;
+          line-height: 1.3;
+        }
+        .hospital-doc-subtitle {
+          font-size: 11.5px;
+          color: #64748B;
+          margin-top: 2px;
+        }
+        .hospital-doc-badge {
+          font-size: 10.5px;
+          font-weight: 800;
+          background: #FEE2E2;
+          color: #DC2626;
+          padding: 3px 8px;
+          border-radius: 6px;
+          border: 1px solid #FECACA;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .hospital-review-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 16px 18px;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+        }
+        .hospital-review-card-header {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          margin-bottom: 12px !important;
+          padding-bottom: 8px !important;
+          border-bottom: 1px solid #F1F5F9 !important;
+          gap: 8px !important;
+        }
+        .hospital-review-title {
+          font-size: 13.5px;
+          font-weight: 800;
+          color: #0F172A;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .hospital-review-edit-btn {
+          background: #F0F9FF !important;
+          border: 1px solid #BAE6FD !important;
+          color: #0284C7 !important;
+          font-size: 11.5px !important;
+          font-weight: 700 !important;
+          cursor: pointer !important;
+          display: inline-flex !important;
+          align-items: center !important;
+          gap: 4px !important;
+          padding: 3px 9px !important;
+          border-radius: 6px !important;
+          white-space: nowrap !important;
+          flex-shrink: 0 !important;
+          transition: all 0.15s ease !important;
+        }
+        .hospital-review-grid {
+          display: grid !important;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+          gap: 12px !important;
+        }
+        .hospital-review-cell {
+          background: #F8FAFC;
+          border-radius: 10px;
+          padding: 8px 12px;
+          border: 1px solid #F1F5F9;
+        }
+        .hospital-review-cell-full {
+          grid-column: 1 / -1 !important;
+        }
+        .hospital-review-label {
+          font-size: 10.5px;
+          color: #64748B;
+          font-weight: 700;
+          text-transform: uppercase;
+          margin-bottom: 2px;
+        }
+        .hospital-review-val {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0F172A;
+        }
+
+        @media (max-width: 768px) {
+          .hospital-wizard-container {
+            padding: 14px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+          .hospital-wizard-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            margin-bottom: 16px !important;
+          }
+          .hospital-wizard-title-icon {
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 10px !important;
+          }
+          .hospital-wizard-title-h1 {
+            font-size: 17px !important;
+            white-space: normal !important;
+            line-height: 1.3 !important;
+          }
+          .hospital-wizard-subtitle {
+            font-size: 12px !important;
+          }
+          .hospital-wizard-badges {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .hospital-wizard-draft-badge {
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+          }
+          .hospital-wizard-step-pill {
+            padding: 4px 10px !important;
+            font-size: 11.5px !important;
+          }
+          .hospital-wizard-stepper-card {
+            padding: 14px 12px 12px !important;
+            border-radius: 16px !important;
+            margin-bottom: 16px !important;
+          }
+          .hospital-wizard-stepper-label {
+            display: none !important;
+          }
+          .hospital-wizard-stepper-circle {
+            width: 32px !important;
+            height: 32px !important;
+            font-size: 12px !important;
+          }
+          .hospital-wizard-stepper-item {
+            padding: 0 2px !important;
+          }
+          .hospital-wizard-line-bg,
+          .hospital-wizard-line-active {
+            top: 16px !important;
+            left: 18px !important;
+            right: 18px !important;
+          }
+          .hospital-wizard-main-card {
+            padding: 18px 14px !important;
+            border-radius: 16px !important;
+            margin-bottom: 20px !important;
+          }
+          .hospital-form-grid-2 {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          .hospital-grid-col-full {
+            grid-column: 1 / -1 !important;
+          }
+          .hospital-gps-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          .hospital-doc-card {
+            padding: 14px 12px !important;
+            border-radius: 14px !important;
+          }
+          .hospital-doc-guidance {
+            padding: 10px 12px !important;
+            border-radius: 12px !important;
+          }
+          .hospital-doc-title {
+            font-size: 13px !important;
+          }
+          .hospital-doc-subtitle {
+            font-size: 11px !important;
+          }
+          .hospital-doc-badge {
+            font-size: 10px !important;
+            padding: 2.5px 7px !important;
+          }
+          .hospital-review-card {
+            padding: 12px 12px !important;
+            border-radius: 13px !important;
+            margin-bottom: 10px !important;
+          }
+          .hospital-review-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          .hospital-review-cell {
+            padding: 7px 9px !important;
+            border-radius: 8px !important;
+          }
+          .hospital-review-title {
+            font-size: 13px !important;
+          }
+          .hospital-review-label {
+            font-size: 10px !important;
+          }
+          .hospital-review-val {
+            font-size: 12px !important;
+          }
+          .hospital-wizard-nav-controls {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-top: 20px !important;
+            padding-top: 16px !important;
+            gap: 10px !important;
+          }
+          .hospital-wizard-btn-prev {
+            flex: 0 0 auto !important;
+            min-height: 46px !important;
+            padding: 12px 18px !important;
+            font-size: 13.5px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            justify-content: center !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+          }
+          .hospital-wizard-btn-next,
+          .hospital-wizard-btn-submit {
+            flex: 1 !important;
+            min-width: 0 !important;
+            min-height: 46px !important;
+            padding: 12px 16px !important;
+            font-size: 13.5px !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+            justify-content: center !important;
+            text-align: center !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+          }
+        }
+      `}</style>
+      <div className="hospital-wizard-container">
         
         {/* Breadcrumb HUD */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748B', marginBottom: 16 }}>
@@ -688,33 +1046,16 @@ export default function HospitalOnboardWizardPage() {
         </div>
 
         {/* Page Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 24,
-          gap: 16
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)',
-              flexShrink: 0
-            }}>
+        <div className="hospital-wizard-header">
+          <div className="hospital-wizard-title-wrap">
+            <div className="hospital-wizard-title-icon">
               <Building2 size={24} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <h1 className="hospital-wizard-title-h1">
                 {isEditingRevision ? 'হাসপাতাল আবেদন সংশোধন ফর্ম' : 'নতুন হাসপাতাল অনবোর্ডিং ফর্ম'}
               </h1>
-              <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
+              <p className="hospital-wizard-subtitle">
                 {isEditingRevision 
                   ? `আবেদন #${editCode} • সংশোধিত তথ্য জমা দিন`
                   : <>হাসপাতালের তথ্য ও লাইসেন্স যাচাই সাপেক্ষে <strong>৳১,৫০০ কমিশন</strong>।</>}
@@ -722,9 +1063,9 @@ export default function HospitalOnboardWizardPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div className="hospital-wizard-badges">
             {!isEditingRevision && (
-              <span style={{
+              <span className="hospital-wizard-draft-badge" style={{
                 fontSize: 11.5,
                 fontWeight: 600,
                 color: '#059669',
@@ -741,7 +1082,7 @@ export default function HospitalOnboardWizardPage() {
                 অটো-সেভ ড্রাফট সক্রিয়
               </span>
             )}
-            <div style={{
+            <div className="hospital-wizard-step-pill" style={{
               background: isEditingRevision ? 'rgba(245, 158, 11, 0.12)' : 'rgba(0, 184, 117, 0.1)',
               border: isEditingRevision ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(0, 184, 117, 0.25)',
               borderRadius: 10,
@@ -755,7 +1096,7 @@ export default function HospitalOnboardWizardPage() {
               whiteSpace: 'nowrap'
             }}>
               <Sparkles size={14} />
-              <span>ধাপ {currentStep} / ৪</span>
+              <span>ধাপ {toBengaliNumber(currentStep)} / ৪</span>
             </div>
           </div>
         </div>
@@ -875,15 +1216,7 @@ export default function HospitalOnboardWizardPage() {
         )}
 
         {/* ── Stepper Progress Bar ── */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: 20,
-          padding: '20px 24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          marginBottom: 24,
-          position: 'relative'
-        }}>
+        <div className="hospital-wizard-stepper-card">
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -891,7 +1224,7 @@ export default function HospitalOnboardWizardPage() {
             position: 'relative'
           }}>
             {/* Background line connecting steps */}
-            <div style={{
+            <div className="hospital-wizard-line-bg" style={{
               position: 'absolute',
               top: 20,
               left: 30,
@@ -902,7 +1235,7 @@ export default function HospitalOnboardWizardPage() {
             }} />
 
             {/* Active connecting line */}
-            <div style={{
+            <div className="hospital-wizard-line-active" style={{
               position: 'absolute',
               top: 20,
               left: 30,
@@ -921,6 +1254,7 @@ export default function HospitalOnboardWizardPage() {
               return (
                 <div 
                   key={s.num} 
+                  className="hospital-wizard-stepper-item"
                   style={{
                     position: 'relative',
                     zIndex: 1,
@@ -936,6 +1270,7 @@ export default function HospitalOnboardWizardPage() {
                   }}
                 >
                   <div
+                    className="hospital-wizard-stepper-circle"
                     style={{
                       width: 40,
                       height: 40,
@@ -963,7 +1298,7 @@ export default function HospitalOnboardWizardPage() {
                     {isCompleted ? <Check size={18} strokeWidth={3} /> : <Icon size={16} />}
                   </div>
 
-                  <span style={{
+                  <span className="hospital-wizard-stepper-label" style={{
                     fontSize: 12,
                     fontWeight: isCurrent ? 800 : 600,
                     color: isCurrent ? '#00B875' : isCompleted ? '#0F172A' : '#64748B',
@@ -975,17 +1310,25 @@ export default function HospitalOnboardWizardPage() {
               )
             })}
           </div>
+
+          {/* Mobile Active Step Info Bar */}
+          <div className="d-block d-sm-none" style={{
+            textAlign: 'center',
+            marginTop: 10,
+            paddingTop: 8,
+            borderTop: '1px dashed #E2E8F0'
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#00B875' }}>
+              ধাপ {toBengaliNumber(currentStep)} / ৪: {steps[currentStep - 1]?.label}
+            </span>
+            <span style={{ fontSize: 11, color: '#64748B', display: 'block', marginTop: 1 }}>
+              {steps[currentStep - 1]?.desc}
+            </span>
+          </div>
         </div>
 
         {/* ── Main Form Card ── */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: 24,
-          padding: '32px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
-          marginBottom: 32
-        }}>
+        <div className="hospital-wizard-main-card">
 
           {/* ═══════════════════════════════════════════════════════
               STEP 1: Hospital Identity & Contact Details
@@ -1001,11 +1344,11 @@ export default function HospitalOnboardWizardPage() {
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 20 }}>
+              <div className="hospital-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
                 {/* Hospital English Name */}
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    হাসপাতালের নাম (English) *
+                <div className="hospital-grid-col-full">
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    হাসপাতালের নাম (English) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -1015,16 +1358,19 @@ export default function HospitalOnboardWizardPage() {
                     placeholder="e.g. Popular Diagnostic Centre & Hospital"
                     style={{
                       width: '100%',
-                      padding: '11px 14px',
+                      height: 44,
+                      padding: '0 14px',
                       borderRadius: 10,
                       border: `1.5px solid ${getFieldError('name') ? '#EF4444' : '#CBD5E1'}`,
                       fontSize: 14,
                       outline: 'none',
                       boxSizing: 'border-box'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = getFieldError('name') ? '#EF4444' : '#CBD5E1'}
                   />
                   {getFieldError('name') && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 4, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                       {getFieldError('name')}
                     </span>
                   )}
@@ -1032,7 +1378,7 @@ export default function HospitalOnboardWizardPage() {
 
                 {/* Hospital Bengali Name */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     হাসপাতালের নাম (বাংলায় - ঐচ্ছিক)
                   </label>
                   <input
@@ -1043,20 +1389,23 @@ export default function HospitalOnboardWizardPage() {
                     placeholder="যেমন: পপুলার ডায়াগনস্টিক সেন্টার"
                     style={{
                       width: '100%',
-                      padding: '11px 14px',
+                      height: 44,
+                      padding: '0 14px',
                       borderRadius: 10,
                       border: '1.5px solid #CBD5E1',
                       fontSize: 14,
                       outline: 'none',
                       boxSizing: 'border-box'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = '#CBD5E1'}
                   />
                 </div>
 
                 {/* Hospital Type */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    হাসপাতালের ধরন *
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    হাসপাতালের ধরন <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <select
                     name="hospital_type"
@@ -1064,7 +1413,8 @@ export default function HospitalOnboardWizardPage() {
                     onChange={handleChange}
                     style={{
                       width: '100%',
-                      padding: '11px 14px',
+                      height: 44,
+                      padding: '0 14px',
                       borderRadius: 10,
                       border: `1.5px solid ${getFieldError('hospital_type') ? '#EF4444' : '#CBD5E1'}`,
                       fontSize: 14,
@@ -1072,6 +1422,8 @@ export default function HospitalOnboardWizardPage() {
                       background: '#FFFFFF',
                       boxSizing: 'border-box'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = getFieldError('hospital_type') ? '#EF4444' : '#CBD5E1'}
                   >
                     <option value="private">প্রাইভেট হাসপাতাল (Private Hospital)</option>
                     <option value="clinic">ক্লিনিক (Clinic)</option>
@@ -1082,8 +1434,8 @@ export default function HospitalOnboardWizardPage() {
 
                 {/* Official Phone */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    অফিসিয়াল মোবাইল নম্বর *
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    অফিসিয়াল মোবাইল নম্বর <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -1094,18 +1446,21 @@ export default function HospitalOnboardWizardPage() {
                       placeholder="01XXXXXXXXX"
                       style={{
                         width: '100%',
-                        padding: '11px 14px 11px 36px',
+                        height: 44,
+                        padding: '0 14px 0 38px',
                         borderRadius: 10,
                         border: `1.5px solid ${getFieldError('phone') ? '#EF4444' : '#CBD5E1'}`,
                         fontSize: 14,
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
+                      onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                      onBlur={(e) => e.target.style.borderColor = getFieldError('phone') ? '#EF4444' : '#CBD5E1'}
                     />
-                    <Phone size={15} color="#94A3B8" style={{ position: 'absolute', left: 12, top: 14 }} />
+                    <Phone size={15} color="#94A3B8" style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                   </div>
                   {getFieldError('phone') && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 4, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                       {getFieldError('phone')}
                     </span>
                   )}
@@ -1113,7 +1468,7 @@ export default function HospitalOnboardWizardPage() {
 
                 {/* Official Email */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     অফিসিয়াল ইমেইল অ্যাড্রেস (ঐচ্ছিক)
                   </label>
                   <div style={{ position: 'relative' }}>
@@ -1125,26 +1480,29 @@ export default function HospitalOnboardWizardPage() {
                       placeholder="hospital@example.com"
                       style={{
                         width: '100%',
-                        padding: '11px 14px 11px 36px',
+                        height: 44,
+                        padding: '0 14px 0 38px',
                         borderRadius: 10,
                         border: `1.5px solid ${getFieldError('email') ? '#EF4444' : '#CBD5E1'}`,
                         fontSize: 14,
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
+                      onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                      onBlur={(e) => e.target.style.borderColor = getFieldError('email') ? '#EF4444' : '#CBD5E1'}
                     />
-                    <Mail size={15} color="#94A3B8" style={{ position: 'absolute', left: 12, top: 14 }} />
+                    <Mail size={15} color="#94A3B8" style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                   </div>
                   {getFieldError('email') && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 4, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                       {getFieldError('email')}
                     </span>
                   )}
                 </div>
 
                 {/* Emergency Hotline */}
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                <div className="hospital-grid-col-full">
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     জরুরি হটলাইন নম্বর (ঐচ্ছিক)
                   </label>
                   <div style={{ position: 'relative' }}>
@@ -1156,15 +1514,18 @@ export default function HospitalOnboardWizardPage() {
                       placeholder="e.g. 10678 অথবা 09612345678"
                       style={{
                         width: '100%',
-                        padding: '11px 14px 11px 36px',
+                        height: 44,
+                        padding: '0 14px 0 38px',
                         borderRadius: 10,
                         border: '1.5px solid #CBD5E1',
                         fontSize: 14,
                         outline: 'none',
                         boxSizing: 'border-box'
                       }}
+                      onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                      onBlur={(e) => e.target.style.borderColor = '#CBD5E1'}
                     />
-                    <PhoneCall size={15} color="#94A3B8" style={{ position: 'absolute', left: 12, top: 14 }} />
+                    <PhoneCall size={15} color="#94A3B8" style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                   </div>
                   <span style={{ fontSize: 11, color: '#64748B', marginTop: 4, display: 'block' }}>
                     হাসপাতালের সার্বক্ষণিক ইমার্জেন্সি হটলাইন থাকলে তা উল্লেখ করুন।
@@ -1189,11 +1550,11 @@ export default function HospitalOnboardWizardPage() {
               </div>
 
               {/* Administrative Cascading Selects */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 18, marginBottom: 24 }}>
+              <div className="hospital-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 20 }}>
                 {/* Division */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    বিভাগ (Division) *
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    বিভাগ (Division) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <select
                     name="division_id"
@@ -1201,7 +1562,8 @@ export default function HospitalOnboardWizardPage() {
                     onChange={handleChange}
                     style={{
                       width: '100%',
-                      padding: '11px 14px',
+                      height: 44,
+                      padding: '0 14px',
                       borderRadius: 10,
                       border: `1.5px solid ${getFieldError('division_id') ? '#EF4444' : '#CBD5E1'}`,
                       fontSize: 14,
@@ -1209,6 +1571,8 @@ export default function HospitalOnboardWizardPage() {
                       background: '#FFFFFF',
                       boxSizing: 'border-box'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = getFieldError('division_id') ? '#EF4444' : '#CBD5E1'}
                   >
                     <option value="">-- বিভাগ নির্বাচন করুন --</option>
                     {divisions.map((d) => (
@@ -1216,7 +1580,7 @@ export default function HospitalOnboardWizardPage() {
                     ))}
                   </select>
                   {getFieldError('division_id') && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 4, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                       {getFieldError('division_id')}
                     </span>
                   )}
@@ -1224,8 +1588,8 @@ export default function HospitalOnboardWizardPage() {
 
                 {/* District */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    জেলা (District) *
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    জেলা (District) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <select
                     name="district_id"
@@ -1234,7 +1598,8 @@ export default function HospitalOnboardWizardPage() {
                     disabled={!formData.division_id || loadingDistricts}
                     style={{
                       width: '100%',
-                      padding: '11px 14px',
+                      height: 44,
+                      padding: '0 14px',
                       borderRadius: 10,
                       border: `1.5px solid ${getFieldError('district_id') ? '#EF4444' : '#CBD5E1'}`,
                       fontSize: 14,
@@ -1242,6 +1607,8 @@ export default function HospitalOnboardWizardPage() {
                       background: (!formData.division_id || loadingDistricts) ? '#F8FAFC' : '#FFFFFF',
                       boxSizing: 'border-box'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = getFieldError('district_id') ? '#EF4444' : '#CBD5E1'}
                   >
                     <option value="">
                       {loadingDistricts ? 'জেলা লোড হচ্ছে...' : '-- জেলা নির্বাচন করুন --'}
@@ -1251,7 +1618,7 @@ export default function HospitalOnboardWizardPage() {
                     ))}
                   </select>
                   {getFieldError('district_id') && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 4, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                       {getFieldError('district_id')}
                     </span>
                   )}
@@ -1259,7 +1626,7 @@ export default function HospitalOnboardWizardPage() {
 
                 {/* Upazila */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     উপজেলা / থানা (Upazila - ঐচ্ছিক)
                   </label>
                   <select
@@ -1269,7 +1636,8 @@ export default function HospitalOnboardWizardPage() {
                     disabled={!formData.district_id || loadingUpazilas}
                     style={{
                       width: '100%',
-                      padding: '11px 14px',
+                      height: 44,
+                      padding: '0 14px',
                       borderRadius: 10,
                       border: '1.5px solid #CBD5E1',
                       fontSize: 14,
@@ -1277,6 +1645,8 @@ export default function HospitalOnboardWizardPage() {
                       background: (!formData.district_id || loadingUpazilas) ? '#F8FAFC' : '#FFFFFF',
                       boxSizing: 'border-box'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = '#CBD5E1'}
                   >
                     <option value="">
                       {loadingUpazilas ? 'উপজেলা লোড হচ্ছে...' : '-- উপজেলা নির্বাচন করুন --'}
@@ -1289,7 +1659,7 @@ export default function HospitalOnboardWizardPage() {
 
                 {/* Union */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     ইউনিয়ন / ওয়ার্ড (Union - ঐচ্ছিক)
                   </label>
                   <select
@@ -1299,7 +1669,8 @@ export default function HospitalOnboardWizardPage() {
                     disabled={!formData.upazila_id || loadingUnions}
                     style={{
                       width: '100%',
-                      padding: '11px 14px',
+                      height: 44,
+                      padding: '0 14px',
                       borderRadius: 10,
                       border: '1.5px solid #CBD5E1',
                       fontSize: 14,
@@ -1307,6 +1678,8 @@ export default function HospitalOnboardWizardPage() {
                       background: (!formData.upazila_id || loadingUnions) ? '#F8FAFC' : '#FFFFFF',
                       boxSizing: 'border-box'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = '#CBD5E1'}
                   >
                     <option value="">
                       {loadingUnions ? 'ইউনিয়ন লোড হচ্ছে...' : '-- ইউনিয়ন নির্বাচন করুন --'}
@@ -1318,9 +1691,9 @@ export default function HospitalOnboardWizardPage() {
                 </div>
 
                 {/* Detailed Physical Address */}
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                    হাসপাতালের পূর্ণাঙ্গ ঠিকানা (রোড, হোল্ডিং বা এলাকার নাম) *
+                <div className="hospital-grid-col-full">
+                  <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    হাসপাতালের পূর্ণাঙ্গ ঠিকানা (রোড, হোল্ডিং বা এলাকার নাম) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <textarea
                     rows={2}
@@ -1339,9 +1712,11 @@ export default function HospitalOnboardWizardPage() {
                       fontFamily: 'inherit',
                       resize: 'vertical'
                     }}
+                    onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                    onBlur={(e) => e.target.style.borderColor = getFieldError('address') ? '#EF4444' : '#CBD5E1'}
                   />
                   {getFieldError('address') && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 4, display: 'block' }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                       {getFieldError('address')}
                     </span>
                   )}
@@ -1353,15 +1728,15 @@ export default function HospitalOnboardWizardPage() {
                 background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)',
                 border: '1.5px solid #A7F3D0',
                 borderRadius: 16,
-                padding: '20px 22px'
+                padding: '18px 20px'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
                   <div>
-                    <h4 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#065F46', display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <h4 style={{ margin: 0, fontSize: 14.5, fontWeight: 800, color: '#065F46', display: 'flex', alignItems: 'center', gap: 7 }}>
                       <Navigation size={17} color="#059669" />
                       জিপিএস লোকেশন সনাক্তকরণ (GPS Geolocation)
                     </h4>
-                    <p style={{ margin: '3px 0 0', fontSize: 12.5, color: '#047857' }}>
+                    <p style={{ margin: '3px 0 0', fontSize: 12, color: '#047857' }}>
                       হাসপাতালে উপস্থিত থাকলে নিচের বাটনে ক্লিক করে এক চাপেই ডিভাইসের জিপিএস অবস্থান যুক্ত করুন।
                     </p>
                   </div>
@@ -1370,6 +1745,7 @@ export default function HospitalOnboardWizardPage() {
                     type="button"
                     onClick={handleDetectGpsLocation}
                     disabled={locatingGps}
+                    className="hospital-gps-header-btn"
                     style={{
                       background: '#059669',
                       color: '#FFFFFF',
@@ -1390,9 +1766,9 @@ export default function HospitalOnboardWizardPage() {
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                <div className="hospital-gps-grid">
                   <div>
-                    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#065F46', marginBottom: 4, textTransform: 'uppercase' }}>
                       অক্ষাংশ (Latitude)
                     </label>
                     <input
@@ -1403,18 +1779,20 @@ export default function HospitalOnboardWizardPage() {
                       placeholder="e.g. 23.746123"
                       style={{
                         width: '100%',
-                        padding: '9px 12px',
+                        height: 40,
+                        padding: '0 12px',
                         borderRadius: 8,
                         border: '1px solid #A7F3D0',
                         fontSize: 13,
                         background: '#FFFFFF',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        outline: 'none'
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#065F46', marginBottom: 4, textTransform: 'uppercase' }}>
                       দ্রাঘিমাংশ (Longitude)
                     </label>
                     <input
@@ -1425,18 +1803,20 @@ export default function HospitalOnboardWizardPage() {
                       placeholder="e.g. 90.374567"
                       style={{
                         width: '100%',
-                        padding: '9px 12px',
+                        height: 40,
+                        padding: '0 12px',
                         borderRadius: 8,
                         border: '1px solid #A7F3D0',
                         fontSize: 13,
                         background: '#FFFFFF',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        outline: 'none'
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#065F46', marginBottom: 4 }}>
+                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#065F46', marginBottom: 4, textTransform: 'uppercase' }}>
                       গুগল ম্যাপ লিংক (URL - ঐচ্ছিক)
                     </label>
                     <input
@@ -1447,12 +1827,14 @@ export default function HospitalOnboardWizardPage() {
                       placeholder="https://maps.google.com/..."
                       style={{
                         width: '100%',
-                        padding: '9px 12px',
+                        height: 40,
+                        padding: '0 12px',
                         borderRadius: 8,
                         border: '1px solid #A7F3D0',
                         fontSize: 13,
                         background: '#FFFFFF',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        outline: 'none'
                       }}
                     />
                   </div>
@@ -1491,9 +1873,9 @@ export default function HospitalOnboardWizardPage() {
               </div>
 
               {/* License Number Input */}
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-                  ট্রেড লাইসেন্স বা ডিজিএইচএস (DGHS) রেজিস্ট্রেশন নম্বর *
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  ট্রেড লাইসেন্স বা ডিজিএইচএস (DGHS) রেজিস্ট্রেশন নম্বর <span style={{ color: '#EF4444' }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -1503,16 +1885,19 @@ export default function HospitalOnboardWizardPage() {
                   placeholder="e.g. DGHS-REG-10482 বা TRADE/DHAKA/2026/8912"
                   style={{
                     width: '100%',
-                    padding: '11px 14px',
+                    height: 44,
+                    padding: '0 14px',
                     borderRadius: 10,
                     border: `1.5px solid ${getFieldError('license_number') ? '#EF4444' : '#CBD5E1'}`,
                     fontSize: 14,
                     outline: 'none',
                     boxSizing: 'border-box'
                   }}
+                  onFocus={(e) => e.target.style.borderColor = '#00B875'}
+                  onBlur={(e) => e.target.style.borderColor = getFieldError('license_number') ? '#EF4444' : '#CBD5E1'}
                 />
                 {getFieldError('license_number') && (
-                  <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 4, display: 'block' }}>
+                  <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                     {getFieldError('license_number')}
                   </span>
                 )}
@@ -1521,38 +1906,35 @@ export default function HospitalOnboardWizardPage() {
                 </span>
               </div>
 
-              {/* Guidance Info Banner - Single Row Text */}
-              <div style={{
-                background: '#F0FDF4',
-                border: '1px solid #BBF7D0',
-                borderRadius: 12,
-                padding: '11px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                marginBottom: 20
-              }}>
-                <ShieldCheck size={18} color="#059669" style={{ flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: '#065F46', fontWeight: 600 }}>
-                  <strong>নির্দেশনা:</strong> ডিজিএইচএস (DGHS) লাইসেন্স এবং ট্রেড লাইসেন্স উভয় সনদপত্র আপলোড করা বাধ্যতামূলক (অনুমোদিত ফরম্যাট: PDF, JPG, PNG বা WEBP • সর্বোচ্চ ১০ MB)।
-                </span>
+              {/* Guidance Info Banner */}
+              <div className="hospital-doc-guidance">
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: '#10B981',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <ShieldCheck size={18} />
+                </div>
+                <div style={{ fontSize: 12, color: '#065F46', lineHeight: 1.45 }}>
+                  <div style={{ fontWeight: 800, color: '#064E3B', marginBottom: 2 }}>
+                    ডকুমেন্ট আপলোড নির্দেশিকা:
+                  </div>
+                  <div>• DGHS লাইসেন্স ও ট্রেড লাইসেন্স উভয় সনদ আপলোড করা বাধ্যতামূলক • PDF / ছবি (সর্বোচ্চ ১০ MB)</div>
+                </div>
               </div>
 
               {/* Presigned Document Dropzones */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* 1. DGHS License Doc (Required) */}
-                <div style={{
-                  background: '#FFFFFF',
-                  border: '1.5px solid #E2E8F0',
-                  borderRadius: 16,
-                  padding: '16px 18px',
-                  boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <div className="hospital-doc-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                       <div style={{
                         width: 32,
                         height: 32,
@@ -1566,31 +1948,18 @@ export default function HospitalOnboardWizardPage() {
                       }}>
                         <FileCheck size={18} />
                       </div>
-                      <div style={{
-                        fontSize: 13.5,
-                        fontWeight: 800,
-                        color: '#0F172A',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        DGHS লাইসেন্স / রেজিস্ট্রেশন সনদ
+                      <div style={{ minWidth: 0 }}>
+                        <div className="hospital-doc-title">
+                          DGHS লাইসেন্স / রেজিস্ট্রেশন সনদ
+                        </div>
+                        <div className="hospital-doc-subtitle">
+                          স্বাস্থ্য অধিদপ্তর কর্তৃক অনুমোদিত সরকারি লাইসেন্স কপি
+                        </div>
                       </div>
                     </div>
-                    <span style={{
-                      fontSize: 10.5,
-                      background: '#FEE2E2',
-                      color: '#DC2626',
-                      padding: '2px 8px',
-                      borderRadius: 6,
-                      fontWeight: 800,
-                      border: '1px solid #FECACA',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
-                    }}>
+                    <span className="hospital-doc-badge">
                       বাধ্যতামূলক *
                     </span>
-                  </div>
-                  <div style={{ fontSize: 11.5, color: '#64748B', paddingLeft: 40, marginTop: -4 }}>
-                    স্বাস্থ্য অধিদপ্তর কর্তৃক অনুমোদিত সরকারি লাইসেন্স কপি
                   </div>
 
                   <PresignedDropzone
@@ -1606,25 +1975,16 @@ export default function HospitalOnboardWizardPage() {
                     onRemove={() => handleDocumentRemoved('hospital_license_doc')}
                   />
                   {getFieldError('document_keys') && !formData.documents?.hospital_license_doc?.file_key && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 2, display: 'block', fontWeight: 600 }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 2, display: 'block', fontWeight: 600 }}>
                       {getFieldError('document_keys')}
                     </span>
                   )}
                 </div>
 
                 {/* 2. Trade License Doc (Required) */}
-                <div style={{
-                  background: '#FFFFFF',
-                  border: '1.5px solid #E2E8F0',
-                  borderRadius: 16,
-                  padding: '16px 18px',
-                  boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <div className="hospital-doc-card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                       <div style={{
                         width: 32,
                         height: 32,
@@ -1638,31 +1998,18 @@ export default function HospitalOnboardWizardPage() {
                       }}>
                         <FileText size={18} />
                       </div>
-                      <div style={{
-                        fontSize: 13.5,
-                        fontWeight: 800,
-                        color: '#0F172A',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        পৌরসভা / সিটি কর্পোরেশন ট্রেড লাইসেন্স
+                      <div style={{ minWidth: 0 }}>
+                        <div className="hospital-doc-title">
+                          পৌরসভা / সিটি কর্পোরেশন ট্রেড লাইসেন্স
+                        </div>
+                        <div className="hospital-doc-subtitle">
+                          হালনাগাদ ট্রেড লাইসেন্স বা ট্যাক্স সার্টিফিকেট
+                        </div>
                       </div>
                     </div>
-                    <span style={{
-                      fontSize: 10.5,
-                      background: '#FEE2E2',
-                      color: '#DC2626',
-                      padding: '2px 8px',
-                      borderRadius: 6,
-                      fontWeight: 800,
-                      border: '1px solid #FECACA',
-                      whiteSpace: 'nowrap',
-                      flexShrink: 0
-                    }}>
+                    <span className="hospital-doc-badge">
                       বাধ্যতামূলক *
                     </span>
-                  </div>
-                  <div style={{ fontSize: 11.5, color: '#64748B', paddingLeft: 40, marginTop: -4 }}>
-                    হালনাগাদ ট্রেড লাইসেন্স বা ট্যাক্স সার্টিফিকেট
                   </div>
 
                   <PresignedDropzone
@@ -1678,11 +2025,41 @@ export default function HospitalOnboardWizardPage() {
                     onRemove={() => handleDocumentRemoved('hospital_trade_license_doc')}
                   />
                   {getFieldError('document_keys') && !formData.documents?.hospital_trade_license_doc?.file_key && (
-                    <span style={{ fontSize: 11.5, color: '#DC2626', marginTop: 2, display: 'block', fontWeight: 600 }}>
+                    <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 2, display: 'block', fontWeight: 600 }}>
                       {getFieldError('document_keys')}
                     </span>
                   )}
                 </div>
+              </div>
+
+              {/* Status Banner */}
+              <div style={{
+                background: activeDocumentCount >= 2 ? '#F0FDF4' : '#FEF3C7',
+                border: activeDocumentCount >= 2 ? '1.5px solid #86EFAC' : '1.5px solid #FDE68A',
+                borderRadius: 12,
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                marginTop: 14
+              }}>
+                {activeDocumentCount >= 2 ? (
+                  <>
+                    <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 12.5, color: '#065F46', fontWeight: 700 }}>
+                      সকল আবশ্যক সনদপত্র আপলোড করা হয়েছে ({toBengaliNumber(activeDocumentCount)}/২)। আপনি পরবর্তী ধাপে যেতে পারেন।
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle size={16} color="#D97706" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: 12.5, color: '#92400E', fontWeight: 700 }}>
+                      {activeDocumentCount === 1 
+                        ? '১টি সনদপত্র আপলোড হয়েছে। বাকি ১টি সনদপত্র আপলোড সম্পন্ন করুন (১/২)।' 
+                        : 'আবেদন সম্পূর্ণ করতে ডিজিএইচএস ও ট্রেড লাইসেন্স আপলোড করুন (০/২)।'}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -1691,85 +2068,70 @@ export default function HospitalOnboardWizardPage() {
               STEP 4: Review, Confirm & Submit
              ═══════════════════════════════════════════════════════ */}
           {currentStep === 4 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0 }}>
                     ধাপ ৪: চূড়ান্ত পর্যালোচনা ও সাবমিশন
                   </h2>
-                  <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
+                  <p style={{ fontSize: 12.5, color: '#64748B', margin: '4px 0 0', lineHeight: 1.45 }}>
                     প্রশাসনিক অডিটের জন্য সাবমিট করার পূর্বে হাসপাতালের সকল সংগৃহীত তথ্য ও প্রমাণপত্র যাচাই করুন।
                   </p>
                 </div>
-                <div style={{
-                  fontSize: 12,
+                <span style={{
+                  fontSize: 11,
                   fontWeight: 700,
                   color: '#00803D',
                   background: '#ECFDF5',
                   border: '1px solid #A7F3D0',
-                  padding: '4px 10px',
-                  borderRadius: 20,
+                  padding: '3px 8px',
+                  borderRadius: 14,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6
+                  gap: 4,
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0
                 }}>
-                  <ShieldCheck size={14} />
-                  <span>যাচাইয়ের জন্য প্রস্তুত</span>
-                </div>
+                  <ShieldCheck size={13} />
+                  <span>প্রস্তুত</span>
+                </span>
               </div>
 
               {/* ── CARD 1: Hospital Profile & Contact ── */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 14,
-                padding: '18px 20px',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#DCFCE7', color: '#00803D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Building2 size={16} />
+              <div className="hospital-review-card">
+                <div className="hospital-review-card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#DCFCE7', color: '#00803D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Building2 size={15} />
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>হাসপাতালের প্রাথমিক পরিচিতি ও যোগাযোগ</span>
+                    <span className="hospital-review-title">
+                      হাসপাতালের প্রাথমিক পরিচিতি ও যোগাযোগ
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(1)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#0284C7',
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '4px 8px',
-                      borderRadius: 6
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    className="hospital-review-edit-btn"
+                    title="ধাপ ১ এডিট করুন"
                   >
-                    <Edit3 size={13} />
-                    <span>পরিবর্তন করুন</span>
+                    <Edit3 size={12} />
+                    <span>এডিট</span>
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>হাসপাতালের পূর্ণ নাম</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>
-                      {formData.name} {formData.name_bn && <span style={{ fontSize: 12.5, fontWeight: 500, color: '#64748B' }}>({formData.name_bn})</span>}
+                <div className="hospital-review-grid">
+                  <div className="hospital-review-cell">
+                    <div className="hospital-review-label">হাসপাতালের পূর্ণ নাম</div>
+                    <div className="hospital-review-val">
+                      {formData.name} {formData.name_bn && <span style={{ fontSize: 12, fontWeight: 500, color: '#64748B' }}>({formData.name_bn})</span>}
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>হাসপাতালের ধরন</div>
+                  <div className="hospital-review-cell">
+                    <div className="hospital-review-label">হাসপাতালের ধরন</div>
                     <div>
                       <span style={{
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: 700,
                         color: '#0369A1',
                         background: '#E0F2FE',
@@ -1783,27 +2145,27 @@ export default function HospitalOnboardWizardPage() {
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>অফিসিয়াল মোবাইল</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Phone size={13} style={{ color: '#00803D' }} />
+                  <div className="hospital-review-cell">
+                    <div className="hospital-review-label">অফিসিয়াল মোবাইল</div>
+                    <div className="hospital-review-val" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Phone size={12} style={{ color: '#00803D', flexShrink: 0 }} />
                       <span>{formData.phone}</span>
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>ইমেইল ঠিকানা</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Mail size={13} style={{ color: '#0284C7' }} />
-                      <span>{formData.email || '— (ঐচ্ছিক)'}</span>
+                  <div className="hospital-review-cell">
+                    <div className="hospital-review-label">ইমেইল ঠিকানা</div>
+                    <div className="hospital-review-val" style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <Mail size={12} style={{ color: '#0284C7', flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.email || '—'}</span>
                     </div>
                   </div>
 
                   {formData.hotline && (
-                    <div>
-                      <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>জরুরি হটলাইন</div>
-                      <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <PhoneCall size={13} style={{ color: '#8B5CF6' }} />
+                    <div className="hospital-review-cell">
+                      <div className="hospital-review-label">জরুরি হটলাইন</div>
+                      <div className="hospital-review-val" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <PhoneCall size={12} style={{ color: '#8B5CF6', flexShrink: 0 }} />
                         <span>{formData.hotline}</span>
                       </div>
                     </div>
@@ -1812,82 +2174,60 @@ export default function HospitalOnboardWizardPage() {
               </div>
 
               {/* ── CARD 2: Location, Address & GPS Coordinates ── */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 14,
-                padding: '18px 20px',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MapPin size={16} />
+              <div className="hospital-review-card">
+                <div className="hospital-review-card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <MapPin size={15} />
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>ভৌগোলিক এলাকা, ঠিকানা ও জিপিএস</span>
+                    <span className="hospital-review-title">
+                      ভৌগোলিক এলাকা, ঠিকানা ও জিপিএস
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(2)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#0284C7',
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '4px 8px',
-                      borderRadius: 6
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    className="hospital-review-edit-btn"
+                    title="ধাপ ২ এডিট করুন"
                   >
-                    <Edit3 size={13} />
-                    <span>পরিবর্তন করুন</span>
+                    <Edit3 size={12} />
+                    <span>এডিট</span>
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>প্রশাসনিক বিভাগ ও জেলা</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
-                      {selectedDistrictName || '—'}, {selectedDivisionName || '—'}
+                <div className="hospital-review-grid">
+                  <div className="hospital-review-cell hospital-review-cell-full">
+                    <div className="hospital-review-label">
+                      প্রশাসনিক অবস্থান (এলাকা)
                     </div>
-                  </div>
-
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>উপজেলা ও ইউনিয়ন</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A' }}>
-                      {selectedUpazilaName || '—'} {selectedUnionName && `(${selectedUnionName})`}
+                    <div className="hospital-review-val" style={{ lineHeight: 1.5 }}>
+                      {locationBreadcrumb.length > 0 ? locationBreadcrumb.join(', ') : '—'}
                     </div>
                   </div>
 
                   {formData.address && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>হাসপাতালের পূর্ণাঙ্গ ঠিকানা</div>
-                      <div style={{ fontSize: 13, color: '#1E293B', fontWeight: 600, background: '#F8FAFC', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                    <div className="hospital-review-cell hospital-review-cell-full">
+                      <div className="hospital-review-label">হাসপাতালের পূর্ণাঙ্গ ঠিকানা</div>
+                      <div style={{ fontSize: 12.5, color: '#1E293B', fontWeight: 600 }}>
                         {formData.address}
                       </div>
                     </div>
                   )}
 
                   {formData.latitude && formData.longitude ? (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ fontSize: 11.5, color: '#047857', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Navigation size={13} color="#059669" />
-                        <span>জিপিএস কো-অর্ডিনেট: {formData.latitude}, {formData.longitude}</span>
+                    <div className="hospital-review-cell hospital-review-cell-full">
+                      <div style={{ fontSize: 11, color: '#047857', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                        <Navigation size={12} color="#059669" />
+                        <span>GPS: {formData.latitude}, {formData.longitude}</span>
                         {formData.google_map_url && (
-                          <a href={formData.google_map_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0284C7', textDecoration: 'none', marginLeft: 8, fontSize: 12 }}>
+                          <a href={formData.google_map_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0284C7', textDecoration: 'none', marginLeft: 6, fontSize: 11.5 }}>
                             (গুগল ম্যাপে দেখুন ↗)
                           </a>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div style={{ gridColumn: '1 / -1', fontSize: 11.5, color: '#94A3B8', fontStyle: 'italic' }}>
+                    <div className="hospital-review-cell hospital-review-cell-full" style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>
                       জিপিএস কো-অর্ডিনেট ইনপুট দেওয়া হয়নি
                     </div>
                   )}
@@ -1895,59 +2235,39 @@ export default function HospitalOnboardWizardPage() {
               </div>
 
               {/* ── CARD 3: License & Verification Documents ── */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 14,
-                padding: '18px 20px',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F3E8FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <FileCheck size={16} />
+              <div className="hospital-review-card">
+                <div className="hospital-review-card-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F3E8FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileCheck size={15} />
                     </div>
-                    <div>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>সরকারি লাইসেন্স ও সংযুক্ত নথিপত্র</span>
-                      <span style={{ fontSize: 12, color: '#64748B', marginLeft: 8 }}>({activeDocumentCount}টি ফাইল সংযুক্ত)</span>
-                    </div>
+                    <span className="hospital-review-title">
+                      সরকারি লাইসেন্স ও নথিপত্র ({toBengaliNumber(activeDocumentCount)}টি)
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(3)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#0284C7',
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '4px 8px',
-                      borderRadius: 6
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    className="hospital-review-edit-btn"
+                    title="ধাপ ৩ এডিট করুন"
                   >
-                    <Edit3 size={13} />
-                    <span>পরিবর্তন করুন</span>
+                    <Edit3 size={12} />
+                    <span>এডিট</span>
                   </button>
                 </div>
 
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>
+                <div style={{ marginBottom: 10 }}>
+                  <div className="hospital-review-label" style={{ marginBottom: 3 }}>
                     লাইসেন্স বা ডিজিএইচএস (DGHS) রেজিস্ট্রেশন নম্বর
                   </div>
                   <span style={{
                     fontFamily: 'monospace',
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: 800,
                     color: '#065F46',
                     background: '#ECFDF5',
                     border: '1px solid #A7F3D0',
-                    padding: '3px 10px',
+                    padding: '2px 8px',
                     borderRadius: 6,
                     display: 'inline-block'
                   }}>
@@ -1962,38 +2282,41 @@ export default function HospitalOnboardWizardPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '10px 14px',
+                      padding: '8px 12px',
                       background: '#F8FAFC',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 10
+                      borderRadius: 10,
+                      gap: 8
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <FileText size={18} style={{ color: '#0284C7' }} />
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <FileText size={16} style={{ color: '#0284C7', flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             DGHS রেজিস্ট্রেশন সনদপত্র
                           </div>
-                          <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                          <div style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.documents.hospital_license_doc.file_name} {formData.documents.hospital_license_doc.file_size ? `• ${formData.documents.hospital_license_doc.file_size}` : ''}
                           </div>
                         </div>
                       </div>
                       <span style={{
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: 700,
                         color: '#15803D',
                         background: '#DCFCE7',
-                        padding: '3px 8px',
+                        padding: '2px 7px',
                         borderRadius: 6,
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4
+                        gap: 3,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}>
-                        <CheckCircle2 size={12} /> সংযুক্ত
+                        <CheckCircle2 size={11} /> সংযুক্ত
                       </span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12.5, color: '#DC2626', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8, border: '1px solid #FECACA' }}>
+                    <div style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', padding: '7px 10px', borderRadius: 8, border: '1px solid #FECACA' }}>
                       ✕ DGHS রেজিস্ট্রেশন সনদপত্র আপলোড করা হয়নি
                     </div>
                   )}
@@ -2004,38 +2327,41 @@ export default function HospitalOnboardWizardPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '10px 14px',
+                      padding: '8px 12px',
                       background: '#F8FAFC',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 10
+                      borderRadius: 10,
+                      gap: 8
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <FileText size={18} style={{ color: '#0284C7' }} />
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                        <FileText size={16} style={{ color: '#0284C7', flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             পৌরসভা / সিটি কর্পোরেশন ট্রেড লাইসেন্স
                           </div>
-                          <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                          <div style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.documents.hospital_trade_license_doc.file_name} {formData.documents.hospital_trade_license_doc.file_size ? `• ${formData.documents.hospital_trade_license_doc.file_size}` : ''}
                           </div>
                         </div>
                       </div>
                       <span style={{
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: 700,
                         color: '#15803D',
                         background: '#DCFCE7',
-                        padding: '3px 8px',
+                        padding: '2px 7px',
                         borderRadius: 6,
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4
+                        gap: 3,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}>
-                        <CheckCircle2 size={12} /> সংযুক্ত
+                        <CheckCircle2 size={11} /> সংযুক্ত
                       </span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12.5, color: '#DC2626', background: '#FEF2F2', padding: '8px 12px', borderRadius: 8, border: '1px solid #FECACA' }}>
+                    <div style={{ fontSize: 12, color: '#DC2626', background: '#FEF2F2', padding: '7px 10px', borderRadius: 8, border: '1px solid #FECACA' }}>
                       ✕ পৌরসভা / সিটি কর্পোরেশন ট্রেড লাইসেন্স আপলোড করা হয়নি
                     </div>
                   )}
@@ -2047,15 +2373,15 @@ export default function HospitalOnboardWizardPage() {
                 background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
                 border: '1.5px solid #A7F3D0',
                 borderRadius: 14,
-                padding: '16px 20px',
+                padding: '14px 16px',
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: 14,
+                gap: 12,
                 boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
               }}>
                 <div style={{
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   borderRadius: 10,
                   background: '#00803D',
                   color: '#FFFFFF',
@@ -2065,25 +2391,25 @@ export default function HospitalOnboardWizardPage() {
                   flexShrink: 0,
                   boxShadow: '0 4px 10px rgba(0, 128, 61, 0.25)'
                 }}>
-                  <Sparkles size={20} />
+                  <Sparkles size={18} />
                 </div>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 900, color: '#064E3B' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 900, color: '#064E3B' }}>
                       ৳১,৫০০ পার্টনার কমিশন ও অ্যাডমিন অডিট নিশ্চিতকরণ
                     </span>
                     <span style={{
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: 800,
                       background: '#00803D',
                       color: '#FFFFFF',
-                      padding: '2px 8px',
+                      padding: '2px 7px',
                       borderRadius: 12
                     }}>
                       গ্যারান্টিযুক্ত
                     </span>
                   </div>
-                  <p style={{ fontSize: 12.5, color: '#065F46', margin: 0, lineHeight: 1.55 }}>
+                  <p style={{ fontSize: 12, color: '#065F46', margin: 0, lineHeight: 1.5 }}>
                     আবেদনটি সাবমিট করার সাথে সাথে কেন্দ্রীয় <strong>Admin Onboarding Verification Desk</strong>-এ তালিকাভুক্ত হবে। সরকারি DGHS লাইসেন্স ও ট্রেড লাইসেন্স যাচাই সম্পন্ন হওয়ামাত্র আপনার ফিল্ড এজেন্ট ওয়ালেটে <strong>৳১,৫০০ কমিশন</strong> স্বয়ংক্রিয়ভাবে ক্রেডিট হবে।
                   </p>
                 </div>
@@ -2092,19 +2418,13 @@ export default function HospitalOnboardWizardPage() {
           )}
 
           {/* ── Wizard Navigation Controls ── */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 32,
-            paddingTop: 24,
-            borderTop: '1px solid #F1F5F9'
-          }}>
+          <div className="hospital-wizard-nav-controls">
             {currentStep > 1 ? (
               <button
                 type="button"
                 onClick={prevStep}
                 disabled={submitting}
+                className="hospital-wizard-btn-prev"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2117,18 +2437,20 @@ export default function HospitalOnboardWizardPage() {
                   fontSize: 13.5,
                   fontWeight: 700,
                   cursor: submitting ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s'
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 <ArrowLeft size={16} />
-                <span>পূর্ববর্তী ধাপ</span>
+                <span>পূর্ববর্তী</span>
               </button>
-            ) : <div />}
+            ) : <div className="d-none d-sm-block" />}
 
             {currentStep < 4 ? (
               <button
                 type="button"
                 onClick={nextStep}
+                className="hospital-wizard-btn-next"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2153,6 +2475,7 @@ export default function HospitalOnboardWizardPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
+                className="hospital-wizard-btn-submit"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

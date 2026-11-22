@@ -105,24 +105,162 @@ export default function AgentDashboardPage() {
 
   return (
     <div style={{ minHeight: '100%', background: '#F8FAFC' }}>
-      <div style={{ maxWidth: 1220, margin: '0 auto', padding: '24px 20px 60px' }}>
+      <style>{`
+        .agent-dash-container {
+          max-width: 1220px;
+          margin: 0 auto;
+          padding: 24px 20px 60px;
+        }
+        .agent-hero-card {
+          background: linear-gradient(135deg, #064E3B 0%, #065F46 45%, #047857 75%, #0D9488 100%);
+          border-radius: 20px;
+          padding: 26px 32px;
+          color: #FFFFFF;
+          box-shadow: 0 12px 32px -8px rgba(6, 78, 59, 0.45);
+          margin-bottom: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 20px;
+          position: relative;
+          overflow: hidden;
+        }
+        .agent-actions-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+          position: relative;
+          z-index: 1;
+        }
+        .agent-metrics-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 16px;
+          margin-bottom: 20px;
+        }
+        .agent-metric-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 20px 22px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+        .agent-search-box {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
+          padding: 6px 12px;
+          width: 220px;
+        }
+        .agent-filter-chips {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .agent-sub-item {
+          padding: 16px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 14px;
+          transition: background 0.15s ease;
+        }
+
+        @media (max-width: 768px) {
+          .agent-dash-container {
+            padding: 14px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+          .agent-hero-card {
+            padding: 16px 14px !important;
+            border-radius: 16px !important;
+            margin-bottom: 14px !important;
+            gap: 14px !important;
+          }
+          .agent-hero-name {
+            font-size: 18px !important;
+          }
+          .agent-actions-wrap {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+            width: 100% !important;
+          }
+          .agent-actions-wrap button,
+          .agent-actions-wrap a {
+            width: 100% !important;
+            justify-content: center !important;
+            padding: 9px 8px !important;
+            font-size: 12px !important;
+            border-radius: 9px !important;
+            text-align: center !important;
+            box-sizing: border-box !important;
+          }
+          .agent-metrics-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 14px !important;
+          }
+          .agent-metric-card {
+            padding: 14px !important;
+            border-radius: 14px !important;
+          }
+          .agent-balance-card {
+            grid-column: span 2 !important;
+          }
+          .agent-metric-card .metric-val {
+            font-size: 21px !important;
+          }
+          .agent-goal-banner {
+            padding: 12px 14px !important;
+            margin-bottom: 14px !important;
+          }
+          .agent-table-header {
+            padding: 14px 14px !important;
+            gap: 12px !important;
+          }
+          .agent-search-box {
+            width: 100% !important;
+          }
+          .agent-filter-chips {
+            width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 4px !important;
+            scrollbar-width: none !important;
+            display: flex !important;
+            gap: 6px !important;
+          }
+          .agent-filter-chips button {
+            flex-shrink: 0 !important;
+            padding: 5px 11px !important;
+            font-size: 11px !important;
+          }
+          .agent-sub-item {
+            padding: 12px 14px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+          .agent-sub-item-meta {
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding-top: 8px !important;
+            border-top: 1px dashed #F1F5F9 !important;
+          }
+        }
+      `}</style>
+      <div className="agent-dash-container">
         
         {/* ── Executive Partner Profile & Action Hub (Dream Green) ── */}
-        <div style={{
-          background: 'linear-gradient(135deg, #064E3B 0%, #065F46 45%, #047857 75%, #0D9488 100%)',
-          borderRadius: 20,
-          padding: '26px 32px',
-          color: '#FFFFFF',
-          boxShadow: '0 12px 32px -8px rgba(6, 78, 59, 0.45)',
-          marginBottom: 24,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 20,
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
+        <div className="agent-hero-card">
           {/* Subtle Ambient Dream Glow Shapes */}
           <div style={{
             position: 'absolute',
@@ -171,7 +309,7 @@ export default function AgentDashboardPage() {
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                <h2 style={{ margin: 0, fontSize: 21, fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                <h2 className="agent-hero-name" style={{ margin: 0, fontSize: 21, fontWeight: 900, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
                   {user?.name || 'Field Partner'}
                 </h2>
                 <span style={{
@@ -221,7 +359,7 @@ export default function AgentDashboardPage() {
           </div>
 
           {/* Right: Primary Action Group (Dream Glass & White Card) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+          <div className="agent-actions-wrap">
             <button
               onClick={() => setQrModalOpen(true)}
               type="button"
@@ -365,20 +503,9 @@ export default function AgentDashboardPage() {
         </div>
 
         {/* ── KPI Metrics Grid (Stripe Minimalist Clean Cards) ── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: 16,
-          marginBottom: 20
-        }}>
+        <div className="agent-metrics-grid">
           {/* Card 1: Available Balance */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 16,
-            padding: '20px 22px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
-          }}>
+          <div className="agent-metric-card agent-balance-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{
                 width: 36,
@@ -414,7 +541,7 @@ export default function AgentDashboardPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
               উত্তোলনযোগ্য ব্যালেন্স
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', marginTop: 4 }}>
+            <div className="metric-val" style={{ fontSize: 26, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', marginTop: 4 }}>
               ৳{parseFloat(walletSummary.available_balance || 0).toFixed(2)}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
@@ -423,13 +550,7 @@ export default function AgentDashboardPage() {
           </div>
 
           {/* Card 2: Total Submissions */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 16,
-            padding: '20px 22px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
-          }}>
+          <div className="agent-metric-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{
                 width: 36,
@@ -450,7 +571,7 @@ export default function AgentDashboardPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
               মোট প্রার্থী
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', marginTop: 4 }}>
+            <div className="metric-val" style={{ fontSize: 26, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', marginTop: 4 }}>
               {recentRequests.length}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
@@ -459,13 +580,7 @@ export default function AgentDashboardPage() {
           </div>
 
           {/* Card 3: Approved Providers */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 16,
-            padding: '20px 22px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
-          }}>
+          <div className="agent-metric-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{
                 width: 36,
@@ -484,7 +599,7 @@ export default function AgentDashboardPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
               ভেরিফাইড ডাক্তার
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#059669', letterSpacing: '-0.02em', marginTop: 4 }}>
+            <div className="metric-val" style={{ fontSize: 26, fontWeight: 900, color: '#059669', letterSpacing: '-0.02em', marginTop: 4 }}>
               {approvedCount}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
@@ -493,13 +608,7 @@ export default function AgentDashboardPage() {
           </div>
 
           {/* Card 4: Under Review */}
-          <div style={{
-            background: '#FFFFFF',
-            border: '1px solid #E2E8F0',
-            borderRadius: 16,
-            padding: '20px 22px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
-          }}>
+          <div className="agent-metric-card">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <div style={{
                 width: 36,
@@ -518,7 +627,7 @@ export default function AgentDashboardPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
               যাচাইকরণ প্রক্রিয়ায়
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, color: '#D97706', letterSpacing: '-0.02em', marginTop: 4 }}>
+            <div className="metric-val" style={{ fontSize: 26, fontWeight: 900, color: '#D97706', letterSpacing: '-0.02em', marginTop: 4 }}>
               {pendingCount}
             </div>
             <div style={{ fontSize: 11.5, color: '#94A3B8', marginTop: 6 }}>
@@ -528,7 +637,7 @@ export default function AgentDashboardPage() {
         </div>
 
         {/* ── Monthly Goal Strip (Linear Style, Minimalist) ── */}
-        <div style={{
+        <div className="agent-goal-banner" style={{
           background: '#FFFFFF',
           border: '1px solid #E2E8F0',
           borderRadius: 14,
@@ -576,7 +685,7 @@ export default function AgentDashboardPage() {
           overflow: 'hidden'
         }}>
           {/* Table Header & Controls */}
-          <div style={{
+          <div className="agent-table-header" style={{
             padding: '20px 24px',
             borderBottom: '1px solid #F1F5F9',
             display: 'flex',
@@ -595,17 +704,8 @@ export default function AgentDashboardPage() {
             </div>
 
             {/* Search Box & Filters */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                borderRadius: 8,
-                padding: '6px 12px',
-                width: 220
-              }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
+              <div className="agent-search-box">
                 <Search size={14} color="#94A3B8" />
                 <input
                   type="text"
@@ -632,7 +732,7 @@ export default function AgentDashboardPage() {
               </div>
 
               {/* Status Chips */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div className="agent-filter-chips">
                 {[
                   { key: 'all', label: `সকল (${recentRequests.length})` },
                   { key: 'approved', label: `অনুমোদিত (${approvedCount})` },
@@ -728,6 +828,7 @@ export default function AgentDashboardPage() {
                 return (
                   <div
                     key={req.id}
+                    className="agent-sub-item"
                     style={{
                       padding: '16px 24px',
                       display: 'flex',
@@ -762,7 +863,7 @@ export default function AgentDashboardPage() {
                         <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>
                           {req.payload?.name || 'Doctor Candidate'}
                         </div>
-                        <div style={{ fontSize: 12, color: '#64748B', display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                        <div style={{ fontSize: 12, color: '#64748B', display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' }}>
                           <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#059669' }}>
                             {req.request_code}
                           </span>
@@ -779,7 +880,7 @@ export default function AgentDashboardPage() {
                     </div>
 
                     {/* Status Pill & Date */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div className="agent-sub-item-meta" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <span
                         style={{
                           display: 'inline-flex',

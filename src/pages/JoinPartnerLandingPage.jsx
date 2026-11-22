@@ -5,17 +5,10 @@ import {
   Building2, 
   ShieldCheck, 
   ArrowRight, 
-  CheckCircle2, 
-  Sparkles, 
   PhoneCall, 
   Phone,
-  Globe, 
-  Award, 
-  User, 
-  Check, 
-  Lock,
-  ChevronRight,
-  Info
+  Check,
+  Sparkles
 } from 'lucide-react'
 import axiosInstance from '../api/axiosInstance'
 
@@ -64,539 +57,561 @@ export default function JoinPartnerLandingPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #F0FDF4 0%, #F8FAFC 50%, #FFFFFF 100%)' }}>
+    <div className="join-page-wrapper">
       <style>{`
-        @media (min-width: 640px) {
-          .hero-subtext {
-            white-space: nowrap !important;
+        .join-page-wrapper {
+          min-height: 100vh;
+          background: radial-gradient(circle at 50% 0%, #D1FAE5 0%, #ECFDF5 25%, #F0FDF4 55%, #F8FAFC 100%);
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          overflow-x: hidden;
+        }
+
+        /* ── Ambient Background Lighting ── */
+        .join-ambient-glow-1 {
+          position: absolute;
+          top: 60px;
+          left: -80px;
+          width: 260px;
+          height: 260px;
+          border-radius: 50%;
+          background: rgba(0, 184, 117, 0.18);
+          filter: blur(70px);
+          pointer-events: none;
+        }
+        .join-ambient-glow-2 {
+          position: absolute;
+          top: 180px;
+          right: -80px;
+          width: 240px;
+          height: 240px;
+          border-radius: 50%;
+          background: rgba(2, 132, 199, 0.15);
+          filter: blur(70px);
+          pointer-events: none;
+        }
+
+        .join-header {
+          background: rgba(255, 255, 255, 0.92);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+          padding: 12px 20px;
+          position: sticky;
+          top: 0;
+          z-index: 50;
+        }
+        .join-header-inner {
+          max-width: 900px;
+          margin: 0 auto;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .join-brand-link {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          text-decoration: none;
+        }
+        .join-brand-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 9px;
+          background: linear-gradient(135deg, #00B875 0%, #0284c7 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #FFFFFF;
+          flex-shrink: 0;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.25);
+        }
+        .join-brand-title {
+          font-size: 16px;
+          font-weight: 900;
+          color: #0F172A;
+          letter-spacing: -0.02em;
+          display: block;
+          line-height: 1.1;
+        }
+        .join-helpline-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #065F46;
+          background: #FFFFFF;
+          border: 1px solid #A7F3D0;
+          padding: 5px 12px;
+          border-radius: 20px;
+          text-decoration: none;
+          flex-shrink: 0;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .join-main {
+          max-width: 490px;
+          width: 100%;
+          margin: 0 auto;
+          padding: 24px 16px 48px;
+          box-sizing: border-box;
+          flex: 1;
+          position: relative;
+          z-index: 1;
+        }
+
+        /* ── Unified Frosted Portal Card ── */
+        .join-portal-card {
+          background: rgba(255, 255, 255, 0.94);
+          backdrop-filter: blur(20px);
+          border-radius: 24px;
+          border: 1.5px solid rgba(255, 255, 255, 0.9);
+          box-shadow: 0 16px 40px -10px rgba(0, 184, 117, 0.14), 0 2px 8px rgba(0, 0, 0, 0.04);
+          padding: 20px 18px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          position: relative;
+          overflow: hidden;
+        }
+        .join-card-accent-bar {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #00B875 0%, #0284c7 100%);
+        }
+
+        /* ── Embedded Agent Profile Bar ── */
+        .join-agent-box {
+          background: linear-gradient(135deg, #F0FDF4 0%, #FFFFFF 65%, #F8FAFC 100%);
+          border: 1.5px solid #A7F3D0;
+          border-radius: 18px;
+          padding: 11px 14px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.05);
+        }
+        .join-agent-left {
+          display: flex;
+          align-items: center;
+          gap: 11px;
+          min-width: 0;
+          flex: 1;
+        }
+        .join-agent-avatar-wrap {
+          position: relative;
+          flex-shrink: 0;
+        }
+        .join-agent-avatar {
+          width: 46px;
+          height: 46px;
+          border-radius: 50%;
+          background: #ECFDF5;
+          color: #00B875;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 19px;
+          font-weight: 900;
+          border: 2px solid #00B875;
+          box-shadow: 0 3px 8px rgba(0, 184, 117, 0.2);
+        }
+        .join-agent-verified-badge {
+          position: absolute;
+          bottom: -1px;
+          right: -1px;
+          width: 15px;
+          height: 15px;
+          border-radius: 50%;
+          background: #00B875;
+          border: 2px solid #FFFFFF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .join-agent-meta {
+          min-width: 0;
+          flex: 1;
+        }
+        .join-agent-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 9.5px;
+          font-weight: 800;
+          color: #059669;
+          background: #ECFDF5;
+          border: 1px solid #A7F3D0;
+          padding: 2px 7px;
+          border-radius: 12px;
+          margin-bottom: 2px;
+          white-space: nowrap;
+        }
+        .join-agent-title {
+          font-size: 15px;
+          font-weight: 900;
+          color: #0F172A;
+          margin: 0;
+          line-height: 1.25;
+          word-break: break-word;
+        }
+        .join-agent-call-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #FFFFFF;
+          border: 1.5px solid #00B875;
+          color: #065F46;
+          padding: 6px 12px;
+          border-radius: 20px;
+          text-decoration: none;
+          font-size: 11.5px;
+          font-weight: 800;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+          box-shadow: 0 2px 6px rgba(0, 184, 117, 0.12);
+        }
+        .join-agent-call-btn:hover {
+          background: #00B875;
+          color: #FFFFFF;
+        }
+
+        /* ── Section Title ── */
+        .join-heading-wrap {
+          text-align: center;
+          padding: 2px 0 0;
+        }
+        .join-heading {
+          font-size: 18.5px;
+          font-weight: 900;
+          color: #0F172A;
+          margin: 0 0 3px;
+          letter-spacing: -0.02em;
+        }
+        .join-heading-sub {
+          font-size: 12px;
+          color: #64748B;
+          margin: 0;
+        }
+
+        /* ── Themed Role Cards ── */
+        .join-roles-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .join-role-card {
+          border-radius: 18px;
+          padding: 15px 16px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          text-align: left;
+        }
+        .join-role-card.doctor {
+          background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);
+          border: 1.5px solid #86EFAC;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.08);
+        }
+        .join-role-card.doctor:hover {
+          background: #DCFCE7;
+          border-color: #00B875;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(0, 184, 117, 0.18);
+        }
+
+        .join-role-card.hospital {
+          background: linear-gradient(135deg, #FFFFFF 0%, #F0F9FF 100%);
+          border: 1.5px solid #93C5FD;
+          box-shadow: 0 4px 14px rgba(2, 132, 199, 0.08);
+        }
+        .join-role-card.hospital:hover {
+          background: #E0F2FE;
+          border-color: #0284c7;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(2, 132, 199, 0.18);
+        }
+
+        .join-role-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #FFFFFF;
+          flex-shrink: 0;
+        }
+        .join-role-icon.doctor {
+          background: linear-gradient(135deg, #00B875 0%, #059669 100%);
+          box-shadow: 0 4px 12px rgba(0, 184, 117, 0.32);
+        }
+        .join-role-icon.hospital {
+          background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+          box-shadow: 0 4px 12px rgba(2, 132, 199, 0.32);
+        }
+
+        .join-role-content {
+          flex: 1;
+          min-width: 0;
+        }
+        .join-role-title {
+          font-size: 16px;
+          font-weight: 900;
+          color: #0F172A;
+          margin: 0;
+          line-height: 1.25;
+        }
+        .join-role-desc {
+          font-size: 12px;
+          color: #475569;
+          margin: 3px 0 0;
+          line-height: 1.35;
+        }
+
+        /* ── Modern Circular Action Arrows ── */
+        .join-role-arrow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          color: #FFFFFF;
+          transition: transform 0.2s ease;
+        }
+        .join-role-card.doctor .join-role-arrow {
+          background: linear-gradient(135deg, #00B875 0%, #059669 100%);
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.35);
+        }
+        .join-role-card.hospital .join-role-arrow {
+          background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+          box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+        }
+        .join-role-card:hover .join-role-arrow {
+          transform: translateX(3px);
+        }
+
+        /* ── Reassuring Trust Pill & Footer ── */
+        .join-card-footer {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          padding-top: 6px;
+          border-top: 1px dashed #E2E8F0;
+        }
+        .join-trust-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #065F46;
+          background: #ECFDF5;
+          padding: 3px 10px;
+          border-radius: 20px;
+        }
+        .join-login-row {
+          font-size: 12.5px;
+          color: #64748B;
+        }
+        .join-login-link {
+          color: #00B875;
+          font-weight: 800;
+          text-decoration: none;
+          margin-left: 6px;
+        }
+        .join-login-link:hover {
+          text-decoration: underline;
+        }
+
+        /* ── Mobile Viewports (< 640px) ── */
+        @media screen and (max-width: 640px) {
+          .join-header {
+            padding: 10px 14px !important;
+          }
+          .join-main {
+            padding: 16px 14px calc(40px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+          .join-portal-card {
+            border-radius: 22px !important;
+            padding: 18px 14px 14px !important;
+            gap: 14px !important;
+          }
+          .join-agent-box {
+            padding: 10px 12px !important;
+          }
+          .join-agent-avatar {
+            width: 44px !important;
+            height: 44px !important;
+            font-size: 18px !important;
+          }
+          .join-agent-title {
+            font-size: 14.5px !important;
+          }
+          .join-heading {
+            font-size: 17px !important;
+          }
+          .join-role-card {
+            padding: 13px 14px !important;
+          }
+          .join-role-icon {
+            width: 44px !important;
+            height: 44px !important;
+          }
+          .join-role-title {
+            font-size: 15px !important;
+          }
+          .join-role-desc {
+            font-size: 11.5px !important;
           }
         }
       `}</style>
       
+      {/* ── Ambient Background Glows ── */}
+      <div className="join-ambient-glow-1" />
+      <div className="join-ambient-glow-2" />
+
       {/* ── Top Header Bar ── */}
-      <header style={{
-        background: '#FFFFFF',
-        borderBottom: '1px solid #E2E8F0',
-        padding: '14px 20px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-      }}>
-        <div style={{
-          maxWidth: 1040,
-          margin: '0 auto',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          {/* Brand Logo */}
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
-            <div style={{
-              width: 38,
-              height: 38,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#FFFFFF',
-              boxShadow: '0 2px 8px rgba(0, 184, 117, 0.25)'
-            }}>
-              <Stethoscope size={22} />
+      <header className="join-header">
+        <div className="join-header-inner">
+          <Link to="/" className="join-brand-link">
+            <div className="join-brand-icon">
+              <Stethoscope size={18} />
             </div>
-            <div>
-              <span style={{ fontSize: 18, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.02em', display: 'block', lineHeight: 1.1 }}>
-                DOCTOR<span style={{ color: '#00B875' }}>BOOKLET</span>
-              </span>
-              <span style={{ fontSize: 10, color: '#64748B', fontWeight: 600, letterSpacing: '0.04em' }}>
-                DIGITAL HEALTHCARE NETWORK
-              </span>
-            </div>
+            <span className="join-brand-title">
+              DOCTOR<span style={{ color: '#00B875' }}>BOOKLET</span>
+            </span>
           </Link>
 
-          {/* Quick Helpline */}
-          <a
-            href="tel:01310123123"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 12.5,
-              fontWeight: 700,
-              color: '#065F46',
-              background: '#ECFDF5',
-              border: '1px solid #A7F3D0',
-              padding: '6px 12px',
-              borderRadius: 20,
-              textDecoration: 'none'
-            }}
-          >
-            <PhoneCall size={13} color="#059669" />
-            <span>হেল্পলাইন: 01310-123123</span>
+          <a href="tel:01310123123" className="join-helpline-btn">
+            <PhoneCall size={12} color="#059669" />
+            <span>01310-123123</span>
           </a>
         </div>
       </header>
 
       {/* ── Main Container ── */}
-      <main style={{ maxWidth: 960, margin: '0 auto', padding: '36px 20px 64px' }}>
+      <main className="join-main">
 
-        {/* ── Agent Attribution Welcome Banner ── */}
-        <div style={{
-          background: 'linear-gradient(135deg, #064E3B 0%, #047857 50%, #0D9488 100%)',
-          borderRadius: 24,
-          padding: '28px 26px',
-          color: '#FFFFFF',
-          marginBottom: 36,
-          boxShadow: '0 12px 30px -8px rgba(6, 78, 59, 0.35)',
-          position: 'relative',
-          overflow: 'hidden'
-        }}>
-          {/* Background Decorative Rings */}
-          <div style={{
-            position: 'absolute',
-            top: -40,
-            right: -40,
-            width: 180,
-            height: 180,
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.05)',
-            pointerEvents: 'none'
-          }} />
+        {/* ── Unified Portal Card ── */}
+        <div className="join-portal-card">
+          <div className="join-card-accent-bar" />
 
-          <div style={{
-            position: 'relative',
-            zIndex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 20
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
-              {/* Agent Photo or Avatar with Verified Ring */}
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <div style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: '50%',
-                  background: '#FFFFFF',
-                  color: '#064E3B',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 28,
-                  fontWeight: 900,
-                  border: '3.5px solid rgba(255, 255, 255, 0.95)',
-                  boxShadow: '0 6px 16px rgba(0,0,0,0.2)'
-                }}>
+          {/* Embedded Agent Profile Bar */}
+          <div className="join-agent-box">
+            <div className="join-agent-left">
+              <div className="join-agent-avatar-wrap">
+                <div className="join-agent-avatar">
                   {agentData?.photo ? (
                     <img src={agentData.photo} alt={agentData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <span>{agentData?.name ? agentData.name.charAt(0).toUpperCase() : (cleanRef ? 'A' : 'P')}</span>
                   )}
                 </div>
-                {/* Verified Green Badge on Photo */}
-                <div style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  right: 0,
-                  width: 22,
-                  height: 22,
-                  borderRadius: '50%',
-                  background: '#10B981',
-                  border: '2px solid #FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
-                }}>
-                  <Check size={12} strokeWidth={3.5} color="#FFFFFF" />
+                <div className="join-agent-verified-badge">
+                  <Check size={9} strokeWidth={3.5} color="#FFFFFF" />
                 </div>
               </div>
 
-              <div>
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  backdropFilter: 'blur(8px)',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  marginBottom: 6,
-                  color: '#A7F3D0'
-                }}>
-                  <ShieldCheck size={13} color="#6EE7B7" />
-                  <span>অনুমোদিত ফিল্ড পার্টনার • ভেরিফাইড আইডি</span>
+              <div className="join-agent-meta">
+                <div className="join-agent-badge">
+                  <ShieldCheck size={11} color="#059669" />
+                  <span>ভেরিফাইড ফিল্ড পার্টনার</span>
                 </div>
-
-                <h1 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 3px', letterSpacing: '-0.02em', color: '#FFFFFF' }}>
-                  {agentData?.name || (cleanRef ? 'ফিল্ড পার্টনার প্রতিনিধি' : 'ডক্টরবুকলেট পার্টনার নেটওয়ার্ক')}
+                <h1 className="join-agent-title">
+                  {agentData?.name || (cleanRef ? 'ফিল্ড পার্টনার প্রতিনিধি' : 'ডক্টরবুকলেট পার্টনার')}
                 </h1>
-                
-                <p className="hero-subtext" style={{ margin: '0 0 8px', fontSize: 13, opacity: 0.9, lineHeight: 1.4 }}>
-                  আপনার প্র্যাকটিস বা স্বাস্থ্যসেবা প্রতিষ্ঠানকে ডিজিটালাইজড করতে সরাসরি এই পোর্টালে যুক্ত হোন।
-                </p>
-
-                {/* Agent Contact Call Pill */}
-                {agentData?.phone && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-                    <a
-                      href={`tel:${agentData.phone}`}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 7,
-                        background: 'rgba(255, 255, 255, 0.16)',
-                        backdropFilter: 'blur(10px)',
-                        border: '1px solid rgba(255, 255, 255, 0.3)',
-                        borderRadius: 20,
-                        padding: '4px 12px 4px 10px',
-                        color: '#FFFFFF',
-                        textDecoration: 'none',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        transition: 'background 0.15s ease'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.26)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255, 255, 255, 0.16)' }}
-                      title="এজেন্টকে সরাসরি কল করুন"
-                    >
-                      <Phone size={13} color="#6EE7B7" />
-                      <span>সহায়তার জন্য যোগাযোগ: <strong>{agentData.phone}</strong></span>
-                      <span style={{
-                        fontSize: 10,
-                        background: '#10B981',
-                        color: '#FFFFFF',
-                        padding: '1px 6px',
-                        borderRadius: 10,
-                        marginLeft: 2,
-                        fontWeight: 800
-                      }}>
-                        কল করুন
-                      </span>
-                    </a>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Agent Code Chip */}
-            {cleanRef && (
-              <div style={{
-                background: 'rgba(0, 0, 0, 0.3)',
-                border: '1.5px solid rgba(255, 255, 255, 0.25)',
-                borderRadius: 16,
-                padding: '12px 20px',
-                textAlign: 'right',
-                backdropFilter: 'blur(12px)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
-              }}>
-                <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  রেফারেল কোড (সক্রিয়)
-                </div>
-                <div style={{ fontSize: 20, fontWeight: 900, fontFamily: 'monospace', color: '#FFFFFF', letterSpacing: '0.06em', marginTop: 2 }}>
-                  {cleanRef}
-                </div>
-              </div>
+            {agentData?.phone && (
+              <a
+                href={`tel:${agentData.phone}`}
+                className="join-agent-call-btn"
+                title={`সরাসরি কল করুন: ${agentData.phone}`}
+              >
+                <Phone size={12} color="#00B875" />
+                <span>কল</span>
+              </a>
             )}
           </div>
-        </div>
 
-        {/* ── Selection Section Title ── */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
-            আপনি কী হিসেবে যুক্ত হতে চান?
-          </h2>
-          <p style={{ fontSize: 14, color: '#64748B', margin: '6px 0 0' }}>
-            নিচের যেকোনো একটি অপশন নির্বাচন করে আপনার সেলফ-অনবোর্ডিং বা রেজিস্ট্রেশন সম্পন্ন করুন।
-          </p>
-        </div>
+          {/* Section Heading inside Unified Card */}
+          <div className="join-heading-wrap">
+            <h2 className="join-heading">
+              যুক্ত হতে নির্বাচন করুন
+            </h2>
+            <p className="join-heading-sub">
+              আপনার প্রোফাইল অনুযায়ী যেকোনো একটি অপশন বেছে নিন
+            </p>
+          </div>
 
-        {/* ── Two Big Choice Cards ── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 24,
-          marginBottom: 40
-        }}>
-          
-          {/* ════ Card 1: Doctor Registration ════ */}
-          <div 
-            onClick={() => handleSelectRole('doctor')}
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 24,
-              border: '2px solid #E2E8F0',
-              padding: '32px 28px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              position: 'relative'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#00B875'
-              e.currentTarget.style.transform = 'translateY(-4px)'
-              e.currentTarget.style.boxShadow = '0 16px 32px -8px rgba(0, 184, 117, 0.18)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#E2E8F0'
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.04)'
-            }}
-          >
-            <div>
-              {/* Card Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 6px 18px rgba(0, 184, 117, 0.3)'
-                }}>
-                  <Stethoscope size={28} />
-                </div>
-                <span style={{
-                  background: '#ECFDF5',
-                  color: '#059669',
-                  border: '1px solid #A7F3D0',
-                  padding: '4px 12px',
-                  borderRadius: 20,
-                  fontSize: 11.5,
-                  fontWeight: 800
-                }}>
-                  চিকিৎসক অনবোর্ডিং
-                </span>
-              </div>
-
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: '0 0 8px' }}>
-                আমি একজন চিকিৎসক (Doctor)
-              </h3>
-              <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.5, margin: '0 0 20px' }}>
-                ডিজিটাল চেম্বার পরিচালনা, প্রেসক্রিপশন তৈরি এবং রোগীদের অনলাইন অ্যাপয়েন্টমেন্ট শিডিউলিং।
-              </p>
-
-              {/* Feature Points */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 26 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#334155' }}>
-                  <CheckCircle2 size={16} color="#00B875" style={{ flexShrink: 0 }} />
-                  <span>বিএমডিসি (BMDC) ভেরিফাইড প্রোফাইল ও সনদ যাচাই</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#334155' }}>
-                  <CheckCircle2 size={16} color="#00B875" style={{ flexShrink: 0 }} />
-                  <span>স্মার্ট চেম্বার সিরিয়াল ও এসএমএস নোটিফিকেশন</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#334155' }}>
-                  <CheckCircle2 size={16} color="#00B875" style={{ flexShrink: 0 }} />
-                  <span>ডিজিটাল প্রেসক্রিপশন ও রোগীর প্রেসক্রিপশন হিস্ট্রি</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Action CTA Button */}
-            <button
-              type="button"
-              style={{
-                width: '100%',
-                padding: '13px 20px',
-                borderRadius: 14,
-                border: 'none',
-                background: '#00B875',
-                color: '#FFFFFF',
-                fontSize: 14.5,
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)',
-                transition: 'background 0.15s ease'
-              }}
+          {/* Connected Themed Role Cards */}
+          <div className="join-roles-grid">
+            
+            {/* Card 1: Doctor (Themed Mint BG) */}
+            <div 
+              onClick={() => handleSelectRole('doctor')}
+              className="join-role-card doctor"
             >
-              <span>ডাক্তার হিসেবে যুক্ত হোন</span>
-              <ArrowRight size={17} />
-            </button>
-          </div>
-
-          {/* ════ Card 2: Hospital / Clinic Registration ════ */}
-          <div 
-            onClick={() => handleSelectRole('hospital')}
-            style={{
-              background: '#FFFFFF',
-              borderRadius: 24,
-              border: '2px solid #E2E8F0',
-              padding: '32px 28px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              position: 'relative'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#0284c7'
-              e.currentTarget.style.transform = 'translateY(-4px)'
-              e.currentTarget.style.boxShadow = '0 16px 32px -8px rgba(2, 132, 199, 0.18)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#E2E8F0'
-              e.currentTarget.style.transform = 'translateY(0)'
-              e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.04)'
-            }}
-          >
-            <div>
-              {/* Card Header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                <div style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
-                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 6px 18px rgba(2, 132, 199, 0.3)'
-                }}>
-                  <Building2 size={28} />
-                </div>
-                <span style={{
-                  background: '#F0F9FF',
-                  color: '#0284c7',
-                  border: '1px solid #BAE6FD',
-                  padding: '4px 12px',
-                  borderRadius: 20,
-                  fontSize: 11.5,
-                  fontWeight: 800
-                }}>
-                  প্রতিষ্ঠান অনবোর্ডিং
-                </span>
+              <div className="join-role-icon doctor">
+                <Stethoscope size={24} />
               </div>
-
-              <h3 style={{ fontSize: 20, fontWeight: 900, color: '#0F172A', margin: '0 0 8px' }}>
-                হাসপাতাল / ক্লিনিক / ডায়াগনস্টিক
-              </h3>
-              <p style={{ fontSize: 13.5, color: '#64748B', lineHeight: 1.5, margin: '0 0 20px' }}>
-                আইসিইউ, কেবিন, টেস্ট বুকিং এবং হাসপাতালের সকল বিশেষজ্ঞ চিকিৎসকের তালিকা পরিচালনা।
-              </p>
-
-              {/* Feature Points */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 26 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#334155' }}>
-                  <CheckCircle2 size={16} color="#0284c7" style={{ flexShrink: 0 }} />
-                  <span>ডিজিএইচএস (DGHS) লাইসেন্স ও ট্রেড সনদ যাচাই</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#334155' }}>
-                  <CheckCircle2 size={16} color="#0284c7" style={{ flexShrink: 0 }} />
-                  <span>রিয়েল-টাইম বেড, কেবিন ও আইসিইউ ম্যানেজমেন্ট</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#334155' }}>
-                  <CheckCircle2 size={16} color="#0284c7" style={{ flexShrink: 0 }} />
-                  <span>ডায়াগনস্টিক টেস্ট প্যাকেজ ও কেন্দ্রীয় ড্যাশবোর্ড</span>
-                </div>
+              <div className="join-role-content">
+                <h3 className="join-role-title">চিকিৎসক (Doctor)</h3>
+                <p className="join-role-desc">চেম্বার ও রোগী সিরিয়াল ম্যানেজমেন্ট</p>
+              </div>
+              <div className="join-role-arrow">
+                <ArrowRight size={16} strokeWidth={2.5} />
               </div>
             </div>
 
-            {/* Action CTA Button */}
-            <button
-              type="button"
-              style={{
-                width: '100%',
-                padding: '13px 20px',
-                borderRadius: 14,
-                border: 'none',
-                background: '#0284c7',
-                color: '#FFFFFF',
-                fontSize: 14.5,
-                fontWeight: 800,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.3)',
-                transition: 'background 0.15s ease'
-              }}
+            {/* Card 2: Hospital (Themed Sky Blue BG) */}
+            <div 
+              onClick={() => handleSelectRole('hospital')}
+              className="join-role-card hospital"
             >
-              <span>হাসপাতাল হিসেবে যুক্ত হোন</span>
-              <ArrowRight size={17} />
-            </button>
+              <div className="join-role-icon hospital">
+                <Building2 size={24} />
+              </div>
+              <div className="join-role-content">
+                <h3 className="join-role-title">হাসপাতাল ও ক্লিনিক</h3>
+                <p className="join-role-desc">বেড, কেবিন ও বিশেষজ্ঞ ডাক্তার তালিকা</p>
+              </div>
+              <div className="join-role-arrow">
+                <ArrowRight size={16} strokeWidth={2.5} />
+              </div>
+            </div>
+
           </div>
 
-        </div>
-
-        {/* ── Trust & Support Footer Box ── */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 20,
-          border: '1px solid #E2E8F0',
-          padding: '20px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: '#F8FAFC',
-              border: '1px solid #E2E8F0',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#059669'
-            }}>
-              <Award size={20} />
+          {/* Trust Badge & Login Footer */}
+          <div className="join-card-footer">
+            <div className="join-trust-pill">
+              <ShieldCheck size={13} color="#059669" />
+              <span>১০০% নিরাপদ ও অফিসিয়াল প্ল্যাটফর্ম</span>
             </div>
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A' }}>
-                সম্পূর্ণ ফ্রি অনবোর্ডিং ও ডেডিকেটেড সাপোর্ট
-              </div>
-              <div style={{ fontSize: 12, color: '#64748B' }}>
-                রেজিস্ট্রেশন করতে কোনো হিডেন ফি নেই। ফিল্ড পার্টনার সহায়তা প্রদান করবেন।
-              </div>
+            <div className="join-login-row">
+              <span>অলরেডি অ্যাকাউন্ট আছে?</span>
+              <Link to="/login" className="join-login-link">
+                লগইন করুন
+              </Link>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 12, color: '#64748B' }}>
-              অলরেডি অ্যাকাউন্ট আছে?
-            </span>
-            <Link
-              to="/login"
-              style={{
-                fontSize: 12.5,
-                fontWeight: 800,
-                color: '#00B875',
-                textDecoration: 'none',
-                background: '#ECFDF5',
-                border: '1px solid #A7F3D0',
-                padding: '6px 14px',
-                borderRadius: 10
-              }}
-            >
-              লগইন করুন
-            </Link>
-          </div>
         </div>
 
       </main>

@@ -27,22 +27,46 @@ import TableFooter from '../../../components/admin/TableFooter'
 import EmptyState from '../../../components/common/EmptyState'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import CompactUlid from '../../../components/common/CompactUlid'
-import { useDebounce } from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 
 export default function OnboardingVerificationDeskPage() {
   const [queue, setQueue] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState(null)
-  const [statusFilter, setStatusFilter] = useState('submitted')
-  const [entityFilter, setEntityFilter] = useState('')
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search, 300)
   const [showFilters, setShowFilters] = useState(false)
 
+  // Enterprise URL & session-synchronized filters
+  const {
+    filters,
+    setFilter,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters,
+  } = useTableUrlFilters({
+    initialFilters: {
+      statusFilter: '',
+      entityFilter: '',
+    },
+    aliases: {
+      statusFilter: ['status'],
+      entityFilter: ['entity_type', 'type'],
+    },
+    storageKey: 'admin_onboarding_desk_filters',
+    defaultPerPage: 15,
+  })
+
+  const { statusFilter, entityFilter } = filters
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+  const setEntityFilter = (val) => setFilter('entityFilter', val)
+
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1)
-  const [perPage, setPerPage] = useState(15)
   const [total, setTotal] = useState(0)
 
   const fetchQueue = useCallback(async (isRefresh = false) => {
@@ -87,16 +111,8 @@ export default function OnboardingVerificationDeskPage() {
     fetchQueue()
   }, [fetchQueue])
 
-  // Reset to page 1 on filter changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [statusFilter, entityFilter, debouncedSearch])
-
   const clearFilters = () => {
-    setStatusFilter('')
-    setEntityFilter('')
-    setSearch('')
-    setCurrentPage(1)
+    resetFilters()
   }
 
   // Live KPI Summary
@@ -150,6 +166,14 @@ export default function OnboardingVerificationDeskPage() {
           color: '#2563EB',
           border: '1px solid rgba(59, 130, 246, 0.3)',
           dot: '#3B82F6'
+        }
+      case 'revoked':
+        return {
+          label: 'Revoked',
+          bg: 'rgba(168, 85, 247, 0.1)',
+          color: '#7E22CE',
+          border: '1px solid rgba(168, 85, 247, 0.3)',
+          dot: '#A855F7'
         }
       case 'submitted':
       default:
@@ -223,7 +247,7 @@ export default function OnboardingVerificationDeskPage() {
       }}>
         {/* Pending Verification */}
         <div 
-          onClick={() => setStatusFilter('submitted')}
+          onClick={() => setStatusFilter(statusFilter === 'submitted' ? '' : 'submitted')}
           className="admin-card" 
           style={{ 
             padding: '18px 20px', 
@@ -252,7 +276,7 @@ export default function OnboardingVerificationDeskPage() {
 
         {/* Under Review */}
         <div 
-          onClick={() => setStatusFilter('under_review')}
+          onClick={() => setStatusFilter(statusFilter === 'under_review' ? '' : 'under_review')}
           className="admin-card" 
           style={{ 
             padding: '18px 20px', 
@@ -281,7 +305,7 @@ export default function OnboardingVerificationDeskPage() {
 
         {/* Approved & Provisioned */}
         <div 
-          onClick={() => setStatusFilter('approved')}
+          onClick={() => setStatusFilter(statusFilter === 'approved' ? '' : 'approved')}
           className="admin-card" 
           style={{ 
             padding: '18px 20px', 
@@ -310,7 +334,7 @@ export default function OnboardingVerificationDeskPage() {
 
         {/* Revisions & Flagged */}
         <div 
-          onClick={() => setStatusFilter('revision_requested')}
+          onClick={() => setStatusFilter(statusFilter === 'revision_requested' ? '' : 'revision_requested')}
           className="admin-card" 
           style={{ 
             padding: '18px 20px', 
@@ -347,7 +371,7 @@ export default function OnboardingVerificationDeskPage() {
         refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(statusFilter || entityFilter)}
+        hasActiveFilters={hasActiveFilters}
         onClearFilters={clearFilters}
         activeFilters={[
           statusFilter && { 
@@ -388,6 +412,7 @@ export default function OnboardingVerificationDeskPage() {
             <option value="approved">Approved & Provisioned</option>
             <option value="revision_requested">Revision Requested</option>
             <option value="rejected">Rejected</option>
+            <option value="revoked">Revoked / Clawbacked</option>
           </select>
         </div>
 

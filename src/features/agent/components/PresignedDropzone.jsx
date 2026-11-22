@@ -139,6 +139,24 @@ export default function PresignedDropzone({
 
   return (
     <div style={{ width: '100%' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .presigned-dropzone-box {
+            padding: 14px 10px !important;
+            border-radius: 12px !important;
+          }
+          .presigned-dropzone-icon {
+            width: 38px !important;
+            height: 38px !important;
+          }
+          .presigned-dropzone-title {
+            font-size: 13px !important;
+          }
+          .presigned-dropzone-sub {
+            font-size: 11px !important;
+          }
+        }
+      `}</style>
       {/* Hidden file input */}
       <input
         type="file"
@@ -155,22 +173,22 @@ export default function PresignedDropzone({
           background: '#F0FDF4',
           border: '1.5px solid #86EFAC',
           borderRadius: 16,
-          padding: '16px 18px',
+          padding: '14px 16px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          gap: 12,
-          minHeight: 110,
+          gap: 10,
+          minHeight: 100,
           boxShadow: '0 2px 6px rgba(16, 185, 129, 0.08)',
           animation: 'fadeIn 0.2s ease-out'
         }}>
           {/* Top Row: File Icon + File Name & Size + Status Badge */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
               <div style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
+                width: 34,
+                height: 34,
+                borderRadius: 8,
                 background: '#DCFCE7',
                 color: '#059669',
                 display: 'flex',
@@ -179,11 +197,11 @@ export default function PresignedDropzone({
                 flexShrink: 0,
                 boxShadow: '0 2px 4px rgba(16, 185, 129, 0.15)'
               }}>
-                <CheckCircle2 size={22} />
+                <CheckCircle2 size={20} />
               </div>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{
-                  fontSize: 13.5,
+                  fontSize: 13,
                   fontWeight: 700,
                   color: '#0F172A',
                   whiteSpace: 'nowrap',
@@ -192,22 +210,20 @@ export default function PresignedDropzone({
                 }} title={fileName || label}>
                   {fileName || label}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: 11.5, color: '#64748B' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>
                   {fileSizeText && <span style={{ fontWeight: 600, color: '#334155' }}>{fileSizeText}</span>}
-                  {fileSizeText && <span>•</span>}
-                  <span style={{ color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                    <ShieldCheck size={12} />
-                    সংযুক্ত ফাইল
+                  <span style={{ color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    • সুরক্ষিত
                   </span>
                 </div>
               </div>
             </div>
 
             <span style={{
-              fontSize: 11,
+              fontSize: 10,
               background: '#DCFCE7',
               color: '#047857',
-              padding: '3px 8px',
+              padding: '2.5px 7px',
               borderRadius: 6,
               fontWeight: 700,
               border: '1px solid #BBF7D0',
@@ -230,13 +246,13 @@ export default function PresignedDropzone({
             <label
               htmlFor={`dropzone-${category}`}
               style={{
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: 700,
                 color: '#047857',
                 background: '#FFFFFF',
                 border: '1px solid #BBF7D0',
                 borderRadius: 8,
-                padding: '5px 12px',
+                padding: '4px 10px',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -256,8 +272,8 @@ export default function PresignedDropzone({
                 background: '#FFFFFF',
                 color: '#DC2626',
                 borderRadius: 8,
-                padding: '5px 10px',
-                fontSize: 12,
+                padding: '4px 10px',
+                fontSize: 11.5,
                 fontWeight: 700,
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -279,11 +295,12 @@ export default function PresignedDropzone({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          className="presigned-dropzone-box"
           style={{
             display: 'block',
             border: `2px dashed ${isDragging ? '#00B875' : '#CBD5E1'}`,
-            borderRadius: 16,
-            padding: '24px 20px',
+            borderRadius: 14,
+            padding: '20px 16px',
             textAlign: 'center',
             background: isDragging ? 'rgba(0, 184, 117, 0.05)' : '#F8FAFC',
             cursor: uploading ? 'wait' : 'pointer',
@@ -293,39 +310,42 @@ export default function PresignedDropzone({
           }}
         >
           {uploading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <Loader2 size={36} color="#00B875" style={{ animation: 'spin 1s linear infinite' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <Loader2 size={30} color="#00B875" style={{ animation: 'spin 1s linear infinite' }} />
               <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
                   নিরাপদে আপলোড হচ্ছে...
                 </div>
-                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                <div style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
                   এনক্রিপ্টেড ক্লাউড স্টোরেজে ফাইল প্রক্রিয়াকরণ চলছে
                 </div>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <div style={{
-                width: 52,
-                height: 52,
-                borderRadius: '50%',
-                background: isDragging ? '#DCFCE7' : 'rgba(0, 184, 117, 0.1)',
-                color: '#00B875',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease'
-              }}>
-                <UploadCloud size={26} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <div
+                className="presigned-dropzone-icon"
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  background: isDragging ? '#DCFCE7' : 'rgba(0, 184, 117, 0.1)',
+                  color: '#00B875',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <UploadCloud size={22} />
               </div>
 
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>
-                  <span style={{ color: '#00B875', textDecoration: 'underline' }}>ফাইল বেছে নিন</span>
-                  <span style={{ color: '#475569' }}> অথবা এখানে টেনে এনে ছাড়ুন</span>
+                <div className="presigned-dropzone-title" style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+                  <span style={{ color: '#00B875', textDecoration: 'underline' }}>ফাইল নির্বাচন করতে ট্যাপ করুন</span>
+                  <span className="d-none d-sm-inline" style={{ color: '#475569', textDecoration: 'none' }}> অথবা এখানে টেনে আনুন</span>
                 </div>
-                <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                <div className="presigned-dropzone-sub" style={{ fontSize: 11.5, color: '#64748B', marginTop: 3 }}>
                   PDF, JPG, PNG বা WEBP • সর্বোচ্চ ১০ MB
                 </div>
               </div>

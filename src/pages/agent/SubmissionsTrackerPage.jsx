@@ -5,6 +5,7 @@ import {
   Search, 
   Clock, 
   CheckCircle, 
+  CheckCircle2,
   XCircle, 
   AlertTriangle, 
   Plus, 
@@ -47,6 +48,21 @@ export default function SubmissionsTrackerPage() {
     fetchRequests()
   }, [statusFilter])
 
+  const totalCount = requests.length
+  const underReviewCount = requests.filter(r => r.status === 'under_review' || r.status === 'submitted').length
+  const approvedCount = requests.filter(r => r.status === 'approved').length
+  const revisionCount = requests.filter(r => r.status === 'revision_requested').length
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '—'
+    try {
+      const d = new Date(dateStr)
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    } catch {
+      return dateStr
+    }
+  }
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'approved':
@@ -54,16 +70,17 @@ export default function SubmissionsTrackerPage() {
           <span style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 5,
-            padding: '4px 10px',
-            borderRadius: 8,
+            gap: 4,
+            padding: '3px 8px',
+            borderRadius: 6,
             fontSize: 11.5,
             fontWeight: 700,
             background: 'rgba(0, 184, 117, 0.1)',
             color: '#00B875',
-            border: '1px solid rgba(0, 184, 117, 0.25)'
+            border: '1px solid rgba(0, 184, 117, 0.25)',
+            whiteSpace: 'nowrap'
           }}>
-            <CheckCircle size={13} strokeWidth={2.5} /> Approved &amp; Accrued
+            <CheckCircle2 size={12} strokeWidth={2.5} /> অনুমোদিত ও অর্জিত
           </span>
         )
       case 'rejected':
@@ -71,16 +88,17 @@ export default function SubmissionsTrackerPage() {
           <span style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 5,
-            padding: '4px 10px',
-            borderRadius: 8,
+            gap: 4,
+            padding: '3px 8px',
+            borderRadius: 6,
             fontSize: 11.5,
             fontWeight: 700,
             background: '#FEF2F2',
             color: '#EF4444',
-            border: '1px solid #FECDD3'
+            border: '1px solid #FECDD3',
+            whiteSpace: 'nowrap'
           }}>
-            <XCircle size={13} strokeWidth={2.5} /> Rejected
+            <XCircle size={12} strokeWidth={2.5} /> বাতিল
           </span>
         )
       case 'revision_requested':
@@ -88,16 +106,17 @@ export default function SubmissionsTrackerPage() {
           <span style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 5,
-            padding: '4px 10px',
-            borderRadius: 8,
+            gap: 4,
+            padding: '3px 8px',
+            borderRadius: 6,
             fontSize: 11.5,
             fontWeight: 700,
             background: '#FFFBEB',
             color: '#D97706',
-            border: '1px solid #FDE68A'
+            border: '1px solid #FDE68A',
+            whiteSpace: 'nowrap'
           }}>
-            <AlertTriangle size={13} strokeWidth={2.5} /> Revision Needed
+            <AlertTriangle size={12} strokeWidth={2.5} /> সংশোধন প্রয়োজন
           </span>
         )
       case 'under_review':
@@ -105,16 +124,35 @@ export default function SubmissionsTrackerPage() {
           <span style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 5,
-            padding: '4px 10px',
-            borderRadius: 8,
+            gap: 4,
+            padding: '3px 8px',
+            borderRadius: 6,
             fontSize: 11.5,
             fontWeight: 700,
             background: '#EFF6FF',
             color: '#2563EB',
-            border: '1px solid #BFDBFE'
+            border: '1px solid #BFDBFE',
+            whiteSpace: 'nowrap'
           }}>
-            <Clock size={13} strokeWidth={2.5} /> Under Verification
+            <Clock size={12} strokeWidth={2.5} /> যাচাই চলছে
+          </span>
+        )
+      case 'revoked':
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            padding: '3px 8px',
+            borderRadius: 6,
+            fontSize: 11.5,
+            fontWeight: 700,
+            background: 'rgba(168, 85, 247, 0.1)',
+            color: '#7E22CE',
+            border: '1px solid rgba(168, 85, 247, 0.25)',
+            whiteSpace: 'nowrap'
+          }}>
+            <AlertTriangle size={12} strokeWidth={2.5} /> প্রত্যাহারকৃত (Revoked)
           </span>
         )
       default:
@@ -122,16 +160,17 @@ export default function SubmissionsTrackerPage() {
           <span style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 5,
-            padding: '4px 10px',
-            borderRadius: 8,
+            gap: 4,
+            padding: '3px 8px',
+            borderRadius: 6,
             fontSize: 11.5,
             fontWeight: 700,
             background: '#F1F5F9',
             color: '#475569',
-            border: '1px solid #E2E8F0'
+            border: '1px solid #E2E8F0',
+            whiteSpace: 'nowrap'
           }}>
-            <Clock size={13} strokeWidth={2.5} /> Submitted
+            <Clock size={12} strokeWidth={2.5} /> জমা হয়েছে
           </span>
         )
     }
@@ -143,60 +182,252 @@ export default function SubmissionsTrackerPage() {
     return (
       r.request_code?.toLowerCase().includes(term) ||
       r.payload?.name?.toLowerCase().includes(term) ||
-      r.payload?.bmdc?.toLowerCase().includes(term)
+      r.payload?.name_bn?.toLowerCase().includes(term) ||
+      r.payload?.bmdc?.toLowerCase().includes(term) ||
+      r.payload?.license_number?.toLowerCase().includes(term) ||
+      r.entity_type?.toLowerCase().includes(term)
     )
   })
 
   return (
     <div style={{ minHeight: '100%', background: '#F8FAFC' }}>
+      <style>{`
+        .tracker-container {
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 24px 20px 48px;
+        }
+        .tracker-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        .tracker-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+        .tracker-title-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #00B875 0%, #0284c7 100%);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.3);
+          flex-shrink: 0;
+        }
+        .tracker-title-h1 {
+          font-size: 22px;
+          font-weight: 900;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.02em;
+        }
+        .tracker-subtitle {
+          font-size: 13px;
+          color: #64748B;
+          margin: 3px 0 0;
+        }
+        @keyframes trackerSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .tracker-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .tracker-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+        .tracker-stat-card {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 14px 16px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .tracker-filter-bar {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 14px 18px;
+          margin-bottom: 20px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          align-items: center;
+        }
+        .tracker-desktop-table {
+          display: block;
+        }
+        .tracker-mobile-cards {
+          display: none;
+        }
+        .tracker-mobile-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 16px;
+          padding: 14px 16px;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+        }
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '24px 20px 48px' }}>
+        @media (max-width: 768px) {
+          .tracker-container {
+            padding: 14px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+          .tracker-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            margin-bottom: 14px !important;
+          }
+          .tracker-title-icon {
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 11px !important;
+          }
+          .tracker-title-h1 {
+            font-size: 17px !important;
+            line-height: 1.3 !important;
+          }
+          .tracker-subtitle {
+            font-size: 12px !important;
+          }
+          .tracker-header-actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr 44px !important;
+            gap: 8px !important;
+          }
+          .tracker-header-actions a,
+          .tracker-header-actions button {
+            justify-content: center !important;
+            padding: 10px 8px !important;
+            font-size: 12.5px !important;
+            white-space: nowrap !important;
+          }
+          .tracker-stats-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+            margin-bottom: 14px !important;
+          }
+          .tracker-stat-card {
+            padding: 11px 12px !important;
+            gap: 10px !important;
+          }
+          .tracker-filter-bar {
+            padding: 12px 14px !important;
+            gap: 10px !important;
+            margin-bottom: 14px !important;
+            border-radius: 14px !important;
+          }
+          .tracker-filter-search {
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
+          }
+          .tracker-filter-select-wrap {
+            width: 100% !important;
+          }
+          .tracker-filter-select-wrap select {
+            width: 100% !important;
+          }
+          .tracker-desktop-table {
+            display: none !important;
+          }
+          .tracker-mobile-cards {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+          }
+        }
+      `}</style>
+
+      <div className="tracker-container">
         {/* Breadcrumb HUD */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748B', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748B', marginBottom: 14 }}>
           <Link to="/agent" style={{ color: 'inherit', textDecoration: 'none' }}>Partner Desk</Link>
           <ChevronRight size={13} />
-          <span>Tracker</span>
+          <span>অনবোর্ডিং ট্র্যাকার</span>
           <ChevronRight size={13} />
-          <span style={{ color: '#00B875', fontWeight: 700 }}>Submissions Queue</span>
+          <span style={{ color: '#00B875', fontWeight: 700 }}>সাবমিশন তালিকা</span>
         </div>
 
         {/* Page Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 24,
-          flexWrap: 'wrap',
-          gap: 16
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)'
-            }}>
-              <ClipboardList size={24} />
+        <div className="tracker-header">
+          <div className="tracker-title-wrap">
+            <div className="tracker-title-icon">
+              <ClipboardList size={22} />
             </div>
             <div>
-              <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em' }}>
+              <h1 className="tracker-title-h1">
                 অনবোর্ডিং সাবমিশন ট্র্যাকার
               </h1>
-              <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
-                আপনার সাবমিট করা প্রার্থীদের রিয়েল-টাইম BMDC অডিট অগ্রগতি, অনুমোদন এবং কমিশন স্ট্যাটাস ট্র্যাক করুন।
+              <p className="tracker-subtitle">
+                আপনার সাবমিট করা ডাক্তার ও হাসপাতালের ভেরিফিকেশন ও কমিশন স্ট্যাটাস।
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="tracker-header-actions">
+            <Link
+              to="/agent/onboard/doctor"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '10px 16px',
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #00B875 0%, #009E64 100%)',
+                color: '#FFFFFF',
+                fontSize: 13,
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(0, 184, 117, 0.25)',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              <span>ডাক্তার</span>
+            </Link>
+            <Link
+              to="/agent/onboard/hospital"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '10px 16px',
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)',
+                color: '#FFFFFF',
+                fontSize: 13,
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Building2 size={15} strokeWidth={2.5} />
+              <span>হাসপাতাল</span>
+            </Link>
             <button
               onClick={fetchRequests}
-              title="Refresh Queue"
+              disabled={loading}
+              title="রিফ্রেশ করুন"
               style={{
                 width: 42,
                 height: 42,
@@ -207,75 +438,139 @@ export default function SubmissionsTrackerPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
+                cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s'
               }}
             >
-              <RefreshCw size={16} />
+              <RefreshCw size={16} style={{ animation: loading ? 'trackerSpin 1s linear infinite' : 'none' }} />
             </button>
-            <Link
-              to="/agent/onboard/doctor"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 16px',
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #00B875 0%, #009E64 100%)',
-                color: '#FFFFFF',
-                fontSize: 13,
-                fontWeight: 800,
-                textDecoration: 'none',
-                boxShadow: '0 4px 12px rgba(0, 184, 117, 0.3)',
-                transition: 'all 0.2s'
-              }}
-            >
-              <Plus size={15} strokeWidth={2.5} />
-              <span>Doctor</span>
-            </Link>
-            <Link
-              to="/agent/onboard/hospital"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '9px 16px',
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                color: '#FFFFFF',
-                fontSize: 13,
-                fontWeight: 800,
-                textDecoration: 'none',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                transition: 'all 0.2s'
-              }}
-            >
-              <Building2 size={15} strokeWidth={2.5} />
-              <span>Hospital</span>
-            </Link>
+          </div>
+        </div>
+
+        {/* ── Quick Stats Metric Cards ── */}
+        <div className="tracker-stats-grid">
+          {/* Card 1: Total */}
+          <div
+            onClick={() => setStatusFilter('')}
+            className="tracker-stat-card"
+            style={{
+              borderColor: statusFilter === '' ? '#00B875' : '#E2E8F0',
+              background: statusFilter === '' ? '#F0FDF4' : '#FFFFFF'
+            }}
+          >
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: '#F1F5F9',
+              color: '#334155',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <ClipboardList size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>মোট আবেদন</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#0F172A' }}>{totalCount}</div>
+            </div>
+          </div>
+
+          {/* Card 2: Under Review */}
+          <div
+            onClick={() => setStatusFilter('under_review')}
+            className="tracker-stat-card"
+            style={{
+              borderColor: statusFilter === 'under_review' ? '#2563EB' : '#E2E8F0',
+              background: statusFilter === 'under_review' ? '#EFF6FF' : '#FFFFFF'
+            }}
+          >
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: '#EFF6FF',
+              color: '#2563EB',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <Clock size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>যাচাই চলছে</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#2563EB' }}>{underReviewCount}</div>
+            </div>
+          </div>
+
+          {/* Card 3: Approved */}
+          <div
+            onClick={() => setStatusFilter('approved')}
+            className="tracker-stat-card"
+            style={{
+              borderColor: statusFilter === 'approved' ? '#00B875' : '#E2E8F0',
+              background: statusFilter === 'approved' ? '#F0FDF4' : '#FFFFFF'
+            }}
+          >
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: 'rgba(0, 184, 117, 0.1)',
+              color: '#00B875',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>অনুমোদিত</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#00B875' }}>{approvedCount}</div>
+            </div>
+          </div>
+
+          {/* Card 4: Revision Needed */}
+          <div
+            onClick={() => setStatusFilter('revision_requested')}
+            className="tracker-stat-card"
+            style={{
+              borderColor: statusFilter === 'revision_requested' ? '#F59E0B' : '#E2E8F0',
+              background: statusFilter === 'revision_requested' ? '#FFFBEB' : '#FFFFFF'
+            }}
+          >
+            <div style={{
+              width: 38,
+              height: 38,
+              borderRadius: 10,
+              background: '#FEF3C7',
+              color: '#D97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <AlertTriangle size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748B', fontWeight: 700, textTransform: 'uppercase' }}>সংশোধন</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: '#D97706' }}>{revisionCount}</div>
+            </div>
           </div>
         </div>
 
         {/* Filter & Search Bar */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: 16,
-          padding: '14px 18px',
-          marginBottom: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-          display: 'flex',
-          gap: 12,
-          flexWrap: 'wrap',
-          alignItems: 'center'
-        }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 260 }}>
+        <div className="tracker-filter-bar">
+          <div className="tracker-filter-search" style={{ position: 'relative', flex: 1, minWidth: 240 }}>
             <Search size={16} style={{ position: 'absolute', left: 14, top: 13, color: '#94A3B8' }} />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by Request Code, Doctor Name, or BMDC..."
+              placeholder="কোড, প্রার্থীর নাম বা BMDC দিয়ে খুঁজুন..."
               style={{
                 width: '100%',
                 height: 42,
@@ -283,13 +578,14 @@ export default function SubmissionsTrackerPage() {
                 borderRadius: 10,
                 border: '1.5px solid #CBD5E1',
                 fontSize: 13.5,
-                outline: 'none'
+                outline: 'none',
+                boxSizing: 'border-box'
               }}
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Filter size={15} style={{ color: '#64748B' }} />
+          <div className="tracker-filter-select-wrap" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Filter size={15} style={{ color: '#64748B', flexShrink: 0 }} />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -302,38 +598,47 @@ export default function SubmissionsTrackerPage() {
                 fontWeight: 600,
                 color: '#334155',
                 outline: 'none',
-                background: '#FFFFFF'
+                background: '#FFFFFF',
+                boxSizing: 'border-box'
               }}
             >
-              <option value="">All Verification Statuses</option>
-              <option value="submitted">Submitted</option>
-              <option value="under_review">Under Verification</option>
-              <option value="approved">Approved</option>
-              <option value="revision_requested">Revision Requested</option>
-              <option value="rejected">Rejected</option>
+              <option value="">সকল স্ট্যাটাস (All)</option>
+              <option value="submitted">নতুন জমা (Submitted)</option>
+              <option value="under_review">যাচাই চলছে (Under Review)</option>
+              <option value="approved">অনুমোদিত (Approved)</option>
+              <option value="revision_requested">সংশোধন প্রয়োজন (Revision Needed)</option>
+              <option value="rejected">বাতিল (Rejected)</option>
+              <option value="revoked">প্রত্যাহারকৃত (Revoked)</option>
             </select>
           </div>
         </div>
 
-        {/* Requests Table */}
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 20,
-          border: '1px solid #E2E8F0',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
-          overflow: 'hidden'
-        }}>
+        {/* ── Submissions Data Section ── */}
+        <div>
           {loading ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748B' }}>
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: 16,
+              border: '1px solid #E2E8F0',
+              padding: '60px 20px',
+              textAlign: 'center',
+              color: '#64748B'
+            }}>
               <Loader2 size={32} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 12px', color: '#00B875' }} />
-              <p style={{ fontSize: 13, fontWeight: 600 }}>Loading submissions...</p>
+              <p style={{ fontSize: 13, fontWeight: 600 }}>তথ্য লোড করা হচ্ছে...</p>
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <div style={{
+              background: '#FFFFFF',
+              borderRadius: 16,
+              border: '1px solid #E2E8F0',
+              padding: '48px 20px',
+              textAlign: 'center'
+            }}>
               <ClipboardList size={44} style={{ color: '#CBD5E1', margin: '0 auto 12px' }} />
-              <h3 style={{ fontSize: 15, fontWeight: 800, color: '#334155', margin: 0 }}>No Submissions Found</h3>
-              <p style={{ fontSize: 13, color: '#64748B', margin: '6px 0 18px' }}>
-                Start by registering your first physician or hospital candidate to earn partner commissions.
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#334155', margin: 0 }}>কোনো সাবমিশন পাওয়া যায়নি</h3>
+              <p style={{ fontSize: 13, color: '#64748B', margin: '6px 0 18px', maxWidth: 420, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+                আপনার পার্টনার ওয়ালেটে কমিশন অর্জন করতে নতুন ডাক্তার বা হাসপাতাল অনবোর্ডিং শুরু করুন।
               </p>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link
@@ -342,7 +647,7 @@ export default function SubmissionsTrackerPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    padding: '9px 16px',
+                    padding: '10px 18px',
                     borderRadius: 10,
                     background: '#00B875',
                     color: '#FFFFFF',
@@ -351,7 +656,7 @@ export default function SubmissionsTrackerPage() {
                     textDecoration: 'none'
                   }}
                 >
-                  <Plus size={15} /> + Onboard Doctor
+                  <Plus size={15} /> + ডাক্তার অনবোর্ড
                 </Link>
                 <Link
                   to="/agent/onboard/hospital"
@@ -359,76 +664,263 @@ export default function SubmissionsTrackerPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    padding: '9px 16px',
+                    padding: '10px 18px',
                     borderRadius: 10,
-                    background: '#10B981',
+                    background: '#0284C7',
                     color: '#FFFFFF',
                     fontSize: 13,
                     fontWeight: 700,
                     textDecoration: 'none'
                   }}
                 >
-                  <Building2 size={15} /> + Onboard Hospital
+                  <Building2 size={15} /> + হাসপাতাল অনবোর্ড
                 </Link>
               </div>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#64748B', fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    <th style={{ padding: '14px 20px' }}>Request Code</th>
-                    <th style={{ padding: '14px 16px' }}>Entity</th>
-                    <th style={{ padding: '14px 16px' }}>Provider Name</th>
-                    <th style={{ padding: '14px 16px' }}>Credentials</th>
-                    <th style={{ padding: '14px 16px' }}>Date</th>
-                    <th style={{ padding: '14px 20px' }}>Status</th>
-                    <th style={{ padding: '14px 20px', textAlign: 'right' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody style={{ divideY: '1px solid #F1F5F9' }}>
-                  {filtered.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.15s' }}>
-                      <td style={{ padding: '16px 20px', fontFamily: 'monospace', fontWeight: 800, color: '#00B875' }}>
-                        {item.request_code}
-                      </td>
-                      <td style={{ padding: '16px 16px' }}>
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          fontSize: 11.5,
-                          fontWeight: 700,
-                          color: '#475569',
-                          background: '#F1F5F9',
-                          padding: '3px 8px',
-                          borderRadius: 6,
-                          textTransform: 'uppercase'
-                        }}>
-                          {item.entity_type === 'doctor' ? <Stethoscope size={12} /> : <Building2 size={12} />}
-                          {item.entity_type}
+            <>
+              {/* 1. Desktop Table (Hidden on Mobile < 768px) */}
+              <div className="tracker-desktop-table" style={{
+                background: '#FFFFFF',
+                borderRadius: 20,
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
+                overflow: 'hidden'
+              }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', color: '#64748B', fontSize: 11.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        <th style={{ padding: '14px 20px' }}>রিকোয়েস্ট কোড</th>
+                        <th style={{ padding: '14px 16px' }}>ক্যাটাগরি</th>
+                        <th style={{ padding: '14px 16px' }}>নাম</th>
+                        <th style={{ padding: '14px 16px' }}>সনদ / লাইসেন্স</th>
+                        <th style={{ padding: '14px 16px' }}>তারিখ</th>
+                        <th style={{ padding: '14px 20px' }}>ভেরিফিকেশন স্ট্যাটাস</th>
+                        <th style={{ padding: '14px 20px', textAlign: 'right' }}>অ্যাকশন / কমিশন</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((item) => (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #F1F5F9', transition: 'background 0.15s' }}>
+                          <td style={{ padding: '16px 20px', fontFamily: 'monospace', fontWeight: 800, color: '#00B875' }}>
+                            {item.request_code}
+                          </td>
+                          <td style={{ padding: '16px 16px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              color: item.entity_type === 'doctor' ? '#00B875' : '#0284C7',
+                              background: item.entity_type === 'doctor' ? 'rgba(0, 184, 117, 0.1)' : 'rgba(2, 132, 199, 0.1)',
+                              padding: '3px 8px',
+                              borderRadius: 6
+                            }}>
+                              {item.entity_type === 'doctor' ? <Stethoscope size={12} /> : <Building2 size={12} />}
+                              {item.entity_type === 'doctor' ? 'ডাক্তার' : 'হাসপাতাল'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px 16px', fontWeight: 700, color: '#0F172A' }}>
+                            {item.payload?.name || 'N/A'} {item.payload?.name_bn && <span style={{ fontSize: 12, fontWeight: 500, color: '#64748B' }}>({item.payload?.name_bn})</span>}
+                          </td>
+                          <td style={{ padding: '16px 16px', color: '#64748B', fontSize: 12.5 }}>
+                            {item.entity_type === 'doctor' ? `BMDC: ${item.payload?.bmdc || 'N/A'}` : `লাইসেন্স: ${item.payload?.license_number || 'N/A'}`}
+                          </td>
+                          <td style={{ padding: '16px 16px', color: '#64748B', fontSize: 12 }}>
+                            {formatDate(item.created_at)}
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                              {getStatusBadge(item.status)}
+                              {item.rejection_reason && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedReason({
+                                    type: 'rejected',
+                                    title: 'বাতিলের কারণ (Rejection Reason)',
+                                    requestCode: item.request_code,
+                                    providerName: item.payload?.name || 'N/A',
+                                    entityType: item.entity_type,
+                                    text: item.rejection_reason
+                                  })}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    border: '1px solid #FECDD3',
+                                    background: '#FFF1F2',
+                                    color: '#E11D48',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="বিস্তারিত কারণ দেখুন"
+                                >
+                                  <Eye size={11} />
+                                  <span>কারণ দেখুন</span>
+                                </button>
+                              )}
+                              {item.admin_notes && item.status === 'revision_requested' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedReason({
+                                    type: 'revision_requested',
+                                    title: 'সংশোধন নির্দেশনা (Admin Instructions)',
+                                    requestCode: item.request_code,
+                                    providerName: item.payload?.name || 'N/A',
+                                    entityType: item.entity_type,
+                                    text: item.admin_notes
+                                  })}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    border: '1px solid #FDE68A',
+                                    background: '#FFFBEB',
+                                    color: '#D97706',
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="অ্যাডমিন নোট দেখুন"
+                                >
+                                  <Eye size={11} />
+                                  <span>নির্দেশনা</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                            {item.status === 'revision_requested' ? (
+                              <Link
+                                to={item.entity_type === 'hospital' 
+                                  ? `/agent/onboard/hospital?edit_code=${item.request_code}` 
+                                  : `/agent/onboard/doctor?edit_code=${item.request_code}`}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  padding: '7px 14px',
+                                  borderRadius: 8,
+                                  background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                                  color: '#FFFFFF',
+                                  fontSize: 12,
+                                  fontWeight: 700,
+                                  textDecoration: 'none',
+                                  boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
+                                }}
+                              >
+                                <Edit3 size={13} />
+                                <span>সংশোধন করুন</span>
+                              </Link>
+                            ) : (
+                              <span style={{ fontSize: 12, color: item.status === 'approved' ? '#00B875' : '#94A3B8', fontWeight: item.status === 'approved' ? 800 : 500 }}>
+                                {item.status === 'approved' 
+                                  ? (item.entity_type === 'hospital' ? '৳১,৫০০ অর্জিত' : '৳৫০০ অর্জিত') 
+                                  : item.status === 'rejected' 
+                                  ? 'বাতিল' 
+                                  : 'অপেক্ষমাণ'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 2. Mobile Cards (Shown on Mobile < 768px) */}
+              <div className="tracker-mobile-cards">
+                {filtered.map((item) => {
+                  const isDoctor = item.entity_type === 'doctor'
+                  const name = item.payload?.name || 'N/A'
+                  const nameBn = item.payload?.name_bn || ''
+                  const credential = isDoctor 
+                    ? `BMDC: ${item.payload?.bmdc || 'N/A'}` 
+                    : `লাইসেন্স: ${item.payload?.license_number || 'N/A'}`
+                  const commission = item.entity_type === 'hospital' ? '৳১,৫০০' : '৳৫০০'
+
+                  return (
+                    <div key={item.id} className="tracker-mobile-card">
+                      {/* Top Bar: Entity + Code + Date */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            background: isDoctor ? 'rgba(0, 184, 117, 0.1)' : 'rgba(2, 132, 199, 0.1)',
+                            color: isDoctor ? '#00B875' : '#0284C7',
+                            border: isDoctor ? '1px solid rgba(0, 184, 117, 0.25)' : '1px solid rgba(2, 132, 199, 0.25)'
+                          }}>
+                            {isDoctor ? <Stethoscope size={11} /> : <Building2 size={11} />}
+                            {isDoctor ? 'ডাক্তার' : 'হাসপাতাল'}
+                          </span>
+                          <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 800, color: '#334155' }}>
+                            {item.request_code}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Calendar size={11} />
+                          {formatDate(item.created_at)}
                         </span>
-                      </td>
-                      <td style={{ padding: '16px 16px', fontWeight: 700, color: '#0F172A' }}>
-                        {item.payload?.name || 'N/A'}
-                      </td>
-                      <td style={{ padding: '16px 16px', color: '#64748B', fontSize: 12.5 }}>
-                        {item.entity_type === 'doctor' ? `BMDC: ${item.payload?.bmdc || 'N/A'}` : `Lic: ${item.payload?.license_number || 'N/A'}`}
-                      </td>
-                      <td style={{ padding: '16px 16px', color: '#64748B', fontSize: 12 }}>
-                        {new Date(item.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      </div>
+
+                      {/* Middle: Name & Credentials */}
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: '#0F172A', lineHeight: 1.3 }}>
+                          {name} {nameBn && <span style={{ fontSize: 12.5, fontWeight: 500, color: '#64748B' }}>({nameBn})</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                          <span style={{
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                            fontWeight: 700,
+                            color: '#475569',
+                            background: '#F1F5F9',
+                            padding: '2px 7px',
+                            borderRadius: 5,
+                            border: '1px solid #E2E8F0'
+                          }}>
+                            {credential}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Bottom: Status & Audit trigger */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingTop: 10,
+                        borderTop: '1px solid #F1F5F9',
+                        gap: 8,
+                        flexWrap: 'wrap'
+                      }}>
+                        <div>
                           {getStatusBadge(item.status)}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {item.rejection_reason && (
                             <button
                               type="button"
                               onClick={() => setSelectedReason({
                                 type: 'rejected',
-                                title: 'Rejection Reason',
+                                title: 'বাতিলের কারণ (Rejection Reason)',
                                 requestCode: item.request_code,
-                                providerName: item.payload?.name || 'N/A',
+                                providerName: name,
                                 entityType: item.entity_type,
                                 text: item.rejection_reason
                               })}
@@ -436,32 +928,29 @@ export default function SubmissionsTrackerPage() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 4,
-                                padding: '3px 8px',
+                                padding: '4px 9px',
                                 borderRadius: 6,
                                 border: '1px solid #FECDD3',
                                 background: '#FFF1F2',
                                 color: '#E11D48',
                                 fontSize: 11,
                                 fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
+                                cursor: 'pointer'
                               }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#FFE4E6'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = '#FFF1F2'}
-                              title="Click to view detailed reason"
                             >
                               <Eye size={11} />
-                              <span>Reason</span>
+                              <span>কারণ দেখুন</span>
                             </button>
                           )}
+
                           {item.admin_notes && item.status === 'revision_requested' && (
                             <button
                               type="button"
                               onClick={() => setSelectedReason({
                                 type: 'revision_requested',
-                                title: 'Revision Instructions',
+                                title: 'সংশোধন নির্দেশনা (Admin Instructions)',
                                 requestCode: item.request_code,
-                                providerName: item.payload?.name || 'N/A',
+                                providerName: name,
                                 entityType: item.entity_type,
                                 text: item.admin_notes
                               })}
@@ -469,65 +958,63 @@ export default function SubmissionsTrackerPage() {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 4,
-                                padding: '3px 8px',
+                                padding: '4px 9px',
                                 borderRadius: 6,
                                 border: '1px solid #FDE68A',
                                 background: '#FFFBEB',
                                 color: '#D97706',
                                 fontSize: 11,
                                 fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
+                                cursor: 'pointer'
                               }}
-                              onMouseEnter={(e) => e.currentTarget.style.background = '#FEF3C7'}
-                              onMouseLeave={(e) => e.currentTarget.style.background = '#FFFBEB'}
-                              title="Click to view revision note"
                             >
                               <Eye size={11} />
-                              <span>Note</span>
+                              <span>নির্দেশনা</span>
                             </button>
                           )}
+
+                          {item.status === 'approved' && (
+                            <span style={{ fontSize: 12, fontWeight: 800, color: '#00B875', background: '#ECFDF5', padding: '2px 8px', borderRadius: 6, border: '1px solid #A7F3D0' }}>
+                              {commission} অর্জিত
+                            </span>
+                          )}
                         </div>
-                      </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        {item.status === 'revision_requested' ? (
+                      </div>
+
+                      {/* Full-width action button for revision */}
+                      {item.status === 'revision_requested' && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #FDE68A' }}>
                           <Link
                             to={item.entity_type === 'hospital' 
                               ? `/agent/onboard/hospital?edit_code=${item.request_code}` 
                               : `/agent/onboard/doctor?edit_code=${item.request_code}`}
                             style={{
-                              display: 'inline-flex',
+                              display: 'flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: 6,
-                              padding: '7px 14px',
-                              borderRadius: 8,
+                              padding: '10px 14px',
+                              borderRadius: 10,
                               background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
                               color: '#FFFFFF',
-                              fontSize: 12,
-                              fontWeight: 700,
+                              fontSize: 13,
+                              fontWeight: 800,
                               textDecoration: 'none',
-                              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)',
-                              transition: 'all 0.15s'
+                              boxShadow: '0 2px 8px rgba(245, 158, 11, 0.25)',
+                              width: '100%',
+                              boxSizing: 'border-box'
                             }}
                           >
-                            <Edit3 size={13} />
-                            <span>Edit / Fix</span>
+                            <Edit3 size={14} />
+                            <span>আবেদন সংশোধন করুন (Edit / Fix)</span>
                           </Link>
-                        ) : (
-                          <span style={{ fontSize: 12, color: item.status === 'approved' ? '#00B875' : '#94A3B8', fontWeight: item.status === 'approved' ? 700 : 500 }}>
-                            {item.status === 'approved' 
-                              ? (item.entity_type === 'hospital' ? '৳1,500 Earned' : '৳500 Earned') 
-                              : item.status === 'rejected' 
-                              ? 'Rejected' 
-                              : 'Pending'}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
       </div>

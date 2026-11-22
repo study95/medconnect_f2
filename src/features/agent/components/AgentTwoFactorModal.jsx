@@ -450,12 +450,22 @@ export default function AgentTwoFactorModal({ isOpen, onClose, onStatusChange })
                         cursor: setupLoading || !setupPassword ? 'not-allowed' : 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 6
+                        justifyContent: 'center',
+                        gap: 6,
+                        whiteSpace: 'nowrap'
                       }}
                     >
-                      {setupLoading && <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />}
-                      <span>এগিয়ে যান</span>
-                      <ArrowRight size={15} />
+                      {setupLoading ? (
+                        <>
+                          <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                          <span>প্রসেস হচ্ছে...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>এগিয়ে যান</span>
+                          <ArrowRight size={15} />
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>

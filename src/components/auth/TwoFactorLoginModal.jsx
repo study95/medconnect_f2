@@ -72,6 +72,16 @@ export default function TwoFactorLoginModal({
       zIndex: 999999,
       padding: 16
     }}>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
       <div style={{
         background: '#FFFFFF',
         borderRadius: 20,
@@ -224,16 +234,24 @@ export default function TwoFactorLoginModal({
             <button
               type="button"
               onClick={onClose}
+              disabled={loading}
               style={{
                 flex: 1,
-                padding: '12px',
+                minHeight: 46,
+                padding: '12px 16px',
                 borderRadius: 10,
                 border: '1px solid #D1D5DB',
                 background: '#FFFFFF',
                 color: '#374151',
                 fontSize: 14,
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                whiteSpace: 'nowrap',
+                boxSizing: 'border-box',
+                transition: 'all 0.15s ease'
               }}
             >
               বাতিল
@@ -243,24 +261,37 @@ export default function TwoFactorLoginModal({
               disabled={loading || !code.trim()}
               style={{
                 flex: 1.5,
+                minHeight: 46,
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
-                padding: '12px',
+                padding: '12px 18px',
                 borderRadius: 10,
                 border: 'none',
                 background: isTotp ? '#4F46E5' : '#00B875',
                 color: '#FFFFFF',
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: loading || !code.trim() ? 'not-allowed' : 'pointer',
-                opacity: loading || !code.trim() ? 0.7 : 1,
-                boxShadow: isTotp ? '0 4px 12px rgba(79, 70, 229, 0.25)' : '0 4px 12px rgba(0, 184, 117, 0.25)'
+                opacity: loading || !code.trim() ? 0.75 : 1,
+                boxShadow: isTotp ? '0 4px 12px rgba(79, 70, 229, 0.25)' : '0 4px 12px rgba(0, 184, 117, 0.25)',
+                whiteSpace: 'nowrap',
+                boxSizing: 'border-box',
+                transition: 'all 0.15s ease'
               }}
             >
-              {loading ? <Loader2 size={16} className="animate-spin" /> : null}
-              যাচাই ও প্রবেশ <ArrowRight size={16} />
+              {loading ? (
+                <>
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span>যাচাই করা হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <span>যাচাই ও প্রবেশ</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
             </button>
           </div>
         </form>

@@ -31,20 +31,50 @@ const DEPARTMENTS = [
   'লগইন ও টেকনিক্যাল সাপোর্ট',
 ]
 
-function StatCard({ label, value, icon, color }) {
+function StatCard({ label, value, icon, color, active, onClick }) {
   return (
-    <div style={{
-      background: 'white',
-      borderRadius: 16,
-      padding: '18px 22px',
-      border: '1px solid #E2E8F0',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 14,
-      flex: 1,
-      minWidth: 160,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-    }}>
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onClick()
+        }
+      }}
+      style={{
+        background: active ? `${color}0D` : 'white',
+        borderRadius: 16,
+        padding: '18px 22px',
+        border: active ? `2px solid ${color}` : '2px solid #E2E8F0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        flex: 1,
+        minWidth: 155,
+        boxShadow: active ? `0 4px 14px ${color}25` : '0 2px 8px rgba(0,0,0,0.02)',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.18s ease-in-out',
+        userSelect: 'none',
+        position: 'relative',
+        boxSizing: 'border-box',
+      }}
+      onMouseEnter={(e) => {
+        if (!active && onClick) {
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.boxShadow = `0 6px 16px rgba(0,0,0,0.06)`
+          e.currentTarget.style.borderColor = color
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active && onClick) {
+          e.currentTarget.style.transform = 'none'
+          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.02)'
+          e.currentTarget.style.borderColor = '#E2E8F0'
+        }
+      }}
+    >
       <div style={{
         width: 46, height: 46, borderRadius: 14,
         background: color + '18',
@@ -53,11 +83,112 @@ function StatCard({ label, value, icon, color }) {
       }}>
         <span style={{ color }}>{icon}</span>
       </div>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ fontSize: 24, fontWeight: 900, color: '#0F172A', lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginTop: 2 }}>{label}</div>
+        <div style={{
+          fontSize: 12,
+          color: active ? color : '#64748B',
+          fontWeight: active ? 800 : 600,
+          marginTop: 2,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}>
+          {label}
+        </div>
       </div>
+      {active && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 11,
+            right: 13,
+            width: 8,
+            height: 8,
+            borderRadius: '50%',
+            background: color,
+            boxShadow: `0 0 0 3px ${color}33`,
+          }}
+          title="সক্রিয় ফিল্টার"
+        />
+      )}
     </div>
+  )
+}
+
+function TableCheckbox({ checked, indeterminate, onChange, title }) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        margin: 0,
+        position: 'relative',
+        userSelect: 'none',
+        verticalAlign: 'middle',
+      }}
+      title={title}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          width: 0,
+          height: 0,
+          margin: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          border: checked || indeterminate ? '1.5px solid #10B981' : '1.5px solid #CBD5E1',
+          background: checked || indeterminate ? '#10B981' : '#FFFFFF',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s ease-in-out',
+          boxShadow: checked || indeterminate ? '0 1px 3px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        {checked && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+        {!checked && indeterminate && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        )}
+      </span>
+    </label>
   )
 }
 
@@ -78,12 +209,14 @@ export default function ContactMessageListPage() {
     hasActiveFilters
   } = useTableUrlFilters({
     initialFilters: {
+      filterTab: 'inbox',
       filterStatus: 'all',
       filterDept: 'all',
       dateFrom: '',
       dateTo: '',
     },
     aliases: {
+      filterTab: ['tab'],
       filterStatus: ['status'],
       filterDept: ['dept', 'department'],
       dateFrom: ['date_from'],
@@ -93,12 +226,17 @@ export default function ContactMessageListPage() {
   })
 
   const {
+    filterTab,
     filterStatus,
     filterDept,
     dateFrom,
     dateTo,
   } = filters
 
+  const setFilterTab = (val) => {
+    setFilter('filterTab', val)
+    setCurrentPage(1)
+  }
   const setFilterStatus = (val) => setFilter('filterStatus', val)
   const setFilterDept = (val) => setFilter('filterDept', val)
   const setDateFrom = (val) => setFilter('dateFrom', val)
@@ -116,6 +254,16 @@ export default function ContactMessageListPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false)
   const [noteSavedNotice, setNoteSavedNotice] = useState(false)
   const [copiedCID, setCopiedCID] = useState(false)
+
+  // Selection & Bulk Action States
+  const [selectedIds, setSelectedIds] = useState([])
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
+
+  // Clear selections when changing tabs, status, search, or pagination
+  React.useEffect(() => {
+    setSelectedIds([])
+  }, [filterTab, filterStatus, filterDept, dateFrom, dateTo, search, currentPage, perPage])
 
   const handleCopyCID = (cid) => {
     if (navigator?.clipboard?.writeText) {
@@ -156,16 +304,17 @@ export default function ContactMessageListPage() {
   }
 
   const {
-    data: msgRes = { data: [], total: 0, stats: { total: 0, unread: 0, read: 0, replied: 0, archived: 0 } },
+    data: msgRes = { data: [], total: 0, stats: { total: 0, inbox_total: 0, verified_count: 0, spam_count: 0, unread: 0, read: 0, replied: 0, archived: 0 } },
     isLoading: loading,
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ['admin-contact-messages', { search, status: filterStatus, department: filterDept, dateFrom, dateTo, perPage, currentPage }],
+    queryKey: ['admin-contact-messages', { search, tab: filterTab, status: filterStatus, department: filterDept, dateFrom, dateTo, perPage, currentPage }],
     queryFn: async () => {
       const res = await axiosInstance.get('/admin/contact-messages', {
         params: {
           search: search || undefined,
+          tab: filterTab || undefined,
           status: filterStatus !== 'all' ? filterStatus : undefined,
           department: filterDept !== 'all' ? filterDept : undefined,
           date_from: dateFrom || undefined,
@@ -177,7 +326,7 @@ export default function ContactMessageListPage() {
       return {
         data: res.data?.data || [],
         total: res.data?.total ?? (res.data?.data?.length || 0),
-        stats: res.data?.stats || { total: 0, unread: 0, read: 0, replied: 0, archived: 0 }
+        stats: res.data?.stats || { total: 0, inbox_total: 0, verified_count: 0, spam_count: 0, unread: 0, read: 0, replied: 0, archived: 0 }
       }
     },
     staleTime: 30 * 1000,
@@ -266,6 +415,103 @@ export default function ContactMessageListPage() {
     }
   }
 
+  const handlePurgeSpam = async () => {
+    if (!window.confirm('আপনি কি নিশ্চিত যে সকল স্প্যাম বার্তা স্থায়ীভাবে মুছে ফেলতে চান?')) return
+    try {
+      const res = await axiosInstance.post('/admin/contact-messages/purge-spam')
+      queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      toast.success(res.data?.message || 'সকল স্প্যাম বার্তা মুছে ফেলা হয়েছে')
+    } catch {
+      toast.error('স্প্যাম পরিষ্কার করা সম্ভব হয়নি')
+    }
+  }
+
+  const handleToggleSpam = async (msgId) => {
+    try {
+      const res = await axiosInstance.patch(`/admin/contact-messages/${msgId}/toggle-spam`)
+      queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      if (viewMsg && viewMsg.id === msgId) {
+        setViewMsg(prev => ({ ...prev, is_spam: !prev.is_spam }))
+      }
+      toast.success(res.data?.message || 'স্ট্যাটাস আপডেট হয়েছে')
+    } catch {
+      toast.error('আপডেট করা সম্ভব হয়নি')
+    }
+  }
+
+  const isAllSelected = messages.length > 0 && messages.every(m => selectedIds.includes(m.id))
+  const isSomeSelected = messages.length > 0 && messages.some(m => selectedIds.includes(m.id))
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const pageIds = messages.map(m => m.id)
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+    } else {
+      const pageIds = messages.map(m => m.id)
+      setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])))
+    }
+  }
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleBulkStatus = async (newStatus) => {
+    if (selectedIds.length === 0) return
+    setBulkLoading(true)
+    try {
+      const res = await axiosInstance.post('/admin/contact-messages/bulk-status', {
+        ids: selectedIds,
+        status: newStatus
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      toast.success(res.data?.message || 'নির্বাচিত বার্তাগুলোর স্ট্যাটাস আপডেট হয়েছে')
+      setSelectedIds([])
+    } catch {
+      toast.error('স্ট্যাটাস আপডেট করা সম্ভব হয়নি')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const handleBulkSpam = async (isSpam) => {
+    if (selectedIds.length === 0) return
+    setBulkLoading(true)
+    try {
+      const res = await axiosInstance.post('/admin/contact-messages/bulk-spam', {
+        ids: selectedIds,
+        is_spam: isSpam
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      toast.success(res.data?.message || (isSpam ? 'স্প্যাম হিসেবে চিহ্নিত করা হয়েছে' : 'ইনবক্সে ফেরত নেওয়া হয়েছে'))
+      setSelectedIds([])
+    } catch {
+      toast.error('আপডেট করা সম্ভব হয়নি')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    setBulkLoading(true)
+    try {
+      const res = await axiosInstance.post('/admin/contact-messages/bulk-delete', {
+        ids: selectedIds
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      toast.success(res.data?.message || `${selectedIds.length} টি বার্তা সফলভাবে মুছে ফেলা হয়েছে`)
+      setSelectedIds([])
+      setShowBulkDeleteModal(false)
+    } catch {
+      toast.error('বার্তাগুলো মুছে ফেলা সম্ভব হয়নি')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   const formatDate = (iso) => {
     if (!iso) return '—'
     try {
@@ -291,12 +537,239 @@ export default function ContactMessageListPage() {
         </button>
       </div>
 
-      {/* Dynamic Database Count Cards */}
+      {/* ── TOP TRIAGE TABS (INBOX / VERIFIED / SPAM / ALL) ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: '#F8FAFC',
+        padding: '6px',
+        borderRadius: 14,
+        border: '1px solid #E2E8F0',
+        marginBottom: 20,
+        flexWrap: 'wrap',
+        gap: 8
+      }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setFilterTab('inbox')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 10,
+              border: filterTab === 'inbox' ? '1.5px solid #00B875' : '1px solid #E2E8F0',
+              background: filterTab === 'inbox' ? '#FFFFFF' : 'transparent',
+              color: filterTab === 'inbox' ? '#0F172A' : '#64748B',
+              fontWeight: 800,
+              fontSize: 13.5,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: filterTab === 'inbox' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>📥 প্রধান ইনবক্স</span>
+            <span style={{
+              fontSize: 11,
+              background: filterTab === 'inbox' ? '#DCFCE7' : '#E2E8F0',
+              color: filterTab === 'inbox' ? '#15803D' : '#475569',
+              padding: '2px 7px',
+              borderRadius: 99,
+              fontWeight: 800
+            }}>
+              {stats.inbox_total ?? stats.total}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterTab('verified')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 10,
+              border: filterTab === 'verified' ? '1.5px solid #10B981' : '1px solid #E2E8F0',
+              background: filterTab === 'verified' ? '#FFFFFF' : 'transparent',
+              color: filterTab === 'verified' ? '#065F46' : '#64748B',
+              fontWeight: 800,
+              fontSize: 13.5,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: filterTab === 'verified' ? '0 2px 6px rgba(16,185,129,0.12)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>✓ ভেরিফায়েড বার্তা</span>
+            <span style={{
+              fontSize: 11,
+              background: filterTab === 'verified' ? '#D1FAE5' : '#E2E8F0',
+              color: filterTab === 'verified' ? '#065F46' : '#475569',
+              padding: '2px 7px',
+              borderRadius: 99,
+              fontWeight: 800
+            }}>
+              {stats.verified_count ?? 0}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterTab('spam')}
+            style={{
+              padding: '8px 16px',
+              borderRadius: 10,
+              border: filterTab === 'spam' ? '1.5px solid #EF4444' : '1px solid #E2E8F0',
+              background: filterTab === 'spam' ? '#FFFFFF' : 'transparent',
+              color: filterTab === 'spam' ? '#991B1B' : '#64748B',
+              fontWeight: 800,
+              fontSize: 13.5,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: filterTab === 'spam' ? '0 2px 6px rgba(239,68,68,0.12)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>⚠️ স্প্যাম বক্স</span>
+            <span style={{
+              fontSize: 11,
+              background: filterTab === 'spam' ? '#FEE2E2' : '#E2E8F0',
+              color: filterTab === 'spam' ? '#991B1B' : '#475569',
+              padding: '2px 7px',
+              borderRadius: 99,
+              fontWeight: 800
+            }}>
+              {stats.spam_count ?? 0}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setFilterTab('all')}
+            style={{
+              padding: '8px 14px',
+              borderRadius: 10,
+              border: filterTab === 'all' ? '1.5px solid #64748B' : '1px solid #E2E8F0',
+              background: filterTab === 'all' ? '#FFFFFF' : 'transparent',
+              color: filterTab === 'all' ? '#0F172A' : '#64748B',
+              fontWeight: 700,
+              fontSize: 13,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: filterTab === 'all' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>সব বার্তা</span>
+          </button>
+        </div>
+
+        {filterTab === 'spam' && (stats.spam_count ?? 0) > 0 && (
+          <button
+            type="button"
+            onClick={handlePurgeSpam}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#EF4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: 8,
+              padding: '7px 14px',
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(239,68,68,0.25)'
+            }}
+          >
+            <IconTrash size={14} /> সব স্প্যাম মুছুন
+          </button>
+        )}
+      </div>
+
+      {/* Dynamic Database Count Cards with One-Click Interactive Filtering */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 22, flexWrap: 'wrap' }}>
-        <StatCard label="মোট কন্টাক্ট বার্তা" value={stats.total} icon={<IconMail size={24} />} color="#00B875" />
-        <StatCard label="অপঠিত (Unread)" value={stats.unread} icon={<IconMail size={24} />} color="#F59E0B" />
-        <StatCard label="পঠিত (Read)" value={stats.read} icon={<IconMailOpened size={24} />} color="#3B82F6" />
-        <StatCard label="উত্তর দেওয়া হয়েছে (Replied)" value={stats.replied} icon={<IconCheck size={24} />} color="#10B981" />
+        <StatCard
+          label="ইনবক্স বার্তা"
+          value={stats.inbox_total ?? stats.total}
+          icon={<IconMail size={22} />}
+          color="#00B875"
+          active={filterTab === 'inbox' && filterStatus === 'all'}
+          onClick={() => {
+            setFilterTab('inbox')
+            setFilterStatus('all')
+            setCurrentPage(1)
+          }}
+        />
+        <StatCard
+          label="✓ ভেরিফায়েড বার্তা"
+          value={stats.verified_count ?? 0}
+          icon={<IconCheck size={22} stroke={2.5} />}
+          color="#10B981"
+          active={filterTab === 'verified' && filterStatus === 'all'}
+          onClick={() => {
+            if (filterTab === 'verified' && filterStatus === 'all') {
+              setFilterTab('inbox')
+            } else {
+              setFilterTab('verified')
+              setFilterStatus('all')
+            }
+            setCurrentPage(1)
+          }}
+        />
+        <StatCard
+          label="অপঠিত (Unread)"
+          value={stats.unread ?? 0}
+          icon={<IconMail size={22} stroke={2.2} />}
+          color="#F59E0B"
+          active={filterStatus === 'unread'}
+          onClick={() => {
+            if (filterStatus === 'unread') {
+              setFilterStatus('all')
+            } else {
+              setFilterStatus('unread')
+            }
+            setCurrentPage(1)
+          }}
+        />
+        <StatCard
+          label="পঠিত (Read)"
+          value={stats.read ?? 0}
+          icon={<IconMailOpened size={22} stroke={2.2} />}
+          color="#3B82F6"
+          active={filterStatus === 'read'}
+          onClick={() => {
+            if (filterStatus === 'read') {
+              setFilterStatus('all')
+            } else {
+              setFilterStatus('read')
+            }
+            setCurrentPage(1)
+          }}
+        />
+        <StatCard
+          label="⚠️ স্প্যাম বক্স"
+          value={stats.spam_count ?? 0}
+          icon={<IconAlertTriangle size={22} stroke={2.2} />}
+          color="#EF4444"
+          active={filterTab === 'spam'}
+          onClick={() => {
+            if (filterTab === 'spam') {
+              setFilterTab('inbox')
+            } else {
+              setFilterTab('spam')
+              setFilterStatus('all')
+            }
+            setCurrentPage(1)
+          }}
+        />
       </div>
 
       <ListToolbar
@@ -385,11 +858,210 @@ export default function ContactMessageListPage() {
       </ListToolbar>
 
       <div className="admin-card">
+        <div
+          className="admin-card-header"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--admin-border, #E2E8F0)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 className="admin-card-title" style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+              {filterStatus === 'unread' && 'অপঠিত বার্তা (Unread)'}
+              {filterStatus === 'read' && 'পঠিত বার্তা (Read)'}
+              {filterStatus !== 'unread' && filterStatus !== 'read' && filterTab === 'inbox' && 'ইনবক্স বার্তা'}
+              {filterStatus !== 'unread' && filterStatus !== 'read' && filterTab === 'verified' && 'ভেরিফায়েড বার্তা'}
+              {filterStatus !== 'unread' && filterStatus !== 'read' && filterTab === 'spam' && 'স্প্যাম বার্তা বক্স'}
+              {filterStatus !== 'unread' && filterStatus !== 'read' && filterTab === 'all' && 'সকল কন্টাক্ট বার্তা'}
+            </h3>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#64748B',
+                background: '#F1F5F9',
+                padding: '2px 9px',
+                borderRadius: 99,
+                border: '1px solid #E2E8F0',
+              }}
+            >
+              {msgRes.total ?? messages.length} টি বার্তা
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {selectedIds.length > 0 && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)',
+                  border: '1px solid #FECDD3',
+                  borderRadius: 20,
+                  padding: '4px 8px 4px 14px',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.08)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#00B875',
+                      color: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      fontWeight: 800,
+                    }}
+                  >
+                    ✓
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                    {selectedIds.length} <span style={{ fontWeight: 600, color: '#64748B' }}>টি নির্বাচিত</span>
+                  </span>
+                </div>
+
+                <div style={{ width: 1, height: 16, background: '#CBD5E1', opacity: 0.6 }} />
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#64748B',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0.05)'
+                    e.currentTarget.style.color = '#0F172A'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#64748B'
+                  }}
+                >
+                  নির্বাচন বাতিল
+                </button>
+
+                <button
+                  type="button"
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkStatus('read')}
+                  style={{
+                    background: '#3B82F6',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '5px 12px',
+                    borderRadius: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(59, 130, 246, 0.25)',
+                  }}
+                >
+                  <IconMailOpened size={13} />
+                  <span>পঠিত করুন</span>
+                </button>
+
+                {filterTab === 'spam' ? (
+                  <button
+                    type="button"
+                    disabled={bulkLoading}
+                    onClick={() => handleBulkSpam(false)}
+                    style={{
+                      background: '#10B981',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: 16,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(16, 185, 129, 0.25)',
+                    }}
+                  >
+                    <IconCheck size={13} />
+                    <span>ইনবক্সে সরান</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={bulkLoading}
+                    onClick={() => handleBulkSpam(true)}
+                    style={{
+                      background: '#F59E0B',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '5px 12px',
+                      borderRadius: 16,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 4px rgba(245, 158, 11, 0.25)',
+                    }}
+                  >
+                    <IconAlertTriangle size={13} />
+                    <span>স্প্যাম চিহ্নিত করুন</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  disabled={bulkLoading}
+                  onClick={() => setShowBulkDeleteModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '5px 14px',
+                    borderRadius: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
+                  }}
+                >
+                  <IconTrash size={13} />
+                  <span>মুছে ফেলুন ({selectedIds.length})</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {loading ? (
           <TableSkeleton
             rowCount={6}
-            columnWidths={['12%', '16%', '16%', '15%', '17%', '10%', '8%', '6%']}
-            headers={['ট্র্যাকিং CID', 'প্রেরক ও মোবাইল', 'ইমেইল ঠিকানা', 'নির্বাচিত বিভাগ', 'বার্তার সারসংক্ষেপ', 'স্ট্যাটাস', 'তারিখ', 'অ্যাকশন']}
+            columnWidths={['44px', '12%', '16%', '15%', '15%', '16%', '10%', '6%', '6%']}
+            headers={['', 'ট্র্যাকিং CID', 'প্রেরক ও মোবাইল', 'ইমেইল ঠিকানা', 'নির্বাচিত বিভাগ', 'বার্তার সারসংক্ষেপ', 'স্ট্যাটাস', 'তারিখ', 'অ্যাকশন']}
           />
         ) : messages.length === 0 ? (
           <EmptyState
@@ -405,6 +1077,14 @@ export default function ContactMessageListPage() {
           <Table responsive hover className="admin-table align-middle" style={{ marginBottom: 0 }}>
             <thead>
               <tr>
+                <th style={{ width: 44, textAlign: 'center', verticalAlign: 'middle', paddingLeft: 16 }}>
+                  <TableCheckbox
+                    checked={isAllSelected}
+                    indeterminate={isSomeSelected && !isAllSelected}
+                    onChange={toggleSelectAll}
+                    title={isAllSelected ? 'সব নির্বাচন বাতিল করুন' : 'এই পৃষ্ঠার সব নির্বাচন করুন'}
+                  />
+                </th>
                 <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>ট্র্যাকিং CID</th>
                 <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>প্রেরক ও মোবাইল</th>
                 <th style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>ইমেইল ঠিকানা</th>
@@ -419,14 +1099,65 @@ export default function ContactMessageListPage() {
               {messages.map(msg => {
                 const sc = STATUS_CONFIG[msg.status] || STATUS_CONFIG.unread
                 const isUnread = msg.status === 'unread'
+                const isSelected = selectedIds.includes(msg.id)
                 return (
-                  <tr key={msg.id} style={{ background: isUnread ? '#F0FDF435' : undefined, verticalAlign: 'middle' }}>
+                  <tr
+                    key={msg.id}
+                    style={{
+                      background: isSelected ? 'rgba(16, 185, 129, 0.08)' : (isUnread ? '#F0FDF435' : undefined),
+                      verticalAlign: 'middle',
+                      transition: 'background 0.15s ease'
+                    }}
+                  >
+                    <td style={{ width: 44, textAlign: 'center', verticalAlign: 'middle', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
+                      <TableCheckbox
+                        checked={isSelected}
+                        onChange={() => toggleSelectOne(msg.id)}
+                        title="নির্বাচন করুন"
+                      />
+                    </td>
                     <td style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       <CompactUlid value={msg.token_id} style={{ fontWeight: 800, fontSize: 13, color: '#0F172A' }} />
                     </td>
                     <td style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: isUnread ? 800 : 700, fontSize: 13.5, color: '#0F172A', lineHeight: 1.3 }}>
-                        {msg.name}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: isUnread ? 800 : 700, fontSize: 13.5, color: '#0F172A', lineHeight: 1.3 }}>
+                          {msg.name}
+                        </span>
+                        {msg.is_verified && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontSize: 10.5,
+                            fontWeight: 800,
+                            color: '#065F46',
+                            background: '#D1FAE5',
+                            border: '1px solid #A7F3D0',
+                            padding: '1px 6px',
+                            borderRadius: 6
+                          }}>
+                            <IconCheck size={11} stroke={3} />
+                            {msg.sender_type === 'doctor' ? 'ভেরিফায়েড ডাক্তার' : 'ভেরিফায়েড রোগী'}
+                          </span>
+                        )}
+                        {msg.is_spam && (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontSize: 10.5,
+                            fontWeight: 800,
+                            color: '#991B1B',
+                            background: '#FEE2E2',
+                            border: '1px solid #FECACA',
+                            padding: '1px 6px',
+                            borderRadius: 6
+                          }}>
+                            <IconAlertTriangle size={11} stroke={2.5} />
+                            স্প্যাম
+                          </span>
+                        )}
                       </div>
                       {msg.phone && (
                         <div style={{
@@ -518,6 +1249,24 @@ export default function ContactMessageListPage() {
                           <img src="/icons/view.png" alt="View" />
                         </button>
                         <button
+                          className="admin-action-btn"
+                          onClick={() => handleToggleSpam(msg.id)}
+                          title={msg.is_spam ? 'স্প্যাম থেকে ইনবক্সে ফিরিয়ে নিন' : 'স্প্যাম হিসেবে চিহ্নিত করুন'}
+                          style={{
+                            color: msg.is_spam ? '#059669' : '#EF4444',
+                            background: msg.is_spam ? '#ECFDF5' : '#FEF2F2',
+                            border: msg.is_spam ? '1px solid #A7F3D0' : '1px solid #FECACA',
+                            borderRadius: 8,
+                            padding: '4px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          <IconAlertTriangle size={15} />
+                        </button>
+                        <button
                           className="admin-action-btn admin-action-btn-delete"
                           onClick={() => setDeleteId(msg.id)}
                           title="মুছে ফেলুন"
@@ -543,8 +1292,15 @@ export default function ContactMessageListPage() {
       />
 
       {/* View & Moderate Contact Message Modal */}
-      <Modal show={!!viewMsg} onHide={() => { setViewMsg(null); setPendingStatus(null) }} centered size="lg">
-        <Modal.Header closeButton style={{ borderBottom: '1px solid #E2E8F0', padding: '16px 24px', background: '#FAFAFA' }}>
+      <Modal
+        show={!!viewMsg}
+        onHide={() => { setViewMsg(null); setPendingStatus(null) }}
+        centered
+        scrollable
+        size="lg"
+        dialogClassName="contact-modal-dialog"
+      >
+        <Modal.Header closeButton style={{ borderBottom: '1px solid #E2E8F0', padding: '16px 24px', background: '#FAFAFA', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #00B875, #009E64)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
               <IconMail size={22} />
@@ -578,7 +1334,7 @@ export default function ContactMessageListPage() {
           </div>
         </Modal.Header>
 
-        <Modal.Body style={{ padding: '22px 24px', maxHeight: '78vh', overflowY: 'auto' }}>
+        <Modal.Body style={{ padding: '20px 24px', overflowY: 'auto' }}>
           {viewMsg && (() => {
             const currentSc = STATUS_CONFIG[viewMsg.status] || STATUS_CONFIG.unread
             const cleanPhone = String(viewMsg.phone || '').replace(/[^0-9+]/g, '')
@@ -593,8 +1349,44 @@ export default function ContactMessageListPage() {
                     <div style={{ fontSize: 11, fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
                       প্রেরকের পরিচয় ও যোগাযোগ
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 900, color: '#0F172A', marginBottom: 6 }}>
-                      {viewMsg.name || 'অজ্ঞাত প্রেরক'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                      <span style={{ fontSize: 16, fontWeight: 900, color: '#0F172A' }}>
+                        {viewMsg.name || 'অজ্ঞাত প্রেরক'}
+                      </span>
+                      {viewMsg.is_verified && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: '#065F46',
+                          background: '#D1FAE5',
+                          border: '1px solid #A7F3D0',
+                          padding: '2px 8px',
+                          borderRadius: 8
+                        }}>
+                          <IconCheck size={12} stroke={3} />
+                          {viewMsg.sender_type === 'doctor' ? 'ভেরিফায়েড ডাক্তার' : 'ভেরিফায়েড রোগী'}
+                        </span>
+                      )}
+                      {viewMsg.is_spam && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: '#991B1B',
+                          background: '#FEE2E2',
+                          border: '1px solid #FECACA',
+                          padding: '2px 8px',
+                          borderRadius: 8
+                        }}>
+                          <IconAlertTriangle size={12} stroke={2.5} />
+                          স্প্যাম কোয়ারেন্টিন
+                        </span>
+                      )}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13 }}>
                       {viewMsg.phone && (
@@ -638,6 +1430,26 @@ export default function ContactMessageListPage() {
                           <IconMail size={13} /> ইমেইল
                         </a>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSpam(viewMsg.id)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '5px 11px',
+                          borderRadius: 8,
+                          background: viewMsg.is_spam ? '#ECFDF5' : '#FEF2F2',
+                          color: viewMsg.is_spam ? '#065F46' : '#991B1B',
+                          border: viewMsg.is_spam ? '1px solid #A7F3D0' : '1px solid #FECACA',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <IconAlertTriangle size={13} />
+                        {viewMsg.is_spam ? 'ইনবক্সে ফিরিয়ে নিন' : 'স্প্যাম হিসেবে চিহ্নিত করুন'}
+                      </button>
                     </div>
                   </div>
 
@@ -934,7 +1746,7 @@ export default function ContactMessageListPage() {
           })()}
         </Modal.Body>
 
-        <Modal.Footer style={{ borderTop: '1px solid #E2E8F0', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', background: '#FAFAFA' }}>
+        <Modal.Footer style={{ borderTop: '1px solid #E2E8F0', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', background: '#FAFAFA', flexShrink: 0 }}>
           <Button
             variant="light"
             onClick={() => { setDeleteId(viewMsg?.id); setViewMsg(null); setPendingStatus(null) }}
@@ -959,6 +1771,39 @@ export default function ContactMessageListPage() {
         title="বার্তা মুছে ফেলার নিশ্চিতকরণ"
         message="আপনি কি নিশ্চিত যে এই কন্টাক্ট বার্তাটি ডাটাবেজ থেকে মুছে ফেলতে চান?"
       />
+
+      <DeleteModal
+        show={showBulkDeleteModal}
+        onCancel={() => setShowBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+        title="নির্বাচিত বার্তাগুলো মুছে ফেলার নিশ্চিতকরণ"
+        message={`আপনি কি নিশ্চিত যে নির্বাচিত ${selectedIds.length} টি বার্তা ডাটাবেজ থেকে স্থায়ীভাবে মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।`}
+      />
+
+      <style>{`
+        .contact-modal-dialog {
+          max-height: calc(100vh - 40px);
+          margin: 20px auto;
+        }
+        .contact-modal-dialog .modal-content {
+          max-height: calc(100vh - 40px);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border-radius: 16px;
+        }
+        .contact-modal-dialog .modal-header {
+          flex-shrink: 0;
+        }
+        .contact-modal-dialog .modal-body {
+          flex: 1 1 auto;
+          overflow-y: auto;
+          max-height: calc(100vh - 170px);
+        }
+        .contact-modal-dialog .modal-footer {
+          flex-shrink: 0;
+        }
+      `}</style>
     </div>
   )
 }

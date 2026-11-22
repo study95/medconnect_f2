@@ -644,11 +644,21 @@ export default function TwoFactorSecurityCard({ onStatusChange }) {
                         fontSize: 13,
                         fontWeight: 600,
                         cursor: setupLoading ? 'not-allowed' : 'pointer',
-                        opacity: setupLoading || !setupPassword ? 0.7 : 1
+                        opacity: setupLoading || !setupPassword ? 0.7 : 1,
+                        whiteSpace: 'nowrap'
                       }}
                     >
-                      {setupLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-                      পরবর্তী ধাপ <ArrowRight size={15} />
+                      {setupLoading ? (
+                        <>
+                          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                          <span>প্রসেস হচ্ছে...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>পরবর্তী ধাপ</span>
+                          <ArrowRight size={15} />
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>

@@ -31,6 +31,14 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
   const [copiedLink, setCopiedLink] = useState(null)
   const [photoBase64, setPhotoBase64] = useState('')
   const cardRef = useRef(null)
+  const bodyRef = useRef(null)
+
+  // Reset scroll to top on open or tab change
+  useEffect(() => {
+    if (isOpen && bodyRef.current) {
+      bodyRef.current.scrollTop = 0
+    }
+  }, [isOpen, activeTab])
 
   // Pre-load base64 photo for 100% reliable zero-CORS canvas snapshot and offline printing
   useEffect(() => {
@@ -387,34 +395,37 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
       >
         {/* Modal Top Navigation Bar (Hidden during print) */}
         <div 
-          className="no-print"
+          className="no-print agent-qr-header-bar"
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '16px 20px',
-            borderBottom: '1px solid #F1F5F9',
-            background: '#FAFAFA'
+            padding: '14px 18px',
+            borderBottom: '1px solid #E2E8F0',
+            background: '#FFFFFF',
+            position: 'relative',
+            zIndex: 10
           }}
         >
           {/* Tab Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#E2E8F0', padding: 3, borderRadius: 12 }}>
+          <div className="agent-qr-tabs" style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#F1F5F9', padding: 4, borderRadius: 12, border: '1px solid #E2E8F0' }}>
             <button
               type="button"
+              className="agent-qr-tab-btn"
               onClick={() => setActiveTab('badge')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '6px 14px',
+                padding: '7px 16px',
                 borderRadius: 9,
-                fontSize: 12.5,
+                fontSize: 13,
                 fontWeight: 800,
                 border: 'none',
                 cursor: 'pointer',
                 background: activeTab === 'badge' ? '#FFFFFF' : 'transparent',
                 color: activeTab === 'badge' ? '#0F172A' : '#64748B',
-                boxShadow: activeTab === 'badge' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                boxShadow: activeTab === 'badge' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -424,20 +435,21 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
 
             <button
               type="button"
+              className="agent-qr-tab-btn"
               onClick={() => setActiveTab('share')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '6px 14px',
+                padding: '7px 16px',
                 borderRadius: 9,
-                fontSize: 12.5,
+                fontSize: 13,
                 fontWeight: 800,
                 border: 'none',
                 cursor: 'pointer',
                 background: activeTab === 'share' ? '#FFFFFF' : 'transparent',
                 color: activeTab === 'share' ? '#0F172A' : '#64748B',
-                boxShadow: activeTab === 'share' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                boxShadow: activeTab === 'share' ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -449,17 +461,20 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
           <button
             onClick={onClose}
             type="button"
+            title="বন্ধ করুন"
             style={{
               background: '#F1F5F9',
               border: 'none',
               borderRadius: '50%',
-              width: 32,
-              height: 32,
+              width: 34,
+              height: 34,
               color: '#64748B',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
+              marginLeft: 8,
+              flexShrink: 0,
               transition: 'background 0.15s ease'
             }}
           >
@@ -468,7 +483,7 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
         </div>
 
         {/* Modal Scrollable Body */}
-        <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+        <div ref={bodyRef} className="agent-qr-modal-body" style={{ padding: '20px', overflowY: 'auto', flex: 1, WebkitOverflowScrolling: 'touch' }}>
           {activeTab === 'badge' ? (
             <div>
               {/* ═════════════════════════════════════════════════════════
@@ -480,6 +495,7 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
                 className={`printable-id-card-wrap print-size-${printSize}`}
                 style={{
                   width: '320px',
+                  maxWidth: '100%',
                   margin: '0 auto',
                   background: '#FFFFFF',
                   borderRadius: 20,
@@ -1106,23 +1122,30 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
 
         {/* Modal Footer info (Hidden on Print) */}
         <div 
-          className="no-print"
+          className="no-print agent-qr-modal-footer"
           style={{
             background: '#F8FAFC',
             borderTop: '1px solid #E2E8F0',
-            padding: '10px 16px',
-            fontSize: 11.5,
-            color: '#64748B',
+            padding: '11px 16px',
+            fontSize: 12,
+            color: '#475569',
             textAlign: 'center',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 12
+            gap: 12,
+            flexWrap: 'wrap'
           }}
         >
-          <span>ডাক্তার ভেরিফিকেশনে <strong>৳৫০০</strong></span>
-          <span>•</span>
-          <span>হাসপাতাল ভেরিফিকেশনে <strong>৳১,৫০০</strong></span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00B875', display: 'inline-block' }}></span>
+            ডাক্তার ভেরিফিকেশনে <strong style={{ color: '#0F172A', fontWeight: 800 }}>৳৫০০</strong>
+          </span>
+          <span style={{ color: '#CBD5E1' }}>|</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#0284C7', display: 'inline-block' }}></span>
+            হাসপাতাল ভেরিফিকেশনে <strong style={{ color: '#0F172A', fontWeight: 800 }}>৳১,৫০০</strong>
+          </span>
         </div>
       </div>
 
@@ -1131,6 +1154,55 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
         @keyframes modalSlideUp {
           from { opacity: 0; transform: translateY(20px) scale(0.96); }
           to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @media screen and (max-width: 640px) {
+          .agent-qr-modal-backdrop {
+            padding: 0 !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+          }
+          .agent-qr-modal-container {
+            max-width: 100% !important;
+            width: 100% !important;
+            height: 100% !important;
+            height: 100dvh !important;
+            max-height: 100% !important;
+            max-height: 100dvh !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .agent-qr-header-bar {
+            padding: 12px 14px !important;
+            background: #FFFFFF !important;
+            border-bottom: 1px solid #E2E8F0 !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 10 !important;
+          }
+          .agent-qr-tabs {
+            flex: 1 !important;
+          }
+          .agent-qr-tab-btn {
+            flex: 1 !important;
+            justify-content: center !important;
+            padding: 7px 6px !important;
+            font-size: 12px !important;
+          }
+          .agent-qr-modal-body {
+            padding: 14px 12px 24px !important;
+            -webkit-overflow-scrolling: touch;
+          }
+          .printable-id-card-wrap {
+            max-width: 320px !important;
+            width: 100% !important;
+          }
+          .agent-qr-modal-footer {
+            padding: 10px 14px calc(14px + env(safe-area-inset-bottom, 0px)) !important;
+            font-size: 11.5px !important;
+            gap: 8px !important;
+          }
         }
 
         @media print {

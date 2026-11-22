@@ -171,6 +171,8 @@ function AppNavbar() {
     }
   }
   const isAuthPage = location.pathname.startsWith('/login') ||
+                     location.pathname === '/agent/login' ||
+                     location.pathname === '/agent-login' ||
                      (location.pathname === '/register' || location.pathname.startsWith('/register/')) ||
                      location.pathname.startsWith('/pending-verification') ||
                      location.pathname.startsWith('/forgot-password') ||

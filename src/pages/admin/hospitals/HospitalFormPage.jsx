@@ -21,6 +21,17 @@ const HOSPITAL_TYPES = [
   { id: 'Specialized Hospital (Other)', name: 'Specialized Hospital - Other (অন্যান্য বিশেষায়িত হাসপাতাল)' }
 ]
 
+const normalizeHospitalType = (val) => {
+  if (!val) return ''
+  const v = val.toString().toLowerCase().trim()
+  if (v === 'private' || v === 'private hospital') return 'Private Hospital'
+  if (v === 'public' || v === 'govt' || v === 'govt hospital') return 'Govt Hospital'
+  if (v === 'clinic') return 'Clinic'
+  if (v === 'diagnostic' || v === 'diagnostic center') return 'Diagnostic Center'
+  const matched = HOSPITAL_TYPES.find(t => t.id.toLowerCase() === v)
+  return matched ? matched.id : val
+}
+
 // Searchable Select Component
 function SearchableSelect({ id, label, options, value, onChange, placeholder, disabled = false, error = '' }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -121,7 +132,7 @@ export default function HospitalFormPage() {
   const canEditPhone = isAdmin || !isEdit
 
   const [form, setForm] = useState({
-    name: '', hospital_type: '', license_number: '', about: '',
+    name: '', name_bn: '', hospital_type: '', license_number: '', about: '',
     district_id: '', upazila_id: '', union_id: '', division_id: '',
     address: '', latitude: '', longitude: '',
     phone: '', hotline: '', email: '', official_email: '', url: '',
@@ -208,7 +219,8 @@ export default function HospitalFormPage() {
       const h = res.data?.data || res.data
       setForm({
         name: h.name || '',
-        hospital_type: h.hospital_type || h.type || '',
+        name_bn: h.name_bn || '',
+        hospital_type: normalizeHospitalType(h.hospital_type || h.type),
         about: h.about || h.bio || '',
         license_number: h.license_number || '',
         division_id: h.division_id ? String(h.division_id) : (h.division?.id ? String(h.division.id) : ''),
@@ -543,18 +555,30 @@ export default function HospitalFormPage() {
             <h3 className="admin-card-title">Basic Information</h3>
           </div>
           <div className="admin-card-body" style={{ display: 'grid', gap: 24 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, overflow: 'visible' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, overflow: 'visible' }}>
               <div className="admin-form-group">
-                <label className="admin-form-label">Hospital Name *</label>
+                <label className="admin-form-label">Hospital Name (English) *</label>
                 <input
                   className={`admin-form-input ${errors.name ? 'has-error' : ''}`}
                   name="name"
                   value={form.name}
                   onChange={handleChange}
-                  placeholder="Enter full hospital name"
+                  placeholder="Enter full hospital name in English"
                   style={{ height: 48, fontSize: 15, fontWeight: 600 }}
                 />
                 {errors.name && <div className="admin-form-error" style={{ marginTop: 4, color: '#EF4444', fontSize: 12.5, fontWeight: 600 }}>{errors.name}</div>}
+              </div>
+
+              <div className="admin-form-group">
+                <label className="admin-form-label">Hospital Name (বাংলা)</label>
+                <input
+                  className="admin-form-input"
+                  name="name_bn"
+                  value={form.name_bn}
+                  onChange={handleChange}
+                  placeholder="হাসপাতালের বাংলা নাম লিখুন"
+                  style={{ height: 48, fontSize: 15, fontWeight: 500 }}
+                />
               </div>
 
               <SearchableSelect

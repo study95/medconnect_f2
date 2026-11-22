@@ -40,8 +40,37 @@ export default function ContactPage() {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [copiedField, setCopiedField] = useState(null)
   const [activeFaq, setActiveFaq] = useState(null)
+
+  // Security: Cooldown countdown & Honeypot bot trap
+  const [cooldownSeconds, setCooldownSeconds] = useState(0)
+  const [honeypot, setHoneypot] = useState('')
+
+  // Check cooldown on mount and tick countdown
+  useEffect(() => {
+    const checkCooldown = () => {
+      try {
+        const until = parseInt(localStorage.getItem('contact_cooldown_until') || '0', 10)
+        const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000))
+        setCooldownSeconds(remaining)
+      } catch {
+        setCooldownSeconds(0)
+      }
+    }
+    checkCooldown()
+    const timer = setInterval(() => {
+      setCooldownSeconds(prev => {
+        if (prev <= 1) {
+          try { localStorage.removeItem('contact_cooldown_until') } catch {}
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Token ID (CID) & Modal state for public contact messages
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -124,11 +153,99 @@ export default function ContactPage() {
     }))
   }
 
+  const scrollToFirstError = (errs) => {
+    const firstField = ['name', 'phone', 'email', 'message'].find(f => errs[f])
+    if (firstField) {
+      const el = document.getElementById(`contact-${firstField}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => el.focus(), 300)
+      }
+    }
+  }
+
+  const scrollToSubmitError = () => {
+    const doScroll = () => {
+      const el = document.getElementById('contact-submit-error-banner')
+      if (el) {
+        try {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        } catch {
+          el.scrollIntoView(true)
+        }
+      } else {
+        const fallback = document.getElementById('contact-main-card')
+        if (fallback) {
+          fallback.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }
+    }
+    setTimeout(doScroll, 80)
+    setTimeout(doScroll, 320)
+  }
+
+  useEffect(() => {
+    if (submitError) {
+      scrollToSubmitError()
+    }
+  }, [submitError])
+
+  const handleFieldChange = (field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }))
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => {
+        const next = { ...prev }
+        delete next[field]
+        return next
+      })
+    }
+    if (submitError) setSubmitError('')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.name || !form.email || !form.phone || !form.message) {
+
+    if (cooldownSeconds > 0) {
+      const mins = Math.ceil(cooldownSeconds / 60)
+      setSubmitError(`আপনার পূর্ববর্তী বার্তাটি সফলভাবে গৃহীত হয়েছে এবং পর্যালোচনায় রয়েছে। অনুগ্রহ করে ${mins} মিনিট অপেক্ষা করুন অথবা সিআইডি (CID) দিয়ে স্ট্যাটাস চেক করুন। জরুরি প্রয়োজনে হেল্পলাইনে কল করুন।`)
+      scrollToSubmitError()
       return
     }
+
+    const errs = {}
+
+    if (!form.name?.trim()) {
+      errs.name = 'আপনার পুরো নাম লিখুন।'
+    }
+
+    const rawDigits = form.phone.replace(/[^\d]/g, '')
+    const cleanPhone = (rawDigits.startsWith('8801') && rawDigits.length === 13) ? rawDigits.slice(2) : rawDigits
+    const bdPhoneRegex = /^01[3-9]\d{8}$/
+    if (!form.phone?.trim()) {
+      errs.phone = 'মোবাইল নম্বর প্রদান করুন।'
+    } else if (!bdPhoneRegex.test(cleanPhone)) {
+      errs.phone = 'সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর প্রদান করুন (যেমন: 017XXXXXXXX)।'
+    }
+
+    if (!form.email?.trim()) {
+      errs.email = 'ইমেইল ঠিকানা প্রদান করুন।'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errs.email = 'সঠিক ইমেইল ফরম্যাট প্রদান করুন (যেমন: example@domain.com)।'
+    }
+
+    if (!form.message?.trim()) {
+      errs.message = 'বার্তার বিবরণ লিখুন।'
+    } else if (form.message.trim().length < 15) {
+      errs.message = 'বার্তার বিবরণ অত্যন্ত সংক্ষিপ্ত। অনুগ্রহ করে অন্তত ১৫ অক্ষরে বিস্তারিত লিখুন।'
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs)
+      scrollToFirstError(errs)
+      return
+    }
+
+    setFieldErrors({})
     setLoading(true)
     setSubmitError('')
     setSubmitted(false)
@@ -141,12 +258,13 @@ export default function ContactPage() {
 
       const payload = {
         name: form.name.trim(),
-        phone: form.phone.trim(),
+        phone: cleanPhone,
         email: form.email.trim(),
         department: form.subject,
         extra_field: form.extraField?.trim() || null,
         subject: fullSubject,
         message: form.message.trim(),
+        website_url_check: honeypot || null,
       }
 
       const res = await axiosInstance.post('/contact-messages', payload)
@@ -154,6 +272,13 @@ export default function ContactPage() {
 
       setNewCidToken(generatedCid)
       setShowSuccessModal(true)
+
+      // Start 10-minute browser cooldown (Standard anti-spam window)
+      try {
+        const cooldownUntil = Date.now() + 600000
+        localStorage.setItem('contact_cooldown_until', cooldownUntil.toString())
+        setCooldownSeconds(600)
+      } catch {}
 
       setForm({ 
         name: '', 
@@ -163,11 +288,23 @@ export default function ContactPage() {
         extraField: '', 
         message: '' 
       })
+      setHoneypot('')
       setSubmitted(true)
       setTimeout(() => setSubmitted(false), 8000)
     } catch (err) {
-      const msg = err.response?.data?.message || 'বার্তা পাঠানো সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন বা হেল্পলাইনে কল করুন।'
-      setSubmitError(msg)
+      if (err.response?.status === 422 && err.response?.data?.errors) {
+        const backendErrors = {}
+        const bErrors = err.response.data.errors
+        Object.keys(bErrors).forEach(key => {
+          backendErrors[key] = Array.isArray(bErrors[key]) ? bErrors[key][0] : bErrors[key]
+        })
+        setFieldErrors(backendErrors)
+        scrollToFirstError(backendErrors)
+      } else {
+        const msg = err.response?.data?.message || 'বার্তা পাঠানো সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন বা হেল্পলাইনে কল করুন।'
+        setSubmitError(msg)
+        scrollToSubmitError()
+      }
     } finally {
       setLoading(false)
     }
@@ -506,6 +643,25 @@ export default function ContactPage() {
           color: #94A3B8;
           font-weight: 400;
         }
+        .contact-input.has-error {
+          border-color: #EF4444 !important;
+          background: #FEF2F2 !important;
+        }
+        .contact-input.has-error:focus {
+          border-color: #DC2626 !important;
+          box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.15) !important;
+        }
+        .field-error-msg {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #DC2626;
+          font-size: 12.5px;
+          font-weight: 600;
+          margin-top: 6px;
+          margin-bottom: 0;
+          line-height: 1.4;
+        }
 
         /* ── RIGHT COLUMN INFO CARDS ── */
         .contact-info-card {
@@ -667,65 +823,99 @@ export default function ContactPage() {
         }
 
         /* ── CID SUCCESS MODAL (RESPONSIVE) ── */
-        .cid-success-modal .modal-dialog {
-          margin: 16px auto;
-          max-width: 440px;
+        .cid-success-modal.modal-dialog,
+        .modal-dialog.cid-success-modal {
+          margin: 16px auto !important;
+          max-width: 430px !important;
+          width: calc(100% - 32px) !important;
+        }
+        .cid-success-modal .modal-content,
+        .modal-dialog.cid-success-modal .modal-content {
+          border: none !important;
+          border-radius: 24px !important;
+          background: transparent !important;
+          box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.25) !important;
+          overflow: hidden !important;
         }
         .cid-modal-card {
-          padding: 32px 28px;
+          padding: 28px 20px !important;
           text-align: center;
-          background: #FFFFFF;
-          border-radius: 24px;
+          background: #FFFFFF !important;
+          border-radius: 24px !important;
+          box-sizing: border-box !important;
+          width: 100% !important;
         }
         .cid-token-container {
-          background: #F0FDF4;
-          border: 1.5px dashed #059669;
-          border-radius: 16px;
-          padding: 14px 16px;
-          margin-bottom: 16px;
+          background: #F0FDF4 !important;
+          border: 1.5px dashed #059669 !important;
+          border-radius: 16px !important;
+          padding: 12px 14px !important;
+          margin: 0 auto 16px !important;
           text-align: left;
+          box-sizing: border-box !important;
+          width: 100% !important;
+          max-width: 100% !important;
         }
         .cid-inner-bar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          background: #FFFFFF;
-          border: 1.5px solid #86EFAC;
-          border-radius: 12px;
-          padding: 8px 12px;
-          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.05);
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          gap: 8px !important;
+          background: #FFFFFF !important;
+          border: 1.5px solid #86EFAC !important;
+          border-radius: 12px !important;
+          padding: 7px 10px !important;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.05) !important;
+          box-sizing: border-box !important;
+          width: 100% !important;
+          max-width: 100% !important;
         }
 
         /* ── CONTACT CARD TABS & SEARCH (SEGMENTED & RESPONSIVE) ── */
         .contact-switcher-bar {
           display: flex;
           background: #F1F5F9;
-          padding: 6px;
-          gap: 6px;
-          border-bottom: 1px solid #E2E8F0;
+          padding: 7px;
+          gap: 8px;
+          border-bottom: 1.5px solid #E2E8F0;
         }
         .contact-switcher-btn {
           flex: 1;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          padding: 11px 14px;
+          gap: 7px;
+          padding: 11px 16px;
           border-radius: 12px;
-          border: none;
           font-weight: 800;
           font-size: 13.5px;
           cursor: pointer;
-          transition: all 0.2s ease;
-          background: transparent;
-          color: #64748B;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           white-space: nowrap;
+          background: #FFFFFF;
+          color: #334155;
+          border: 1.5px solid #CBD5E1;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        .contact-switcher-btn:hover {
+          background: #F8FAFC;
+          color: #0F172A;
+          border-color: #94A3B8;
+        }
+        .contact-switcher-btn:active {
+          transform: scale(0.98);
         }
         .contact-switcher-btn.active {
-          background: #FFFFFF;
-          color: #064E3B;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          background: linear-gradient(135deg, #00B875 0%, #059669 100%) !important;
+          color: #FFFFFF !important;
+          border: 1.5px solid #059669 !important;
+          box-shadow: 0 4px 12px rgba(0, 184, 117, 0.28) !important;
+        }
+        .contact-switcher-btn.active svg {
+          stroke: #FFFFFF !important;
+        }
+        .contact-switcher-btn:not(.active) svg {
+          stroke: #64748B;
         }
         .live-badge {
           font-size: 10px;
@@ -734,9 +924,37 @@ export default function ContactPage() {
           border-radius: 99px;
           background: #DCFCE7;
           color: #15803D;
+          border: 1px solid #86EFAC;
+          transition: all 0.2s ease;
+        }
+        .contact-switcher-btn.active .live-badge {
+          background: rgba(255, 255, 255, 0.25) !important;
+          color: #FFFFFF !important;
+          border: 1px solid rgba(255, 255, 255, 0.45) !important;
         }
         .contact-form-body {
           padding: 28px 24px;
+        }
+        .cid-track-input {
+          width: 100%;
+          height: 48px;
+          border-radius: 14px;
+          border: 1.5px solid #CBD5E1;
+          outline: none;
+          background: #FFFFFF;
+          color: #0F172A;
+          transition: all 0.2s ease;
+        }
+        .cid-track-input:focus {
+          border-color: #00B875;
+          box-shadow: 0 0 0 3px rgba(0, 184, 117, 0.15);
+        }
+        .cid-track-input::placeholder {
+          font-family: inherit !important;
+          font-size: 13.5px !important;
+          font-weight: 500 !important;
+          color: #94A3B8 !important;
+          letter-spacing: normal !important;
         }
         .cid-search-btn {
           height: 48px;
@@ -1020,51 +1238,62 @@ export default function ContactPage() {
         }
 
         @media (max-width: 576px) {
-          .cid-success-modal .modal-dialog {
-            margin: 12px;
-            max-width: calc(100% - 24px);
+          .cid-success-modal.modal-dialog,
+          .modal-dialog.cid-success-modal {
+            margin: 12px auto !important;
+            max-width: calc(100% - 24px) !important;
+            width: calc(100% - 24px) !important;
           }
           .cid-modal-card {
-            padding: 24px 16px !important;
+            padding: 22px 14px !important;
             border-radius: 20px !important;
           }
           .cid-token-container {
-            padding: 12px 12px !important;
+            padding: 11px 12px !important;
             margin-bottom: 14px !important;
             border-radius: 14px !important;
           }
           .cid-inner-bar {
-            padding: 7px 10px !important;
+            padding: 6px 8px !important;
+            gap: 6px !important;
           }
           .cid-modal-icon {
-            width: 58px !important;
-            height: 58px !important;
-            margin-bottom: 14px !important;
+            width: 54px !important;
+            height: 54px !important;
+            margin-bottom: 12px !important;
           }
           .cid-modal-icon svg {
-            width: 32px !important;
-            height: 32px !important;
+            width: 28px !important;
+            height: 28px !important;
           }
           .cid-modal-title {
-            font-size: 20px !important;
+            font-size: 19px !important;
             margin-bottom: 6px !important;
           }
           .cid-modal-desc {
-            font-size: 13px !important;
+            font-size: 12.5px !important;
             margin-bottom: 14px !important;
             line-height: 1.5 !important;
           }
           .contact-switcher-bar {
-            padding: 5px !important;
-            gap: 4px !important;
+            padding: 6px !important;
+            gap: 6px !important;
           }
           .contact-switcher-btn {
-            padding: 9px 8px !important;
-            font-size: 12.5px !important;
+            padding: 10px 8px !important;
+            font-size: 13px !important;
             gap: 5px !important;
+            border-radius: 10px !important;
           }
           .contact-form-body {
             padding: 16px 12px !important;
+          }
+          .cid-track-input {
+            height: 46px !important;
+            border-radius: 12px !important;
+          }
+          .cid-track-input::placeholder {
+            font-size: 13px !important;
           }
           .cid-search-btn {
             width: 100% !important;
@@ -1597,13 +1826,16 @@ export default function ContactPage() {
       <section className="contact-main-section" style={{ padding: '48px 0 65px' }}>
         <Container>
           {/* 1. TOP: FULL WIDTH Enterprise Message Form with Tabs (Layout Diagram Part 1) */}
-          <div className="contact-form-card" style={{ marginBottom: 30, padding: 0, overflow: 'hidden' }}>
+          <div id="contact-main-card" className="contact-form-card" style={{ marginBottom: 30, padding: 0, overflow: 'hidden' }}>
             {/* Form / Tracking Top Switcher (Segmented, No Horizontal Overflow) */}
-            <div className="contact-switcher-bar">
+            <div className="contact-switcher-bar" role="tablist">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeFormTab === 'send'}
                 onClick={() => { setActiveFormTab('send'); setTrackError(''); }}
                 className={`contact-switcher-btn ${activeFormTab === 'send' ? 'active' : ''}`}
+                title="নতুন বার্তা পাঠাতে ক্লিক করুন"
               >
                 <Send size={15} />
                 <span>নতুন বার্তা</span>
@@ -1611,8 +1843,11 @@ export default function ContactPage() {
 
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeFormTab === 'track'}
                 onClick={() => setActiveFormTab('track')}
                 className={`contact-switcher-btn ${activeFormTab === 'track' ? 'active' : ''}`}
+                title="সিআইডি দিয়ে স্ট্যাটাস যাচাই করতে ক্লিক করুন"
               >
                 <Search size={15} />
                 <span>স্ট্যাটাস (CID)</span>
@@ -1669,19 +1904,25 @@ export default function ContactPage() {
                     </div>
                   </div>
 
-                  {/* Error Banner */}
-                  {submitError && (
-                    <div style={{ 
-                      background: '#FEF2F2', 
-                      border: '1.5px solid #FECACA', 
-                      borderRadius: 16, 
-                      padding: '14px 18px', 
-                      marginBottom: 20, 
-                      display: 'flex', 
-                      alignItems: 'flex-start', 
-                      gap: 12,
-                      color: '#991B1B'
-                    }}>
+                  {/* Error Banner (System / Cooldown / Server Error) */}
+                  {submitError && Object.keys(fieldErrors).length === 0 && (
+                    <div 
+                      id="contact-submit-error-banner"
+                      tabIndex="-1"
+                      style={{ 
+                        background: '#FEF2F2', 
+                        border: '1.5px solid #FECACA', 
+                        borderRadius: 16, 
+                        padding: '14px 18px', 
+                        marginBottom: 20, 
+                        display: 'flex', 
+                        alignItems: 'flex-start', 
+                        gap: 12,
+                        color: '#991B1B',
+                        outline: 'none',
+                        boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
+                      }}
+                    >
                       <AlertTriangle size={22} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
                       <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.5 }}>
                         {submitError}
@@ -1690,7 +1931,32 @@ export default function ContactPage() {
                   )}
 
                   {/* Form */}
-                  <form onSubmit={handleSubmit}>
+                  <form onSubmit={handleSubmit} noValidate>
+                    {/* Invisible Honeypot Trap (Automated Bot Trap) */}
+                    <div 
+                      style={{ 
+                        position: 'absolute', 
+                        opacity: 0, 
+                        zIndex: -999, 
+                        pointerEvents: 'none', 
+                        height: 0, 
+                        width: 0, 
+                        overflow: 'hidden' 
+                      }} 
+                      aria-hidden="true"
+                    >
+                      <label htmlFor="website_url_check">Security Verification</label>
+                      <input
+                        id="website_url_check"
+                        type="text"
+                        name="website_url_check"
+                        value={honeypot}
+                        onChange={(e) => setHoneypot(e.target.value)}
+                        tabIndex={-1}
+                        autoComplete="off"
+                      />
+                    </div>
+
                     <Row className="g-3">
                       {/* Name */}
                       <Col md={6} xs={12}>
@@ -1702,12 +1968,17 @@ export default function ContactPage() {
                           <input
                             id="contact-name"
                             value={form.name}
-                            onChange={e => setForm({ ...form, name: e.target.value })}
-                            required
+                            onChange={e => handleFieldChange('name', e.target.value)}
                             placeholder="উদাঃ মোঃ রহিম আহমেদ"
-                            className="contact-input"
+                            className={`contact-input ${fieldErrors.name ? 'has-error' : ''}`}
                           />
                         </div>
+                        {fieldErrors.name && (
+                          <p className="field-error-msg">
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+                            <span>{fieldErrors.name}</span>
+                          </p>
+                        )}
                       </Col>
 
                       {/* Phone */}
@@ -1719,13 +1990,23 @@ export default function ContactPage() {
                           <Phone size={17} className="input-icon" />
                           <input
                             id="contact-phone"
+                            type="tel"
                             value={form.phone}
-                            onChange={e => setForm({ ...form, phone: e.target.value })}
-                            required
+                            onChange={e => {
+                              const digitsOnly = e.target.value.replace(/[^\d+]/g, '').slice(0, 14)
+                              handleFieldChange('phone', digitsOnly)
+                            }}
                             placeholder="017XXXXXXXX"
-                            className="contact-input"
+                            className={`contact-input ${fieldErrors.phone ? 'has-error' : ''}`}
+                            maxLength={14}
                           />
                         </div>
+                        {fieldErrors.phone && (
+                          <p className="field-error-msg">
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+                            <span>{fieldErrors.phone}</span>
+                          </p>
+                        )}
                       </Col>
 
                       {/* Email */}
@@ -1739,12 +2020,17 @@ export default function ContactPage() {
                             id="contact-email"
                             type="email"
                             value={form.email}
-                            onChange={e => setForm({ ...form, email: e.target.value })}
-                            required
+                            onChange={e => handleFieldChange('email', e.target.value)}
                             placeholder="rahim@example.com"
-                            className="contact-input"
+                            className={`contact-input ${fieldErrors.email ? 'has-error' : ''}`}
                           />
                         </div>
+                        {fieldErrors.email && (
+                          <p className="field-error-msg">
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+                            <span>{fieldErrors.email}</span>
+                          </p>
+                        )}
                       </Col>
 
                       {/* Subject Line */}
@@ -1759,7 +2045,6 @@ export default function ContactPage() {
                             value={form.subject}
                             readOnly
                             tabIndex={-1}
-                            required
                             placeholder="বার্তার মূল বিষয়"
                             className="contact-input"
                             style={{
@@ -1795,18 +2080,29 @@ export default function ContactPage() {
                           <label style={{ fontSize: 13, fontWeight: 700, color: '#334155', margin: 0 }}>
                             আপনার বিস্তারিত বার্তা <span style={{ color: '#EF4444' }}>*</span>
                           </label>
-                          <span style={{ fontSize: 11.5, color: '#94A3B8' }}>{form.message.length}/500 অক্ষর</span>
+                          <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 600, 
+                            color: form.message.length > 0 && form.message.trim().length < 15 ? '#DC2626' : '#94A3B8' 
+                          }}>
+                            {form.message.length}/500
+                          </span>
                         </div>
                         <textarea
                           id="contact-message"
                           value={form.message}
-                          onChange={e => setForm({ ...form, message: e.target.value.slice(0, 500) })}
-                          required
+                          onChange={e => handleFieldChange('message', e.target.value.slice(0, 500))}
                           rows={4}
-                          placeholder="আপনার জিজ্ঞাসা, সমস্যা বা প্রয়োজনীয় সেবা সম্পর্কে বিস্তারিত লিখুন..."
-                          className="contact-input"
+                          placeholder="আপনার জিজ্ঞাসা, সমস্যা বা প্রয়োজনীয় সেবা সম্পর্কে বিস্তারিত লিখুন (কমপক্ষে ১৫ অক্ষর)..."
+                          className={`contact-input ${fieldErrors.message ? 'has-error' : ''}`}
                           style={{ resize: 'vertical', minHeight: 115 }}
                         />
+                        {fieldErrors.message && (
+                          <p className="field-error-msg">
+                            <AlertTriangle size={14} color="#DC2626" style={{ flexShrink: 0 }} />
+                            <span>{fieldErrors.message}</span>
+                          </p>
+                        )}
                       </Col>
 
                       {/* Submit Button & Privacy note */}
@@ -1899,24 +2195,19 @@ export default function ContactPage() {
                       <div style={{ flex: '1 1 280px', position: 'relative' }}>
                         <input
                           type="text"
+                          className="cid-track-input"
                           value={trackCid}
                           onChange={(e) => setTrackCid(e.target.value.toUpperCase())}
-                          placeholder="আপনার CID লিখুন (উদাঃ CID-782914)"
+                          placeholder="CID লিখুন (যেমন: CID-123456)"
                           style={{
-                            width: '100%',
-                            height: 48,
-                            borderRadius: 14,
-                            border: '2px solid #CBD5E1',
-                            padding: trackCid ? '0 42px 0 44px' : '0 16px 0 44px',
-                            fontSize: 15,
-                            fontWeight: 700,
-                            fontFamily: 'monospace',
-                            letterSpacing: 1,
-                            outline: 'none',
-                            background: '#FFFFFF'
+                            padding: trackCid ? '0 40px 0 42px' : '0 16px 0 42px',
+                            fontSize: trackCid ? 15 : 13.5,
+                            fontWeight: trackCid ? 800 : 500,
+                            fontFamily: trackCid ? 'monospace' : 'inherit',
+                            letterSpacing: trackCid ? 0.75 : 'normal'
                           }}
                         />
-                        <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: 16, top: 15, pointerEvents: 'none' }} />
+                        <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: 15, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                         {trackCid && (
                           <button
                             type="button"
@@ -1998,30 +2289,15 @@ export default function ContactPage() {
                   {/* Result Display */}
                   {trackResult && (
                     <div className="track-result-card">
-                      {/* Top Details */}
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span className="track-cid-badge">{trackResult.token_id}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(trackResult.token_id, 'result-cid')}
-                              className="track-copy-btn"
-                              title="কপি করুন"
-                            >
-                              {copiedField === 'result-cid' ? <Check size={13} color="#059669" /> : <Copy size={13} />}
-                              <span>{copiedField === 'result-cid' ? 'কপি হয়েছে' : 'কপি'}</span>
-                            </button>
-                          </div>
-
-                          <span className={`track-status-pill ${trackResult.status}`}>
-                            {trackResult.status === 'replied' ? '✓ উত্তর সম্পন্ন' : (trackResult.status === 'read' ? '• পর্যালোচিত' : '• অপেক্ষমান')}
-                          </span>
-                        </div>
+                      {/* Top Details: Status & Timestamp */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                        <span className={`track-status-pill ${trackResult.status}`}>
+                          {trackResult.status === 'replied' ? '✓ উত্তর সম্পন্ন' : (trackResult.status === 'read' ? '• পর্যালোচিত' : '• অপেক্ষমান')}
+                        </span>
 
                         {trackResult.submitted_at && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#64748B' }}>
-                            <Clock size={13} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#64748B' }}>
+                            <Clock size={13.5} />
                             <span>প্রেরণ: {new Date(trackResult.submitted_at).toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                           </div>
                         )}
@@ -2116,7 +2392,15 @@ export default function ContactPage() {
                       <div style={{ marginTop: 14 }}>
                         <button
                           type="button"
-                          onClick={() => { setActiveFormTab('send'); setTrackResult(null); setTrackCid(''); }}
+                          onClick={() => { 
+                            setActiveFormTab('send')
+                            setTrackResult(null)
+                            setTrackCid('')
+                            setTimeout(() => {
+                              const el = document.getElementById('contact-main-card')
+                              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                            }, 100)
+                          }}
                           className="track-new-msg-btn"
                         >
                           <span>নতুন আরেকটি বার্তা পাঠাবেন?</span>
@@ -2166,11 +2450,11 @@ export default function ContactPage() {
 
               {/* CID Box with Clean Inner Bar (Never Wraps on Mobile) */}
               <div className="cid-token-container">
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap' }}>
                     কন্টাক্ট ট্র্যাকিং আইডি (CID)
                   </span>
-                  <span style={{ fontSize: 10.5, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                  <span style={{ fontSize: 10, background: '#DCFCE7', color: '#166534', padding: '2px 7px', borderRadius: 6, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
                     সংরক্ষণ করুন
                   </span>
                 </div>
@@ -2178,15 +2462,14 @@ export default function ContactPage() {
                 <div className="cid-inner-bar">
                   <div style={{
                     fontFamily: 'monospace',
-                    fontSize: 'clamp(17px, 5.2vw, 21px)',
+                    fontSize: 'clamp(13px, 4vw, 16px)',
                     fontWeight: 900,
                     color: '#064E3B',
-                    letterSpacing: 1,
+                    letterSpacing: 0.5,
                     whiteSpace: 'nowrap',
                     userSelect: 'all',
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
+                    flex: '1 1 auto',
+                    lineHeight: 1.2
                   }}>
                     {newCidToken || 'CID-XXXXXX'}
                   </div>
@@ -2203,13 +2486,13 @@ export default function ContactPage() {
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: 5,
+                      gap: 4,
                       background: copiedCid ? '#059669' : '#ECFDF5',
                       color: copiedCid ? '#FFFFFF' : '#047857',
                       border: '1px solid #A7F3D0',
                       borderRadius: 8,
-                      padding: '7px 12px',
-                      fontSize: 12,
+                      padding: '5px 9px',
+                      fontSize: 11.5,
                       fontWeight: 800,
                       cursor: 'pointer',
                       transition: 'all 0.2s ease',
@@ -2217,7 +2500,7 @@ export default function ContactPage() {
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {copiedCid ? <Check size={13} /> : <Copy size={13} />}
+                    {copiedCid ? <Check size={12} /> : <Copy size={12} />}
                     <span>{copiedCid ? 'কপি হয়েছে' : 'কপি করুন'}</span>
                   </button>
                 </div>
@@ -2273,6 +2556,21 @@ export default function ContactPage() {
                     setActiveFormTab('track')
                     setTrackCid(newCidToken)
                     handleTrack(newCidToken)
+                    // Smoothly scroll up directly to the tracking card (Image 3 view)
+                    setTimeout(() => {
+                      const el = document.getElementById('contact-main-card')
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                      }
+                    }, 120)
+                    setTimeout(() => {
+                      const el = document.getElementById('contact-main-card')
+                      if (el) {
+                        const yOffset = -20
+                        const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset
+                        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' })
+                      }
+                    }, 350)
                   }}
                   style={{
                     flex: 1,

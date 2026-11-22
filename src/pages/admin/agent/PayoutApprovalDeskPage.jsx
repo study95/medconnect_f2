@@ -26,16 +26,12 @@ import TableFooter from '../../../components/admin/TableFooter'
 import EmptyState from '../../../components/common/EmptyState'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import CompactUlid from '../../../components/common/CompactUlid'
-import { useDebounce } from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 
 export default function PayoutApprovalDeskPage() {
   const [payouts, setPayouts] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [statusFilter, setStatusFilter] = useState('pending')
-  const [methodFilter, setMethodFilter] = useState('')
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search, 300)
   const [showFilters, setShowFilters] = useState(false)
 
   // Settlement Modal State
@@ -45,9 +41,37 @@ export default function PayoutApprovalDeskPage() {
   const [submitting, setSubmitting] = useState(false)
   const [modalError, setModalError] = useState(null)
 
+  // Enterprise URL & session-synchronized filters
+  const {
+    filters,
+    setFilter,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters,
+  } = useTableUrlFilters({
+    initialFilters: {
+      statusFilter: '',
+      methodFilter: '',
+    },
+    aliases: {
+      statusFilter: ['status'],
+      methodFilter: ['method', 'payout_method'],
+    },
+    storageKey: 'admin_payout_desk_filters',
+    defaultPerPage: 15,
+  })
+
+  const { statusFilter, methodFilter } = filters
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+  const setMethodFilter = (val) => setFilter('methodFilter', val)
+
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1)
-  const [perPage, setPerPage] = useState(15)
   const [total, setTotal] = useState(0)
 
   const fetchPayouts = useCallback(async (isRefresh = false) => {
@@ -96,16 +120,8 @@ export default function PayoutApprovalDeskPage() {
     fetchPayouts()
   }, [fetchPayouts])
 
-  // Reset to page 1 on filter changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [statusFilter, methodFilter, debouncedSearch])
-
   const clearFilters = () => {
-    setStatusFilter('')
-    setMethodFilter('')
-    setSearch('')
-    setCurrentPage(1)
+    resetFilters()
   }
 
   // Summary Metrics
@@ -226,7 +242,7 @@ export default function PayoutApprovalDeskPage() {
       }}>
         {/* Pending Disbursements */}
         <div 
-          onClick={() => setStatusFilter('pending')}
+          onClick={() => setStatusFilter(statusFilter === 'pending' ? '' : 'pending')}
           className="admin-card" 
           style={{ 
             padding: '18px 20px', 
@@ -255,7 +271,7 @@ export default function PayoutApprovalDeskPage() {
 
         {/* Settled Disbursements */}
         <div 
-          onClick={() => setStatusFilter('completed')}
+          onClick={() => setStatusFilter(statusFilter === 'completed' ? '' : 'completed')}
           className="admin-card" 
           style={{ 
             padding: '18px 20px', 
@@ -309,7 +325,7 @@ export default function PayoutApprovalDeskPage() {
             borderRadius: 14, 
             margin: 0,
             cursor: 'pointer',
-            border: !statusFilter ? '2px solid #0284C7' : '1px solid var(--admin-border)',
+            border: '1px solid var(--admin-border)',
             transition: 'all 0.15s ease'
           }}
         >
@@ -339,7 +355,7 @@ export default function PayoutApprovalDeskPage() {
         refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(statusFilter || methodFilter)}
+        hasActiveFilters={hasActiveFilters}
         onClearFilters={clearFilters}
         activeFilters={[
           statusFilter && { 

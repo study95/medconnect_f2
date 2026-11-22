@@ -22,6 +22,7 @@ import {
   IconTicket, IconRefresh, IconLayoutGrid, IconCopy, IconAlertTriangle
 } from '@tabler/icons-react'
 import axiosInstance from '../api/axiosInstance'
+import { getMediaUrl } from '../utils/mediaUtils'
 import '../styles/auth.css'
 
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
@@ -38,7 +39,7 @@ const GENDER_BN = {
 
 function ProfilePage() {
   const { 
-    user, userType, logout, fetchCurrentUser, isDoctor, isAdmin, isManager, isPatient,
+    user, userType, logout, fetchCurrentUser, isDoctor, isAdmin, isManager, isPatient, isAgent,
     isPendingVerification, loading: authLoading 
   } = useAuth()
   const navigate = useNavigate()
@@ -117,7 +118,7 @@ function ProfilePage() {
     hospital_name: '', address: ''
   })
   const [photo, setPhoto] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(() => user?.photo || user?.agent?.photo || null)
 
   const {
     divisions, districts, upazilas, unions,
@@ -311,6 +312,7 @@ function ProfilePage() {
       const doc = data?.doctor || {}
       const hosp = data?.hospital || {}
       const pat = data?.patient || {}
+      const agt = data?.agent || {}
       const regType = data?.registration_type
 
       const divId = regType === 'doctor' ? doc.division_id : regType === 'hospital' ? hosp.division_id : pat.division_id
@@ -322,7 +324,7 @@ function ProfilePage() {
         name: data?.name || '',
         email: data?.email || '',
         mobile: data?.phone || '',
-        occupation: pat?.occupation || '',
+        occupation: pat?.occupation || (isAgent ? 'ফিল্ড পার্টনার / এজেন্ট' : ''),
         date_of_birth: pat?.date_of_birth || '',
         gender: pat?.gender || '',
         blood_group: pat?.blood_group || '',
@@ -331,7 +333,7 @@ function ProfilePage() {
         upazila_id: upzId || '',
         union_id: uniId || '',
         bmdc_number: doc?.bmdc || '',
-        nid: doc?.nid || '',
+        nid: doc?.nid || agt?.nid_number || '',
         specialty: doc?.specialty?.name_bn || doc?.specialty?.name || '',
         specialty_id: doc?.specialty_id || '',
         degree: doc?.degree || '',
@@ -343,7 +345,7 @@ function ProfilePage() {
         address: hosp?.address || '',
       })
 
-      const photoUrl = doc?.photo || hosp?.photo || pat?.photo
+      const photoUrl = data?.photo || agt?.photo || doc?.photo || hosp?.photo || pat?.photo || user?.photo || user?.agent?.photo
       if (photoUrl) setPhotoPreview(photoUrl)
 
       if (divId) setSelectedDivision(String(divId))
@@ -446,8 +448,14 @@ function ProfilePage() {
   const registrationNumber = isDoctorUser
     ? (form.bmdc_number ? `BMDC: ${form.bmdc_number}` : (profileData?.doctor?.public_id || profileData?.public_id || user?.public_id || `DR-${user?.id || '1024'}`))
     : isManager
-      ? (profileData?.hospital?.public_id || profileData?.public_id || user?.public_id || `HP-${user?.id || '2048'}`)
-      : (profileData?.patient?.public_id || profileData?.public_id || user?.public_id || `PT-${user?.id || '8941'}`)
+      ? (profileData?.hospital?.public_id || profileData?.hospital?.id || profileData?.public_id || user?.public_id || `HP-${user?.id || '2048'}`)
+      : isAgent
+        ? (profileData?.agent?.agent_code || profileData?.agent?.public_id || user?.agent?.agent_code || user?.agent?.public_id || `AGT-${user?.id || '1001'}`)
+        : (profileData?.patient?.public_id || profileData?.public_id || user?.public_id || `PT-${user?.id || '8941'}`)
+
+  const displayAddress = fullAddress || (isAgent 
+    ? (profileData?.agent?.agent_code || user?.agent?.agent_code ? `আইডি: ${profileData?.agent?.agent_code || user?.agent?.agent_code}` : 'ফিল্ড পার্টনার')
+    : 'মিরপুর, ঢাকা, বাংলাদেশ')
 
   if (loading) {
     return (
@@ -490,7 +498,7 @@ function ProfilePage() {
                     boxShadow: '0 12px 30px rgba(0,0,0,0.25)'
                   }}>
                     {photoPreview ? (
-                      <img src={photoPreview} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={getMediaUrl(photoPreview)} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       getInitials(displayName)
                     )}
@@ -511,7 +519,7 @@ function ProfilePage() {
                 <div>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', padding: '4px 14px', borderRadius: 99, fontSize: 12.5, fontWeight: 800, marginBottom: 8, border: '1px solid rgba(255,255,255,0.2)', color: '#DCFCE7' }}>
                     <IconSparkles size={14} color="#34D399" />
-                    <span>{isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার অ্যাকাউন্ট' : (isManager ? 'হাসপাতাল পোর্টাল' : (isPendingVerification ? 'ডাক্তার (যাচাইকরণাধীন)' : 'রোগী প্রোফাইল')))}</span>
+                    <span>{isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার অ্যাকাউন্ট' : (isManager ? 'হাসপাতাল পোর্টাল' : (isAgent ? 'ফিল্ড পার্টনার (এজেন্ট)' : (isPendingVerification ? 'ডাক্তার (যাচাইকরণাধীন)' : 'রোগী প্রোফাইল'))))}</span>
                   </div>
                   <h1 style={{ fontSize: 'clamp(24px, 3.2vw, 34px)', fontWeight: 900, margin: 0, letterSpacing: '-0.5px', fontFamily: "'Hind Siliguri', sans-serif", color: '#FFFFFF' }}>
                     {displayName}
@@ -712,7 +720,7 @@ function ProfilePage() {
                       boxShadow: '0 8px 24px rgba(0,0,0,0.1)'
                     }}>
                       {photoPreview ? (
-                        <img src={photoPreview} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={getMediaUrl(photoPreview)} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         getInitials(displayName)
                       )}
@@ -1216,7 +1224,7 @@ function ProfilePage() {
                       flexShrink: 0
                     }}>
                       {photoPreview ? (
-                        <img src={photoPreview} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={getMediaUrl(photoPreview)} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         getInitials(displayName)
                       )}
@@ -1252,27 +1260,224 @@ function ProfilePage() {
                     }}>
                       <IconMapPin size={14} style={{ flexShrink: 0 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {fullAddress || 'মিরপুর, ঢাকা, বাংলাদেশ'}
+                        {displayAddress}
                       </span>
                     </div>
 
                     {/* ROLE BADGE */}
                     <div style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', color: '#DCFCE7', padding: '2px 10px', borderRadius: 5, display: 'inline-block', fontWeight: 800 }}>
-                      {isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার' : (isManager ? 'হাসপাতাল' : (isPendingVerification ? 'যাচাইকরণাধীন' : 'রোগী')))}
+                      {isAdmin ? 'সিস্টেম এডমিন' : (isDoctorUser ? 'ডাক্তার' : (isManager ? 'হাসপাতাল' : (isAgent ? 'ফিল্ড পার্টনার' : (isPendingVerification ? 'যাচাইকরণাধীন' : 'রোগী'))))}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Mobile Active Today Live Queue Summary Card */}
-              <div style={{ marginBottom: 18 }}>
-                <PatientLiveQueueSummaryCard appointment={activeTodayAppt} />
-              </div>
+              {!isAgent && (
+                <div style={{ marginBottom: 18 }}>
+                  <PatientLiveQueueSummaryCard appointment={activeTodayAppt} />
+                </div>
+              )}
 
               {/* 4 CLEAN LISTING MENU BUTTONS (NO SERIAL NUMBERS, BORDER-RADIUS: 5PX) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-                
-                {/* Item 1: Profile See Sub-Page */}
+                {isAgent ? (
+                  <>
+                    {/* Item 1: Agent Workspace & Dashboard */}
+                    <button
+                      onClick={() => navigate('/agent')}
+                      style={{
+                        width: '100%',
+                        padding: '16px 18px',
+                        borderRadius: 5,
+                        border: '1.5px solid #A7F3D0',
+                        background: 'linear-gradient(135deg, #ECFDF5 0%, #FFFFFF 100%)',
+                        color: '#065F46',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontWeight: 800,
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)',
+                        transition: 'all 0.25s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 5, background: '#00803D', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(0,128,61,0.25)' }}>
+                          <IconLayoutGrid size={20} />
+                        </div>
+                        <div style={{ textAlign: 'left' }}>
+                          <div>এজেন্ট ওয়ার্কস্পেস ও ড্যাশবোর্ড</div>
+                          <div style={{ fontSize: 11.5, color: '#047857', fontWeight: 600 }}>কমিশন ওয়ালেট, অনবোর্ডিং ও পরিসংখ্যান</div>
+                        </div>
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: '#D1FAE5', color: '#00803D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <IconArrowRight size={16} />
+                      </div>
+                    </button>
+
+                    {/* Item 2: Profile See Sub-Page */}
+                    <button
+                      onClick={() => setMobileSubView('profile')}
+                      style={{
+                        width: '100%',
+                        padding: '16px 18px',
+                        borderRadius: 5,
+                        border: '1.5px solid #E2E8F0',
+                        background: 'white',
+                        color: '#0F172A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontWeight: 800,
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+                        transition: 'all 0.25s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 5, background: '#F0FDF4', color: '#00B875', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconUser size={20} />
+                        </div>
+                        <span>প্রোফাইল তথ্য ও বিবরণ</span>
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <IconArrowRight size={16} />
+                      </div>
+                    </button>
+
+                    {/* Item 3: Doctor Onboarding Shortcut */}
+                    <button
+                      onClick={() => navigate('/agent/onboard/doctor')}
+                      style={{
+                        width: '100%',
+                        padding: '16px 18px',
+                        borderRadius: 5,
+                        border: '1.5px solid #E2E8F0',
+                        background: 'white',
+                        color: '#0F172A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontWeight: 800,
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+                        transition: 'all 0.25s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 5, background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconStethoscope size={20} />
+                        </div>
+                        <span>নতুন ডাক্তার অনবোর্ডিং</span>
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <IconArrowRight size={16} />
+                      </div>
+                    </button>
+
+                    {/* Item 4: Hospital Onboarding Shortcut */}
+                    <button
+                      onClick={() => navigate('/agent/onboard/hospital')}
+                      style={{
+                        width: '100%',
+                        padding: '16px 18px',
+                        borderRadius: 5,
+                        border: '1.5px solid #E2E8F0',
+                        background: 'white',
+                        color: '#0F172A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontWeight: 800,
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+                        transition: 'all 0.25s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 5, background: '#F5F3FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconBuildingHospital size={20} />
+                        </div>
+                        <span>নতুন হাসপাতাল অনবোর্ডিং</span>
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <IconArrowRight size={16} />
+                      </div>
+                    </button>
+
+                    {/* Item 5: Submissions List */}
+                    <button
+                      onClick={() => navigate('/agent/tracker')}
+                      style={{
+                        width: '100%',
+                        padding: '16px 18px',
+                        borderRadius: 5,
+                        border: '1.5px solid #E2E8F0',
+                        background: 'white',
+                        color: '#0F172A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontWeight: 800,
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+                        transition: 'all 0.25s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 5, background: '#FFFBEB', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconBookmark size={20} />
+                        </div>
+                        <span>আমার অনবোর্ডিং সাবমিশনসমূহ</span>
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <IconArrowRight size={16} />
+                      </div>
+                    </button>
+
+                    {/* Item 6: Support Portal */}
+                    <button
+                      onClick={() => setMobileSubView('support')}
+                      style={{
+                        width: '100%',
+                        padding: '16px 18px',
+                        borderRadius: 5,
+                        border: '1.5px solid #FEF3C7',
+                        background: 'linear-gradient(135deg, #FFFBEB 0%, #FEFCE8 100%)',
+                        color: '#0F172A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontWeight: 800,
+                        fontSize: 15,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(245,158,11,0.08)',
+                        transition: 'all 0.25s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 5, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <IconTicket size={20} />
+                        </div>
+                        <div style={{ textAlign: 'left' }}>
+                          <div>সাপোর্ট / অভিযোগ পোর্টাল</div>
+                          <div style={{ fontSize: 11.5, fontWeight: 600, color: '#92400E', marginTop: 1 }}>টিকিট ট্র্যাক ও জমা দিন</div>
+                        </div>
+                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: 5, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <IconArrowRight size={16} />
+                      </div>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Item 1: Profile See Sub-Page */}
                 <button
                   onClick={() => setMobileSubView('profile')}
                   style={{
@@ -1464,6 +1669,8 @@ function ProfilePage() {
                     </div>
                   </button>
                 )}
+                  </>
+                )}
 
                 {/* Item 5: Logout Button */}
                 <button
@@ -1587,7 +1794,7 @@ function ProfilePage() {
                           boxShadow: '0 6px 20px rgba(0,0,0,0.1)'
                         }}>
                           {photoPreview ? (
-                            <img src={photoPreview} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={getMediaUrl(photoPreview)} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
                             getInitials(displayName)
                           )}
@@ -1598,12 +1805,12 @@ function ProfilePage() {
                         {/* ADDRESS IN ONE ROW */}
                         <div style={{ fontSize: 13, color: '#059669', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           <IconMapPin size={15} style={{ flexShrink: 0 }} />
-                          <span>{fullAddress || 'মিরপুর, ঢাকা, বাংলাদেশ'}</span>
+                          <span>{displayAddress}</span>
                         </div>
 
                         {/* REGISTRATION NUMBER */}
                         <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 800, background: '#F8FAFC', padding: '4px 14px', borderRadius: 5, display: 'inline-block', border: '1px solid #E2E8F0' }}>
-                          🆔 রেজিস্ট্রেশন / আইডি: <span style={{ color: '#00B875' }}>{registrationNumber}</span>
+                          🆔 {isAgent ? 'এজেন্ট কোড' : 'রেজিস্ট্রেশন / আইডি'}: <span style={{ color: '#00B875' }}>{registrationNumber}</span>
                         </div>
                       </div>
 
@@ -1637,6 +1844,13 @@ function ProfilePage() {
                               </div>
                             </Col>
                           </Row>
+                        )}
+
+                        {isAgent && (
+                          <div style={{ background: '#F0FDF4', padding: '12px 14px', borderRadius: 5, border: '1px solid #DCFCE7' }}>
+                            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#047857', marginBottom: 2 }}>অ্যাকাউন্ট স্ট্যাটাস</div>
+                            <div style={{ fontSize: 14, fontWeight: 800, color: '#00803D' }}>সক্রিয় ফিল্ড পার্টনার (Active)</div>
+                          </div>
                         )}
                       </div>
 
@@ -1684,7 +1898,7 @@ function ProfilePage() {
                             boxShadow: '0 6px 18px rgba(0,184,117,0.15)'
                           }}>
                             {photoPreview ? (
-                              <img src={photoPreview} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <img src={getMediaUrl(photoPreview)} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
                               getInitials(displayName)
                             )}

@@ -12,7 +12,8 @@ export default defineConfig({
       'swiper',
       'swiper/react',
       'swiper/modules',
-      '@tanstack/react-query'
+      '@tanstack/react-query',
+      'react-quill'
     ]
   },
 

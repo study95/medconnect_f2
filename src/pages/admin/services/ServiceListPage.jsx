@@ -60,6 +60,82 @@ function StatCard({ label, value, icon, color }) {
   )
 }
 
+function TableCheckbox({ checked, indeterminate, onChange, title }) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        margin: 0,
+        position: 'relative',
+        userSelect: 'none',
+        verticalAlign: 'middle',
+      }}
+      title={title}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        style={{
+          position: 'absolute',
+          opacity: 0,
+          width: 0,
+          height: 0,
+          margin: 0,
+          pointerEvents: 'none',
+        }}
+      />
+      <span
+        style={{
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          border: checked || indeterminate ? '1.5px solid #10B981' : '1.5px solid #CBD5E1',
+          background: checked || indeterminate ? '#10B981' : '#FFFFFF',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.15s ease-in-out',
+          boxShadow: checked || indeterminate ? '0 1px 3px rgba(16, 185, 129, 0.3)' : '0 1px 2px rgba(0,0,0,0.04)',
+        }}
+      >
+        {checked && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+        {!checked && indeterminate && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        )}
+      </span>
+    </label>
+  )
+}
+
 export default function ServiceListPage() {
   const queryClient = useQueryClient()
   // Filters State synchronized with URL Query Parameters & SessionStorage
@@ -119,6 +195,16 @@ export default function ServiceListPage() {
   const [updatingStatus, setUpdatingStatus] = useState(null)
   const [pendingStatus, setPendingStatus] = useState(null)
   const [noteSavedNotice, setNoteSavedNotice] = useState(false)
+
+  // Selection & Bulk Action States
+  const [selectedIds, setSelectedIds] = useState([])
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [bulkLoading, setBulkLoading] = useState(false)
+
+  // Clear selections when changing status, priority, category, search, or pagination
+  useEffect(() => {
+    setSelectedIds([])
+  }, [filterStatus, filterPriority, filterCategory, dateFrom, dateTo, search, currentPage, perPage])
 
   const handleDatePreset = (preset) => {
     const now = new Date()
@@ -273,6 +359,61 @@ export default function ServiceListPage() {
     setTimeout(() => setCopied(null), 2000)
   }
 
+  const isAllSelected = tickets.length > 0 && tickets.every(t => selectedIds.includes(t.id))
+  const isSomeSelected = tickets.length > 0 && tickets.some(t => selectedIds.includes(t.id))
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      const pageIds = tickets.map(t => t.id)
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)))
+    } else {
+      const pageIds = tickets.map(t => t.id)
+      setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])))
+    }
+  }
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    )
+  }
+
+  const handleBulkStatus = async (newStatus) => {
+    if (selectedIds.length === 0) return
+    setBulkLoading(true)
+    try {
+      const res = await axiosInstance.post('/admin/services/bulk-status', {
+        ids: selectedIds,
+        status: newStatus
+      })
+      queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
+      toast.success(res.data?.message || 'নির্বাচিত টিকিটের স্ট্যাটাস আপডেট হয়েছে')
+      setSelectedIds([])
+    } catch {
+      toast.error('স্ট্যাটাস আপডেট করা সম্ভব হয়নি')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return
+    setBulkLoading(true)
+    try {
+      const res = await axiosInstance.post('/admin/services/bulk-delete', {
+        ids: selectedIds
+      })
+      queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
+      toast.success(res.data?.message || `${selectedIds.length} টি টিকিট মুছে ফেলা হয়েছে`)
+      setSelectedIds([])
+      setShowBulkDeleteModal(false)
+    } catch {
+      toast.error('টিকিটগুলো মুছে ফেলা সম্ভব হয়নি')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   const formatDate = (iso) => {
     if (!iso) return '—'
     try {
@@ -408,11 +549,207 @@ export default function ServiceListPage() {
       </ListToolbar>
 
       <div className="admin-card">
+        <div
+          className="admin-card-header"
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+            padding: '16px 20px',
+            borderBottom: '1px solid var(--admin-border, #E2E8F0)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 className="admin-card-title" style={{ margin: 0, fontSize: 16, fontWeight: 800, color: '#0F172A' }}>
+              টিকিট তালিকা (Support Tickets)
+            </h3>
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#64748B',
+                background: '#F1F5F9',
+                padding: '2px 9px',
+                borderRadius: 99,
+                border: '1px solid #E2E8F0',
+              }}
+            >
+              {ticketRes.total ?? tickets.length} টি টিকিট
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {selectedIds.length > 0 && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)',
+                  border: '1px solid #FECDD3',
+                  borderRadius: 20,
+                  padding: '4px 8px 4px 14px',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.08)',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: '#00B875',
+                      color: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      fontWeight: 800,
+                    }}
+                  >
+                    ✓
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: '#0F172A', letterSpacing: '-0.01em' }}>
+                    {selectedIds.length} <span style={{ fontWeight: 600, color: '#64748B' }}>টি নির্বাচিত</span>
+                  </span>
+                </div>
+
+                <div style={{ width: 1, height: 16, background: '#CBD5E1', opacity: 0.6 }} />
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#64748B',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0.05)'
+                    e.currentTarget.style.color = '#0F172A'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = '#64748B'
+                  }}
+                >
+                  নির্বাচন বাতিল
+                </button>
+
+                {/* Mark Resolved */}
+                <button
+                  type="button"
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkStatus('resolved')}
+                  style={{
+                    background: '#10B981',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '5px 12px',
+                    borderRadius: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(16, 185, 129, 0.25)',
+                  }}
+                >
+                  <IconCheck size={13} />
+                  <span>সমাধান চিহ্নিত করুন</span>
+                </button>
+
+                {/* Mark Processing */}
+                <button
+                  type="button"
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkStatus('processing')}
+                  style={{
+                    background: '#3B82F6',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '5px 12px',
+                    borderRadius: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(59, 130, 246, 0.25)',
+                  }}
+                >
+                  <IconAlertTriangle size={13} />
+                  <span>প্রক্রিয়াধীন করুন</span>
+                </button>
+
+                {/* Mark Closed */}
+                <button
+                  type="button"
+                  disabled={bulkLoading}
+                  onClick={() => handleBulkStatus('closed')}
+                  style={{
+                    background: '#6B7280',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '5px 12px',
+                    borderRadius: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(107, 114, 128, 0.25)',
+                  }}
+                >
+                  <IconX size={13} />
+                  <span>বন্ধ করুন</span>
+                </button>
+
+                {/* Bulk Delete */}
+                <button
+                  type="button"
+                  disabled={bulkLoading}
+                  onClick={() => setShowBulkDeleteModal(true)}
+                  style={{
+                    background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '5px 14px',
+                    borderRadius: 16,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)',
+                  }}
+                >
+                  <IconTrash size={13} />
+                  <span>মুছে ফেলুন ({selectedIds.length})</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {loading ? (
           <TableSkeleton
             rowCount={6}
-            columnWidths={['120px', '22%', '20%', '16%', '12%', '10%']}
-            headers={['টিকিট নম্বর', 'প্রেরক ও যোগাযোগ', 'বিষয় ও বিভাগ', 'অগ্রাধিকার', 'স্ট্যাটাস', 'তারিখ', 'অ্যাকশন']}
+            columnWidths={['44px', '120px', '20%', '18%', '14%', '12%', '10%', '6%']}
+            headers={['', 'টিকিট নম্বর', 'প্রেরক ও যোগাযোগ', 'বিষয় ও বিভাগ', 'ক্যাটাগরি', 'অগ্রাধিকার', 'স্ট্যাটাস', 'তারিখ', 'অ্যাকশন']}
           />
         ) : tickets.length === 0 ? (
           <EmptyState
@@ -428,6 +765,14 @@ export default function ServiceListPage() {
           <Table responsive hover className="admin-table align-middle" style={{ marginBottom: 0 }}>
             <thead>
               <tr>
+                <th style={{ width: 44, textAlign: 'center', verticalAlign: 'middle', paddingLeft: 16 }}>
+                  <TableCheckbox
+                    checked={isAllSelected}
+                    indeterminate={isSomeSelected && !isAllSelected}
+                    onChange={toggleSelectAll}
+                    title={isAllSelected ? 'সব নির্বাচন বাতিল করুন' : 'এই পৃষ্ঠার সব নির্বাচন করুন'}
+                  />
+                </th>
                 <th style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>টিকিট নম্বর</th>
                 <th style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>প্রেরক ও যোগাযোগ</th>
                 <th style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>অভিযোগের বিষয়</th>
@@ -443,8 +788,23 @@ export default function ServiceListPage() {
                 const sc = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.pending
                 const pc = PRIORITY_CONFIG[ticket.priority] || PRIORITY_CONFIG['সাধারণ']
                 const ticketNum = ticket.ticket_number || `TK-${ticket.id}`
+                const isSelected = selectedIds.includes(ticket.id)
                 return (
-                  <tr key={ticket.id} style={{ verticalAlign: 'middle' }}>
+                  <tr
+                    key={ticket.id}
+                    style={{
+                      background: isSelected ? 'rgba(16, 185, 129, 0.08)' : undefined,
+                      verticalAlign: 'middle',
+                      transition: 'background 0.15s ease'
+                    }}
+                  >
+                    <td style={{ width: 44, textAlign: 'center', verticalAlign: 'middle', paddingLeft: 16 }} onClick={e => e.stopPropagation()}>
+                      <TableCheckbox
+                        checked={isSelected}
+                        onChange={() => toggleSelectOne(ticket.id)}
+                        title="নির্বাচন করুন"
+                      />
+                    </td>
                     <td style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       <CompactUlid value={ticketNum} />
                     </td>
@@ -520,8 +880,15 @@ export default function ServiceListPage() {
       />
 
       {/* View Ticket Details Modal */}
-      <Modal show={!!viewTicket} onHide={() => { setViewTicket(null); setPendingStatus(null) }} centered size="lg">
-        <Modal.Header closeButton style={{ borderBottom: '1px solid #E2E8F0', padding: '16px 24px', background: '#FAFAFA' }}>
+      <Modal
+        show={!!viewTicket}
+        onHide={() => { setViewTicket(null); setPendingStatus(null) }}
+        centered
+        scrollable
+        size="lg"
+        dialogClassName="service-modal-dialog"
+      >
+        <Modal.Header closeButton style={{ borderBottom: '1px solid #E2E8F0', padding: '16px 24px', background: '#FAFAFA', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(135deg, #00B875, #009E64)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', flexShrink: 0 }}>
               <IconTicket size={22} />
@@ -555,7 +922,7 @@ export default function ServiceListPage() {
           </div>
         </Modal.Header>
 
-        <Modal.Body style={{ padding: '22px 24px', maxHeight: '78vh', overflowY: 'auto' }}>
+        <Modal.Body style={{ padding: '20px 24px', overflowY: 'auto' }}>
           {viewTicket && (() => {
             const currentSc = STATUS_CONFIG[viewTicket.status] || STATUS_CONFIG.pending
             const currentPc = PRIORITY_CONFIG[viewTicket.priority] || PRIORITY_CONFIG['সাধারণ']
@@ -915,7 +1282,7 @@ export default function ServiceListPage() {
           })()}
         </Modal.Body>
 
-        <Modal.Footer style={{ borderTop: '1px solid #E2E8F0', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', background: '#FAFAFA' }}>
+        <Modal.Footer style={{ borderTop: '1px solid #E2E8F0', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', background: '#FAFAFA', flexShrink: 0 }}>
           <Button
             variant="light"
             onClick={() => { setDeleteId(viewTicket?.id); setViewTicket(null); setPendingStatus(null) }}
@@ -942,7 +1309,37 @@ export default function ServiceListPage() {
         message="আপনি কি নিশ্চিত যে এই সাপোর্ট টিকিট/অভিযোগটি ডাটাবেজ থেকে মুছে ফেলতে চান? এই কাজটি পুনরায় ফিরিয়ে আনা যাবে না।"
       />
 
+      <DeleteModal
+        show={showBulkDeleteModal}
+        onCancel={() => setShowBulkDeleteModal(false)}
+        onConfirm={handleBulkDelete}
+        title="নির্বাচিত টিকিটগুলো মুছে ফেলার নিশ্চিতকরণ"
+        message={`আপনি কি নিশ্চিত যে নির্বাচিত ${selectedIds.length} টি সাপোর্ট টিকিট ডাটাবেজ থেকে মুছে ফেলতে চান? এই কাজটি পুনরায় ফিরিয়ে আনা যাবে না।`}
+      />
+
       <style>{`
+        .service-modal-dialog {
+          max-height: calc(100vh - 40px);
+          margin: 20px auto;
+        }
+        .service-modal-dialog .modal-content {
+          max-height: calc(100vh - 40px);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border-radius: 16px;
+        }
+        .service-modal-dialog .modal-header {
+          flex-shrink: 0;
+        }
+        .service-modal-dialog .modal-body {
+          flex: 1 1 auto;
+          overflow-y: auto;
+          max-height: calc(100vh - 170px);
+        }
+        .service-modal-dialog .modal-footer {
+          flex-shrink: 0;
+        }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       `}</style>
     </div>

@@ -19,7 +19,8 @@ import {
   Check,
   Eye,
   FileCheck,
-  Calendar
+  Calendar,
+  RefreshCw
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 import adminAgentApi from '../../../api/adminAgentApi'
@@ -40,10 +41,16 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
   const [revokeReason, setRevokeReason] = useState('')
   const [revoking, setRevoking] = useState(false)
 
+  // Reopen prompt state (for rejected or revoked applications)
+  const [showReopenPrompt, setShowReopenPrompt] = useState(false)
+  const [reopenNotes, setReopenNotes] = useState('')
+  const [reopening, setReopening] = useState(false)
+
   if (!request) return null
 
   const payload = request.payload || {}
   const documents = Array.isArray(request.documents) ? request.documents : []
+  const isHospital = request.entity_type === 'hospital'
 
   const isApproved = request.status === 'approved'
   const isRejected = request.status === 'rejected'
@@ -142,6 +149,26 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
       toast.error(err?.response?.data?.message || 'Revocation failed.')
     } finally {
       setRevoking(false)
+    }
+  }
+
+  const handleReopen = async () => {
+    setReopening(true)
+    try {
+      const res = await adminAgentApi.processDecision(request.id, {
+        action: 'reopen',
+        admin_notes: reopenNotes.trim() || 'Reopened by admin for re-audit',
+      })
+      toast.success('আবেদনটি সফলভাবে পুনরায় যাচাই তালিকায় (Under Review) ফেরত নেওয়া হয়েছে।')
+      setShowReopenPrompt(false)
+      if (onDecisionComplete) {
+        onDecisionComplete(res)
+      }
+    } catch (err) {
+      console.error('Reopen failed:', err)
+      toast.error(err?.response?.data?.message || err?.message || 'Re-opening failed.')
+    } finally {
+      setReopening(false)
     }
   }
 
@@ -634,6 +661,81 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                 <div style={{ fontSize: 11.5, color: '#64748B' }}>
                   অডিট করেছেন: <strong>{request.reviewer?.name || 'Admin'}</strong> • {request.reviewed_at ? new Date(request.reviewed_at).toLocaleString() : ''}
                 </div>
+
+                {showReopenPrompt && (
+                  <div style={{
+                    marginTop: 8,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: '#EFF6FF',
+                    border: '1.5px solid #93C5FD',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#1E40AF', fontWeight: 800, fontSize: 13 }}>
+                      <RefreshCw size={15} />
+                      <span>আবেদন পুনরায় বিবেচনা (Re-open for Review)</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: '#1E3A8A', lineHeight: 1.4 }}>
+                      আপনি কি আবেদনটি পুনরায় যাচাই তালিকায় ফিরিয়ে নিতে চান? এতে আবেদনটি আবার সক্রিয় হবে এবং আপনি নতুন করে কাগজপত্র নিরীক্ষা করে সিদ্ধান্ত নিতে পারবেন।
+                    </p>
+                    <input
+                      type="text"
+                      value={reopenNotes}
+                      onChange={(e) => setReopenNotes(e.target.value)}
+                      placeholder="পুনর্বিবেচনার মন্তব্য বা কারণ লিখুন (যেমন: সঠিক কাগজপত্র গৃহীত হয়েছে)..."
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        border: '1px solid #93C5FD',
+                        fontSize: 12,
+                        outline: 'none',
+                        background: '#ffffff'
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowReopenPrompt(false)}
+                        disabled={reopening}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 8,
+                          border: '1px solid #CBD5E1',
+                          background: '#ffffff',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ফিরে যান
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReopen}
+                        disabled={reopening}
+                        style={{
+                          padding: '6px 16px',
+                          borderRadius: 8,
+                          border: 'none',
+                          background: '#2563EB',
+                          color: '#ffffff',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          cursor: reopening ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {reopening && <Loader2 size={13} className="animate-spin" />}
+                        <span>পুনরায় যাচাই নিশ্চিত করুন</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : isRevoked ? (
               <div style={{
@@ -654,6 +756,93 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                 <p style={{ margin: 0, fontSize: 12.5, color: '#B45309', lineHeight: 1.5 }}>
                   এই আবেদনটির অনুমোদন পরবর্তীতে প্রত্যাহার করা হয়েছে। সংশ্লিষ্ট ডাক্তার প্রোফাইল নিষ্ক্রিয় করা হয়েছে এবং এজেন্টের কমিশন রিভার্স করা হয়েছে।
                 </p>
+                {request.rejection_reason && (
+                  <div style={{
+                    background: '#ffffff',
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    fontSize: 12
+                  }}>
+                    <span style={{ color: '#64748B', display: 'block', fontSize: 11, fontWeight: 600 }}>প্রত্যাহারের কারণ:</span>
+                    <strong style={{ color: '#D97706', fontSize: 12.5 }}>{request.rejection_reason}</strong>
+                  </div>
+                )}
+
+                {showReopenPrompt && (
+                  <div style={{
+                    marginTop: 8,
+                    padding: 14,
+                    borderRadius: 12,
+                    background: '#EFF6FF',
+                    border: '1.5px solid #93C5FD',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#1E40AF', fontWeight: 800, fontSize: 13 }}>
+                      <RefreshCw size={15} />
+                      <span>আবেদন পুনরায় বিবেচনা (Re-open for Review)</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: '#1E3A8A', lineHeight: 1.4 }}>
+                      আপনি কি এই প্রত্যাহারকৃত আবেদনটি পুনরায় যাচাই তালিকায় ফিরিয়ে নিতে চান? এতে আবেদনটি আবার সক্রিয় হবে এবং আপনি নতুন করে নিরীক্ষা করতে পারবেন।
+                    </p>
+                    <input
+                      type="text"
+                      value={reopenNotes}
+                      onChange={(e) => setReopenNotes(e.target.value)}
+                      placeholder="পুনর্বিবেচনার মন্তব্য বা কারণ লিখুন..."
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        border: '1px solid #93C5FD',
+                        fontSize: 12,
+                        outline: 'none',
+                        background: '#ffffff'
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowReopenPrompt(false)}
+                        disabled={reopening}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: 8,
+                          border: '1px solid #CBD5E1',
+                          background: '#ffffff',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ফিরে যান
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReopen}
+                        disabled={reopening}
+                        style={{
+                          padding: '6px 16px',
+                          borderRadius: 8,
+                          border: 'none',
+                          background: '#2563EB',
+                          color: '#ffffff',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          cursor: reopening ? 'not-allowed' : 'pointer'
+                        }}
+                      >
+                        {reopening && <Loader2 size={13} className="animate-spin" />}
+                        <span>পুনরায় যাচাই নিশ্চিত করুন</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : isRevisionRequested ? (
               <div style={{
@@ -1080,7 +1269,7 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
         }}>
           {isAudited ? (
             <>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {isApproved && !showRevokePrompt && (
                   <button
                     type="button"
@@ -1102,6 +1291,30 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                   >
                     <AlertTriangle size={14} />
                     <span>অনুমোদন প্রত্যাহার / Clawback</span>
+                  </button>
+                )}
+
+                {(isRejected || isRevoked) && !showReopenPrompt && (
+                  <button
+                    type="button"
+                    onClick={() => setShowReopenPrompt(true)}
+                    style={{
+                      padding: '0 14px',
+                      height: 38,
+                      borderRadius: 10,
+                      border: '1px solid #93C5FD',
+                      background: 'rgba(59, 130, 246, 0.06)',
+                      color: '#2563EB',
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}
+                  >
+                    <RefreshCw size={14} />
+                    <span>পুনরায় যাচাই করুন (Re-open Review)</span>
                   </button>
                 )}
               </div>

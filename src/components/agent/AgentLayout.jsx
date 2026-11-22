@@ -83,11 +83,11 @@ export default function AgentLayout() {
   const agentPhone = user?.agent?.phone || user?.phone || ''
 
   const navLinks = [
-    { to: '/agent', label: 'Overview', icon: LayoutDashboard, exact: true },
-    { to: '/agent/onboard/doctor', label: 'Onboard Doctor', icon: Stethoscope },
-    { to: '/agent/onboard/hospital', label: 'Onboard Hospital', icon: Building2 },
-    { to: '/agent/tracker', label: 'Submissions', icon: ClipboardList },
-    { to: '/agent/wallet', label: 'Wallet', icon: Wallet },
+    { to: '/agent', label: 'Overview', mobileLabel: 'Overview', icon: LayoutDashboard, exact: true },
+    { to: '/agent/onboard/doctor', label: 'Onboard Doctor', mobileLabel: 'Doctor', icon: Stethoscope },
+    { to: '/agent/onboard/hospital', label: 'Onboard Hospital', mobileLabel: 'Hospital', icon: Building2 },
+    { to: '/agent/tracker', label: 'Submissions', mobileLabel: 'Submissions', icon: ClipboardList },
+    { to: '/agent/wallet', label: 'Wallet', mobileLabel: 'Wallet', icon: Wallet },
   ]
 
   const isLinkActive = (item) => {
@@ -108,6 +108,40 @@ export default function AgentLayout() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        .agent-header-inner {
+          max-width: 1240px;
+          margin: 0 auto;
+          padding: 0 20px;
+          height: 64px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+        .agent-header-logo {
+          height: 38px;
+          width: auto;
+          object-fit: contain;
+          transition: height 0.2s ease;
+        }
+        @media (max-width: 576px) {
+          .agent-header-inner {
+            padding: 0 12px;
+            height: 56px;
+            gap: 8px;
+          }
+          .agent-header-logo {
+            height: 29px;
+          }
+          .agent-wallet-pill {
+            padding: 4px 8px !important;
+          }
+          .agent-balance-label {
+            display: none !important;
+          }
+        }
+      `}</style>
       {/* ── Top Enterprise Header ── */}
       <header style={{
         position: 'sticky',
@@ -117,23 +151,14 @@ export default function AgentLayout() {
         borderBottom: '1px solid #E2E8F0',
         boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
       }}>
-        <div style={{
-          maxWidth: 1240,
-          margin: '0 auto',
-          padding: '0 20px',
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16
-        }}>
+        <div className="agent-header-inner">
           {/* Left: Brand */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <Link to="/agent" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
               <img 
                 src="/doctorBookletLogo.png" 
                 alt="Doctor Booklet" 
-                style={{ height: 38, width: 'auto', objectFit: 'contain' }}
+                className="agent-header-logo"
               />
             </Link>
           </div>
@@ -180,6 +205,7 @@ export default function AgentLayout() {
             {/* Live Wallet Pill */}
             <Link
               to="/agent/wallet"
+              className="agent-wallet-pill"
               title="Click to view statement and withdraw"
               style={{
                 display: 'inline-flex',
@@ -207,7 +233,7 @@ export default function AgentLayout() {
                 <Wallet size={11} />
               </div>
               <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
-                <span style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#047857', textTransform: 'uppercase' }}>
+                <span className="agent-balance-label" style={{ display: 'block', fontSize: 10, fontWeight: 700, color: '#047857', textTransform: 'uppercase' }}>
                   Balance
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 900, color: '#065F46' }}>
@@ -511,7 +537,7 @@ export default function AgentLayout() {
       </header>
 
       {/* ── Main Routed Page Content ── */}
-      <main style={{ flex: 1, paddingBottom: 72 }}>
+      <main style={{ flex: 1, paddingBottom: 'calc(76px + env(safe-area-inset-bottom, 0px))' }}>
         {isAgentSuspended && (
           <div style={{
             background: 'linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%)',
@@ -562,77 +588,87 @@ export default function AgentLayout() {
           bottom: 0,
           left: 0,
           right: 0,
-          height: 62,
-          background: '#FFFFFF',
+          height: 'calc(58px + env(safe-area-inset-bottom, 0px))',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           borderTop: '1px solid #E2E8F0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
           zIndex: 1000,
-          boxShadow: '0 -4px 16px rgba(0, 0, 0, 0.06)',
-          padding: '0 8px'
+          boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.06)',
+          padding: '0 4px env(safe-area-inset-bottom, 0px) 4px',
         }}
       >
         {navLinks.map((item) => {
           const active = isLinkActive(item)
           const Icon = item.icon
-          const isOnboard = item.to.includes('onboard')
-
-          if (isOnboard) {
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textDecoration: 'none',
-                  marginTop: -20
-                }}
-              >
-                <div style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #065F46 0%, #10B981 100%)',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 6px 14px rgba(6, 95, 70, 0.35)',
-                  border: '3px solid #FFFFFF'
-                }}>
-                  <Stethoscope size={22} />
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 800, color: '#065F46', marginTop: 2 }}>
-                  + Onboard
-                </span>
-              </Link>
-            )
-          }
 
           return (
             <Link
               key={item.to}
               to={item.to}
               style={{
+                flex: 1,
+                minWidth: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 3,
                 textDecoration: 'none',
-                color: active ? '#065F46' : '#94A3B8',
-                padding: '6px 12px',
-                borderRadius: 8,
-                transition: 'all 0.15s ease'
+                height: '100%',
+                position: 'relative',
+                padding: '4px 2px',
+                transition: 'all 0.2s ease',
+                WebkitTapHighlightColor: 'transparent',
               }}
             >
-              <Icon size={19} color={active ? '#065F46' : '#94A3B8'} />
-              <span style={{ fontSize: 10, fontWeight: active ? 800 : 600 }}>
-                {item.label.replace('+ ', '')}
+              {/* Active top indicator pill */}
+              {active && (
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  width: 28,
+                  height: 3,
+                  borderRadius: '0 0 3px 3px',
+                  background: '#059669',
+                  boxShadow: '0 2px 6px rgba(5, 150, 105, 0.4)'
+                }} />
+              )}
+
+              {/* Icon Container with active pill background */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 36,
+                height: 26,
+                borderRadius: 13,
+                background: active ? '#ECFDF5' : 'transparent',
+                transition: 'all 0.2s ease',
+                marginBottom: 2
+              }}>
+                <Icon 
+                  size={19} 
+                  strokeWidth={active ? 2.5 : 1.9}
+                  color={active ? '#059669' : '#64748B'} 
+                />
+              </div>
+
+              {/* Mobile label */}
+              <span style={{ 
+                fontSize: 10.5, 
+                fontWeight: active ? 800 : 600,
+                color: active ? '#059669' : '#64748B',
+                lineHeight: 1.1,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '100%',
+                textAlign: 'center'
+              }}>
+                {item.mobileLabel || item.label}
               </span>
             </Link>
           )

@@ -387,7 +387,6 @@ export default function ForgotPasswordPage() {
                     placeholder="01XXXXXXXXX"
                     value={mobile}
                     onChange={handleMobileChange}
-                    autoFocus
                     maxLength={11}
                   />
                   <button

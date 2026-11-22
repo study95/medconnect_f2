@@ -26,22 +26,44 @@ import TableFooter from '../../../components/admin/TableFooter'
 import EmptyState from '../../../components/common/EmptyState'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import CompactUlid from '../../../components/common/CompactUlid'
-import { useDebounce } from '../../../hooks/useDebounce'
+import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 
 export default function AgentDirectoryPage() {
   const [agents, setAgents] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [search, setSearch] = useState('')
-  const debouncedSearch = useDebounce(search, 300)
-  const [statusFilter, setStatusFilter] = useState('')
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
   const [actionInProgress, setActionInProgress] = useState(null)
 
+  // Enterprise URL & session-synchronized filters
+  const {
+    filters,
+    setFilter,
+    resetFilters,
+    search,
+    setSearch,
+    debouncedSearch,
+    currentPage,
+    setCurrentPage,
+    perPage,
+    setPerPage,
+    hasActiveFilters,
+  } = useTableUrlFilters({
+    initialFilters: {
+      statusFilter: '',
+    },
+    aliases: {
+      statusFilter: ['status'],
+    },
+    storageKey: 'admin_agents_filters',
+    defaultPerPage: 15,
+  })
+
+  const { statusFilter } = filters
+  const setStatusFilter = (val) => setFilter('statusFilter', val)
+
   // Pagination
-  const [currentPage, setCurrentPage] = useState(1)
-  const [perPage, setPerPage] = useState(15)
   const [total, setTotal] = useState(0)
 
   const fetchAgents = useCallback(async (isRefresh = false) => {
@@ -76,10 +98,7 @@ export default function AgentDirectoryPage() {
     fetchAgents()
   }, [fetchAgents])
 
-  // Reset to page 1 whenever filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [statusFilter, debouncedSearch])
+
 
   const handleToggleStatus = async (agent) => {
     const newStatus = agent.status === 'active' ? 'suspended' : 'active'
@@ -105,9 +124,7 @@ export default function AgentDirectoryPage() {
   }
 
   const clearFilters = () => {
-    setStatusFilter('')
-    setSearch('')
-    setCurrentPage(1)
+    resetFilters()
   }
 
   // Calculate live stats
@@ -268,7 +285,7 @@ export default function AgentDirectoryPage() {
         refreshing={refreshing || loading}
         showFilters={showFilters}
         onToggleFilters={() => setShowFilters(p => !p)}
-        hasActiveFilters={Boolean(statusFilter)}
+        hasActiveFilters={hasActiveFilters}
         onClearFilters={clearFilters}
         activeFilters={[
           statusFilter && { 

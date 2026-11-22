@@ -618,14 +618,12 @@ function App() {
             <Route path="onboard/doctor" element={<DoctorOnboardWizardPage />} />
             <Route path="onboard/hospital" element={<HospitalOnboardWizardPage />} />
             <Route path="tracker" element={<SubmissionsTrackerPage />} />
+            <Route path="submissions" element={<Navigate to="/agent/tracker" replace />} />
             <Route path="wallet" element={<AgentWalletPage />} />
           </Route>
 
           {/* ===== TV DISPLAY ROUTES & ADMIN SECURE ACCESS (Completely standalone) ===== */}
           <Route path="/admin-secure-access" element={<GuestOnlyRoute><AdminSecureLoginPage /></GuestOnlyRoute>} />
-          <Route path="/login/agent" element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
-          <Route path="/agent/login" element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
-          <Route path="/agent-login" element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
           <Route path="/display/:token" element={<PublicDisplayBoardPage />} />
           <Route path="/display/hospital/:hospitalId" element={<PublicDisplayBoardPage />} />
           <Route path="/queue-display/:token" element={<PublicDisplayBoardPage />} />
@@ -646,6 +644,9 @@ function App() {
                   <Route path="/login/patient"              element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
                   <Route path="/login/doctor"               element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
                   <Route path="/login/hospital"             element={<GuestOnlyRoute><LoginPage /></GuestOnlyRoute>} />
+                  <Route path="/login/agent"                element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
+                  <Route path="/agent/login"                element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
+                  <Route path="/agent-login"                element={<GuestOnlyRoute><AgentLoginPage /></GuestOnlyRoute>} />
                   <Route path="/login/choice"               element={<GuestOnlyRoute><LoginChoicePage /></GuestOnlyRoute>} />
 
                   <Route path="/join"                       element={<JoinPartnerLandingPage />} />

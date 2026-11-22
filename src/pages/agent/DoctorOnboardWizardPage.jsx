@@ -38,6 +38,9 @@ import axiosInstance from '../../api/axiosInstance'
 import PresignedDropzone from '../../features/agent/components/PresignedDropzone'
 import { getMediaUrl } from '../../utils/mediaUtils'
 
+const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
+const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
+
 const INITIAL_DOCTOR_FORM = {
   name: '',
   name_bn: '',
@@ -86,6 +89,12 @@ export default function DoctorOnboardWizardPage() {
   const [specialtySearch, setSpecialtySearch] = useState('')
   const [specialtyDropdownOpen, setSpecialtyDropdownOpen] = useState(false)
   const specialtyDropdownRef = useRef(null)
+
+  // Workplace suggestions state
+  const [hospitalsList, setHospitalsList] = useState([])
+  const [workplaceDropdownOpen, setWorkplaceDropdownOpen] = useState(false)
+  const workplaceDropdownRef = useRef(null)
+
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState(null)
   const [errorList, setErrorList] = useState([])
@@ -397,6 +406,43 @@ export default function DoctorOnboardWizardPage() {
     }
   }
 
+  // Fetch registered hospitals for workplace suggestions
+  useEffect(() => {
+    axiosInstance.get('/hospitals', { params: { per_page: 80 } })
+      .then((res) => {
+        const raw = res.data
+        let list = []
+        if (raw?.data?.data && Array.isArray(raw.data.data)) {
+          list = raw.data.data
+        } else if (raw?.data && Array.isArray(raw.data)) {
+          list = raw.data
+        } else if (Array.isArray(raw)) {
+          list = raw
+        }
+        setHospitalsList(list)
+      })
+      .catch((err) => console.error('Failed to load hospitals for suggestions:', err))
+  }, [])
+
+  // Close workplace dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (workplaceDropdownRef.current && !workplaceDropdownRef.current.contains(e.target)) {
+        setWorkplaceDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredHospitals = (hospitalsList || []).filter((h) => {
+    const q = (formData.workplace || '').trim().toLowerCase()
+    if (!q) return true
+    const nameMatch = h.name && h.name.toLowerCase().includes(q)
+    const bnMatch = (h.name_bn || h.bangla_name) && (h.name_bn || h.bangla_name).toLowerCase().includes(q)
+    return nameMatch || bnMatch
+  }).slice(0, 8)
+
   const handleSelectCustomSpecialty = (customName) => {
     const cleanName = customName.trim()
     if (!cleanName) return
@@ -489,7 +535,11 @@ export default function DoctorOnboardWizardPage() {
     }
 
     if (step === 2) {
-      if (!formData.bmdc.trim()) errs.bmdc = 'BMDC রেজিস্ট্রেশন নম্বর আবশ্যক (যেমন: A-18293)।'
+      if (!formData.bmdc.trim()) {
+        errs.bmdc = 'BMDC রেজিস্ট্রেশন নম্বর আবশ্যক (যেমন: A-18293)।'
+      } else if (formData.bmdc.includes('@') || !/^[A-Za-z0-9\-\s]+$/.test(formData.bmdc.trim())) {
+        errs.bmdc = 'সঠিক BMDC রেজিস্ট্রেশন নম্বর লিখুন (যেমন: A-18293)। কোনো ইমেইল ঠিকানা গ্রহণযোগ্য নয়।'
+      }
       if (!formData.specialty_id && !formData.custom_specialty_name?.trim()) {
         errs.specialty_id = 'মেডিকেল স্পেশালিটি নির্বাচন করুন অথবা নতুন নাম লিখুন।'
       }
@@ -680,6 +730,19 @@ export default function DoctorOnboardWizardPage() {
   const selectedUpazila = upazilas.find(u => String(u.id) === String(formData.upazila_id))
   const selectedUnion = unions.find(un => String(un.id) === String(formData.union_id))
 
+  const formatLocationPart = (item) => {
+    if (!item) return ''
+    const bn = item.bangla_name || item.name_bn
+    return bn ? `${item.name} (${bn})` : item.name
+  }
+
+  const locationBreadcrumb = [
+    formatLocationPart(selectedDivision),
+    formatLocationPart(selectedDistrict),
+    formatLocationPart(selectedUpazila),
+    formatLocationPart(selectedUnion),
+  ].filter(Boolean)
+
   if (isAgentSuspended) {
     return (
       <div style={{ minHeight: '100%', background: '#F8FAFC' }}>
@@ -832,7 +895,273 @@ export default function DoctorOnboardWizardPage() {
 
   return (
     <div style={{ minHeight: '100%', background: '#F8FAFC' }}>
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '24px 20px 48px' }}>
+      <style>{`
+        .doctor-wizard-container {
+          max-width: 860px;
+          margin: 0 auto;
+          padding: 24px 20px 48px;
+        }
+        .doctor-wizard-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+          gap: 16px;
+        }
+        .doctor-wizard-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+          flex: 1;
+        }
+        .doctor-wizard-title-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #00B875 0%, #0284c7 100%);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 14px rgba(0, 184, 117, 0.3);
+          flex-shrink: 0;
+        }
+        .doctor-wizard-title-h1 {
+          font-size: 22px;
+          font-weight: 900;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.02em;
+        }
+        .doctor-wizard-subtitle {
+          font-size: 13px;
+          color: #64748B;
+          margin: 3px 0 0;
+        }
+        .doctor-wizard-badges {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        .doctor-wizard-stepper-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 20px;
+          padding: 20px 24px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+          margin-bottom: 24px;
+          position: relative;
+        }
+        .doctor-wizard-main-card {
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 24px;
+          padding: 32px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+          margin-bottom: 32px;
+        }
+        .doctor-wizard-nav-controls {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 32px;
+          padding-top: 24px;
+          border-top: 1px solid #F1F5F9;
+        }
+
+        @media (max-width: 768px) {
+          .doctor-wizard-container {
+            padding: 14px 12px calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+          }
+          .doctor-wizard-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+            margin-bottom: 16px !important;
+          }
+          .doctor-wizard-title-icon {
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 10px !important;
+          }
+          .doctor-wizard-title-h1 {
+            font-size: 17px !important;
+            white-space: normal !important;
+            line-height: 1.3 !important;
+          }
+          .doctor-wizard-subtitle {
+            font-size: 12px !important;
+          }
+          .doctor-wizard-badges {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .doctor-wizard-draft-badge {
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+          }
+          .doctor-wizard-step-pill {
+            padding: 4px 10px !important;
+            font-size: 11.5px !important;
+          }
+          .doctor-wizard-stepper-card {
+            padding: 14px 12px 12px !important;
+            border-radius: 16px !important;
+            margin-bottom: 16px !important;
+          }
+          .doctor-wizard-stepper-label {
+            display: none !important;
+          }
+          .doctor-wizard-stepper-circle {
+            width: 32px !important;
+            height: 32px !important;
+            font-size: 12px !important;
+          }
+          .doctor-wizard-stepper-item {
+            padding: 0 2px !important;
+          }
+          .doctor-wizard-line-bg,
+          .doctor-wizard-line-active {
+            top: 16px !important;
+            left: 18px !important;
+            right: 18px !important;
+          }
+          .doctor-wizard-main-card {
+            padding: 18px 14px !important;
+            border-radius: 16px !important;
+            margin-bottom: 20px !important;
+          }
+          .doctor-form-grid-2 {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
+          }
+          .doctor-wizard-nav-controls {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-top: 20px !important;
+            padding-top: 16px !important;
+            gap: 10px !important;
+          }
+          .doctor-wizard-btn-prev {
+            flex: 0 0 auto !important;
+            min-height: 46px !important;
+            padding: 12px 18px !important;
+            font-size: 13.5px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            justify-content: center !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+          }
+          .doctor-wizard-btn-next,
+          .doctor-wizard-btn-submit {
+            flex: 1 !important;
+            min-width: 0 !important;
+            min-height: 46px !important;
+            padding: 12px 16px !important;
+            font-size: 13.5px !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+            justify-content: center !important;
+            text-align: center !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+          }
+          .doctor-review-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 16px 18px;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+          }
+          .doctor-review-card-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            margin-bottom: 12px !important;
+            padding-bottom: 8px !important;
+            border-bottom: 1px solid #F1F5F9 !important;
+            gap: 8px !important;
+          }
+          .doctor-review-edit-btn {
+            background: #F0F9FF !important;
+            border: 1px solid #BAE6FD !important;
+            color: #0284C7 !important;
+            font-size: 11.5px !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 4px !important;
+            padding: 3px 9px !important;
+            border-radius: 6px !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            transition: all 0.15s ease !important;
+          }
+          .doctor-review-grid {
+            display: grid !important;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+            gap: 12px !important;
+          }
+          .doctor-review-cell {
+            background: #F8FAFC;
+            border-radius: 10px;
+            padding: 8px 12px;
+            border: 1px solid #F1F5F9;
+          }
+          .doctor-review-cell-full {
+            grid-column: 1 / -1 !important;
+          }
+          .doctor-doc-card {
+            padding: 14px 12px !important;
+            border-radius: 14px !important;
+          }
+          .doctor-doc-guidance {
+            padding: 10px 12px !important;
+            border-radius: 12px !important;
+          }
+          .doctor-doc-title {
+            font-size: 13px !important;
+          }
+          .doctor-doc-subtitle {
+            font-size: 11px !important;
+          }
+          .doctor-doc-badge {
+            font-size: 10px !important;
+            padding: 2.5px 7px !important;
+          }
+          @media (max-width: 768px) {
+            .doctor-review-card {
+              padding: 12px 12px !important;
+              border-radius: 13px !important;
+              margin-bottom: 10px !important;
+            }
+            .doctor-review-grid {
+              display: grid !important;
+              grid-template-columns: 1fr 1fr !important;
+              gap: 8px !important;
+            }
+            .doctor-review-cell {
+              padding: 7px 9px !important;
+              border-radius: 8px !important;
+            }
+            .doctor-review-title {
+              font-size: 13px !important;
+            }
+            .doctor-review-label {
+              font-size: 10px !important;
+            }
+            .doctor-review-val {
+              font-size: 12px !important;
+            }
+          }
+        }
+      `}</style>
+      <div className="doctor-wizard-container">
         {/* Breadcrumb HUD */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748B', marginBottom: 16 }}>
           <Link to="/agent" style={{ color: 'inherit', textDecoration: 'none' }}>Partner Desk</Link>
@@ -845,33 +1174,16 @@ export default function DoctorOnboardWizardPage() {
         </div>
 
         {/* Page Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 24,
-          gap: 16
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0, flex: 1 }}>
-            <div style={{
-              width: 48,
-              height: 48,
-              borderRadius: 14,
-              background: 'linear-gradient(135deg, #00B875 0%, #0284c7 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(0, 184, 117, 0.3)',
-              flexShrink: 0
-            }}>
+        <div className="doctor-wizard-header">
+          <div className="doctor-wizard-title-wrap">
+            <div className="doctor-wizard-title-icon">
               <Stethoscope size={24} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <h1 className="doctor-wizard-title-h1">
                 {isEditingRevision ? 'ডাক্তার আবেদন সংশোধন ফর্ম' : 'নতুন ডাক্তার অনবোর্ডিং ফর্ম'}
               </h1>
-              <p style={{ fontSize: 13, color: '#64748B', margin: '3px 0 0' }}>
+              <p className="doctor-wizard-subtitle">
                 {isEditingRevision 
                   ? `আবেদন #${editCode} • সংশোধিত তথ্য জমা দিন`
                   : <>ডাক্তারের তথ্য ও BMDC যাচাই সাপেক্ষে <strong>৳৫০০ কমিশন</strong>।</>}
@@ -879,9 +1191,9 @@ export default function DoctorOnboardWizardPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div className="doctor-wizard-badges">
             {!isEditingRevision && (
-              <span style={{
+              <span className="doctor-wizard-draft-badge" style={{
                 fontSize: 11.5,
                 fontWeight: 600,
                 color: '#059669',
@@ -898,7 +1210,7 @@ export default function DoctorOnboardWizardPage() {
                 অটো-সেভ ড্রাফট সক্রিয়
               </span>
             )}
-            <div style={{
+            <div className="doctor-wizard-step-pill" style={{
               background: isEditingRevision ? 'rgba(245, 158, 11, 0.12)' : 'rgba(0, 184, 117, 0.1)',
               border: isEditingRevision ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid rgba(0, 184, 117, 0.25)',
               borderRadius: 10,
@@ -912,7 +1224,7 @@ export default function DoctorOnboardWizardPage() {
               whiteSpace: 'nowrap'
             }}>
               <Sparkles size={14} />
-              <span>ধাপ {currentStep} / ৫</span>
+              <span>ধাপ {toBengaliNumber(currentStep)} / ৫</span>
             </div>
           </div>
         </div>
@@ -1032,15 +1344,7 @@ export default function DoctorOnboardWizardPage() {
         )}
 
         {/* ── Stepper Progress Bar ── */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: 20,
-          padding: '20px 24px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-          marginBottom: 24,
-          position: 'relative'
-        }}>
+        <div className="doctor-wizard-stepper-card">
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -1048,7 +1352,7 @@ export default function DoctorOnboardWizardPage() {
             position: 'relative'
           }}>
             {/* Background line connecting steps */}
-            <div style={{
+            <div className="doctor-wizard-line-bg" style={{
               position: 'absolute',
               top: 20,
               left: 30,
@@ -1059,7 +1363,7 @@ export default function DoctorOnboardWizardPage() {
             }} />
 
             {/* Active connecting line */}
-            <div style={{
+            <div className="doctor-wizard-line-active" style={{
               position: 'absolute',
               top: 20,
               left: 30,
@@ -1078,6 +1382,7 @@ export default function DoctorOnboardWizardPage() {
               return (
                 <div 
                   key={s.num} 
+                  className="doctor-wizard-stepper-item"
                   style={{
                     position: 'relative',
                     zIndex: 1,
@@ -1093,6 +1398,7 @@ export default function DoctorOnboardWizardPage() {
                   }}
                 >
                   <div
+                    className="doctor-wizard-stepper-circle"
                     style={{
                       width: 40,
                       height: 40,
@@ -1120,7 +1426,7 @@ export default function DoctorOnboardWizardPage() {
                     {isCompleted ? <Check size={18} strokeWidth={3} /> : <Icon size={16} />}
                   </div>
 
-                  <span style={{
+                  <span className="doctor-wizard-stepper-label" style={{
                     fontSize: 12,
                     fontWeight: isCurrent ? 800 : 600,
                     color: isCurrent ? '#00B875' : isCompleted ? '#0F172A' : '#64748B',
@@ -1132,17 +1438,25 @@ export default function DoctorOnboardWizardPage() {
               )
             })}
           </div>
+
+          {/* Mobile Active Step Info Bar */}
+          <div className="d-block d-sm-none" style={{
+            textAlign: 'center',
+            marginTop: 10,
+            paddingTop: 8,
+            borderTop: '1px dashed #E2E8F0'
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#00B875' }}>
+              ধাপ {toBengaliNumber(currentStep)} / ৫: {steps[currentStep - 1]?.label}
+            </span>
+            <span style={{ fontSize: 11, color: '#64748B', display: 'block', marginTop: 1 }}>
+              {steps[currentStep - 1]?.desc}
+            </span>
+          </div>
         </div>
 
         {/* ── Main Form Card ── */}
-        <div style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: 24,
-          padding: '32px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
-          marginBottom: 32
-        }}>
+        <div className="doctor-wizard-main-card">
           {/* STEP 1: Personal Details */}
           {currentStep === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1209,7 +1523,7 @@ export default function DoctorOnboardWizardPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              <div className="doctor-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     মোবাইল ফোন নম্বর <span style={{ color: '#EF4444' }}>*</span>
@@ -1288,7 +1602,7 @@ export default function DoctorOnboardWizardPage() {
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              <div className="doctor-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     বিএমডিসি (BMDC) রেজিস্ট্রেশন নম্বর <span style={{ color: '#EF4444' }}>*</span>
@@ -1297,6 +1611,7 @@ export default function DoctorOnboardWizardPage() {
                     type="text"
                     name="bmdc"
                     required
+                    autoComplete="off"
                     value={formData.bmdc}
                     onChange={handleChange}
                     placeholder="যেমন: A-18293"
@@ -1516,7 +1831,7 @@ export default function DoctorOnboardWizardPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              <div className="doctor-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     মূল মেডিকেল ডিগ্রি <span style={{ color: '#EF4444' }}>*</span>
@@ -1525,6 +1840,7 @@ export default function DoctorOnboardWizardPage() {
                     type="text"
                     name="degree"
                     required
+                    autoComplete="off"
                     value={formData.degree}
                     onChange={handleChange}
                     placeholder="যেমন: MBBS, FCPS (Medicine), MD"
@@ -1551,6 +1867,7 @@ export default function DoctorOnboardWizardPage() {
                     name="experience_years"
                     min="0"
                     max="60"
+                    autoComplete="off"
                     value={formData.experience_years}
                     onChange={handleChange}
                     placeholder="যেমন: 10"
@@ -1569,29 +1886,102 @@ export default function DoctorOnboardWizardPage() {
                 </div>
               </div>
 
-              <div>
+              <div ref={workplaceDropdownRef} style={{ position: 'relative' }}>
                 <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   বর্তমান কর্মস্থল / প্রাইমারি হাসপাতাল <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <input
-                  type="text"
-                  name="workplace"
-                  required
-                  value={formData.workplace}
-                  onChange={handleChange}
-                  placeholder="যেমন: ঢাকা মেডিকেল কলেজ হাসপাতাল বা নিজস্ব চেম্বার"
-                  style={{
-                    width: '100%',
-                    height: 44,
-                    padding: '0 14px',
-                    borderRadius: 10,
-                    border: `1.5px solid ${getFieldError('workplace') ? '#EF4444' : '#CBD5E1'}`,
-                    fontSize: 14,
-                    outline: 'none',
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = '#00B875'}
-                  onBlur={(e) => e.target.style.borderColor = getFieldError('workplace') ? '#EF4444' : '#CBD5E1'}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="text"
+                    name="workplace"
+                    required
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    value={formData.workplace}
+                    onChange={(e) => {
+                      handleChange(e)
+                      setWorkplaceDropdownOpen(true)
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = '#00B875'
+                      setWorkplaceDropdownOpen(true)
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = getFieldError('workplace') ? '#EF4444' : '#CBD5E1'
+                    }}
+                    placeholder="যেমন: ঢাকা মেডিকেল কলেজ হাসপাতাল বা নিজস্ব চেম্বার"
+                    style={{
+                      width: '100%',
+                      height: 44,
+                      padding: '0 14px',
+                      borderRadius: 10,
+                      border: `1.5px solid ${getFieldError('workplace') ? '#EF4444' : '#CBD5E1'}`,
+                      fontSize: 14,
+                      outline: 'none',
+                    }}
+                  />
+                  {/* Positioned Dropdown for Workplace Suggestions */}
+                  {workplaceDropdownOpen && filteredHospitals.length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 'calc(100% + 4px)',
+                        left: 0,
+                        right: 0,
+                        background: '#FFFFFF',
+                        border: '1.5px solid #E2E8F0',
+                        borderRadius: 12,
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+                        maxHeight: 200,
+                        overflowY: 'auto',
+                        zIndex: 60,
+                      }}
+                    >
+                      <div style={{ padding: '6px 12px', fontSize: 11, fontWeight: 700, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                        নিবন্ধিত হাসপাতাল তালিকা থেকে বেছে নিন
+                      </div>
+                      {filteredHospitals.map((hosp) => (
+                        <div
+                          key={hosp.id || hosp.slug || hosp.name}
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            setFormData(prev => ({ ...prev, workplace: hosp.name }))
+                            setWorkplaceDropdownOpen(false)
+                            if (fieldErrors.workplace) {
+                              setFieldErrors(prev => {
+                                const next = { ...prev }
+                                delete next.workplace
+                                return next
+                              })
+                            }
+                          }}
+                          style={{
+                            padding: '9px 14px',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: '#1E293B',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderBottom: '1px solid #F8FAFC',
+                            transition: 'background 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = '#F0FDF4'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = '#FFFFFF'}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Building2 size={14} color="#00B875" style={{ flexShrink: 0 }} />
+                            <span>{hosp.name} {hosp.name_bn ? `(${hosp.name_bn})` : ''}</span>
+                          </div>
+                          <span style={{ fontSize: 11, color: '#00B875', fontWeight: 600, whiteSpace: 'nowrap' }}>সিলেক্ট করুন</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {getFieldError('workplace') && (
                   <span style={{ fontSize: 11.5, color: '#EF4444', marginTop: 4, display: 'block', fontWeight: 600 }}>
                     {getFieldError('workplace')}
@@ -1614,7 +2004,7 @@ export default function DoctorOnboardWizardPage() {
               </div>
 
               {/* Administrative Cascading Selects */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+              <div className="doctor-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                 {/* Division */}
                 <div>
                   <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -1831,7 +2221,7 @@ export default function DoctorOnboardWizardPage() {
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                <div className="doctor-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#065F46', marginBottom: 4, textTransform: 'uppercase' }}>
                       অক্ষাংশ (Latitude)
@@ -1890,7 +2280,7 @@ export default function DoctorOnboardWizardPage() {
               </div>
 
               {/* Consultation Fee & Bio */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+              <div className="doctor-form-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     রোগী দেখার ভিজিটিং ফি (টাকা) <span style={{ color: '#EF4444' }}>*</span>
@@ -1960,32 +2350,32 @@ export default function DoctorOnboardWizardPage() {
 
           {/* STEP 4: Documents Upload */}
           {currentStep === 4 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 14 }}>
-                <h2 style={{ fontSize: 19, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>ধাপ ৪: ভেরিফিকেশন ডকুমেন্ট আপলোড</span>
-                  <span style={{ fontSize: 12, background: 'rgba(0, 184, 117, 0.1)', color: '#00B875', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
+                  <span className="d-none d-sm-inline-block" style={{ fontSize: 12, background: 'rgba(0, 184, 117, 0.1)', color: '#00B875', padding: '2px 8px', borderRadius: 6, fontWeight: 700 }}>
                     ধাপ ৪ / ৫
                   </span>
                 </h2>
-                <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
+                <p style={{ fontSize: 12.5, color: '#64748B', margin: '4px 0 0', lineHeight: 1.5 }}>
                   ডাক্তার অ্যাকাউন্ট অ্যাক্টিভেশন ও দ্রুত অনুমোদনের জন্য প্রয়োজনীয় ডকুমেন্টের স্পষ্ট স্ক্যান বা ছবি আপলোড করুন।
                 </p>
               </div>
 
-              {/* Guidance Info Banner */}
-              <div style={{
+              {/* Guidance Info Banner (Sleek, Compact, Mobile-friendly) */}
+              <div className="doctor-doc-guidance" style={{
                 background: 'linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 100%)',
                 border: '1px solid #A7F3D0',
                 borderRadius: 14,
-                padding: '14px 18px',
+                padding: '12px 16px',
                 display: 'flex',
-                alignItems: 'flex-start',
+                alignItems: 'center',
                 gap: 12
               }}>
                 <div style={{
-                  width: 34,
-                  height: 34,
+                  width: 32,
+                  height: 32,
                   borderRadius: 10,
                   background: '#10B981',
                   color: '#FFFFFF',
@@ -1994,30 +2384,28 @@ export default function DoctorOnboardWizardPage() {
                   justifyContent: 'center',
                   flexShrink: 0
                 }}>
-                  <ShieldCheck size={20} />
+                  <ShieldCheck size={18} />
                 </div>
-                <div style={{ fontSize: 12.5, color: '#065F46', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: '#065F46', lineHeight: 1.45 }}>
                   <div style={{ fontWeight: 800, color: '#064E3B', marginBottom: 2 }}>
                     ডকুমেন্ট আপলোড নির্দেশিকা:
                   </div>
-                  <div>• <strong>BMDC সনদপত্র:</strong> রেজিস্ট্রেশন নম্বর (যেমন: A-18293) স্পষ্ট দেখা যায় এমন কপি আপলোড করা বাধ্যতামূলক।</div>
-                  <div>• <strong>জাতীয় পরিচয়পত্র (NID):</strong> দ্রুত ভেরিফিকেশন সম্পন্ন করতে ডাক্তারের NID কার্ড সংযুক্ত করা সুপারিশকৃত।</div>
-                  <div>• <strong>অনুমোদিত ফরম্যাট:</strong> PDF, JPG, PNG বা WEBP (প্রতিটি ফাইল সর্বোচ্চ ১০ MB পর্যন্ত)।</div>
+                  <div>• BMDC সনদ (রেজিস্ট্রেশন নম্বর স্পষ্ট) ও NID কার্ড আপলোড করুন • PDF / ছবি (সর্বোচ্চ ১০ MB)</div>
                 </div>
               </div>
 
               {/* Upload Dropzone Cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {/* Document 1: BMDC Certificate (Mandatory) */}
-                <div style={{
+                <div className="doctor-doc-card" style={{
                   background: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 16,
                   padding: '18px 20px',
                   boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                       <div style={{
                         width: 32,
                         height: 32,
@@ -2026,29 +2414,32 @@ export default function DoctorOnboardWizardPage() {
                         color: '#00B875',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        flexShrink: 0
                       }}>
                         <Award size={18} />
                       </div>
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="doctor-doc-title" style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A', lineHeight: 1.3 }}>
                           BMDC রেজিস্ট্রেশন সনদ / লাইসেন্স কপি
                         </div>
-                        <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                        <div className="doctor-doc-subtitle" style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
                           অফিসিয়াল BMDC রেজিস্ট্রেশন সার্টিফিকেটের স্পষ্ট কপি
                         </div>
                       </div>
                     </div>
-                    <span style={{
-                      fontSize: 11,
+                    <span className="doctor-doc-badge" style={{
+                      fontSize: 10.5,
                       fontWeight: 800,
                       background: '#FEE2E2',
                       color: '#DC2626',
                       padding: '3px 8px',
                       borderRadius: 6,
-                      border: '1px solid #FECACA'
+                      border: '1px solid #FECACA',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}>
-                      আবশ্যক (Required) *
+                      বাধ্যতামূলক *
                     </span>
                   </div>
 
@@ -2064,16 +2455,16 @@ export default function DoctorOnboardWizardPage() {
                   />
                 </div>
 
-                {/* Document 2: Doctor NID Card (Recommended) */}
-                <div style={{
+                {/* Document 2: Doctor NID Card (Mandatory) */}
+                <div className="doctor-doc-card" style={{
                   background: '#FFFFFF',
                   border: '1px solid #E2E8F0',
                   borderRadius: 16,
                   padding: '18px 20px',
                   boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                       <div style={{
                         width: 32,
                         height: 32,
@@ -2082,29 +2473,32 @@ export default function DoctorOnboardWizardPage() {
                         color: '#2563EB',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        flexShrink: 0
                       }}>
                         <User size={18} />
                       </div>
-                      <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="doctor-doc-title" style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A', lineHeight: 1.3 }}>
                           ডাক্তারের জাতীয় পরিচয়পত্র (NID)
                         </div>
-                        <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                        <div className="doctor-doc-subtitle" style={{ fontSize: 11.5, color: '#64748B', marginTop: 2 }}>
                           জাতীয় পরিচয়পত্রের উভয় পাশের স্পষ্ট ছবি বা স্ক্যান কপি
                         </div>
                       </div>
                     </div>
-                    <span style={{
-                      fontSize: 11,
-                      fontWeight: 700,
+                    <span className="doctor-doc-badge" style={{
+                      fontSize: 10.5,
+                      fontWeight: 800,
                       background: '#FEE2E2',
                       color: '#DC2626',
                       padding: '3px 8px',
                       borderRadius: 6,
-                      border: '1px solid #FECACA'
+                      border: '1px solid #FECACA',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}>
-                      আবশ্যক (Required)
+                      বাধ্যতামূলক *
                     </span>
                   </div>
 
@@ -2116,6 +2510,7 @@ export default function DoctorOnboardWizardPage() {
                     existingFileSize={formData.documents?.doctor_nid?.file_size}
                     onUploadSuccess={(fileKey, fileName, sizeStr) => handleDocumentUploaded('doctor_nid', fileKey, fileName, sizeStr)}
                     onRemove={() => handleDocumentRemoved('doctor_nid')}
+                    required={true}
                   />
                 </div>
               </div>
@@ -2125,8 +2520,8 @@ export default function DoctorOnboardWizardPage() {
                 background: activeDocumentCount >= 2 ? '#F0FDF4' : '#FEF3C7',
                 border: activeDocumentCount >= 2 ? '1px solid #86EFAC' : '1px solid #FDE68A',
                 borderRadius: 12,
-                padding: '12px 16px',
-                fontSize: 12.5,
+                padding: '10px 14px',
+                fontSize: 12,
                 fontWeight: 600,
                 color: activeDocumentCount >= 2 ? '#065F46' : '#92400E',
                 display: 'flex',
@@ -2163,156 +2558,154 @@ export default function DoctorOnboardWizardPage() {
 
           {/* STEP 5: Review & Submit */}
           {currentStep === 5 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ borderBottom: '1px solid #F1F5F9', paddingBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <h2 style={{ fontSize: 17, fontWeight: 800, color: '#0F172A', margin: 0 }}>
                     ধাপ ৫: চূড়ান্ত পর্যালোচনা ও সাবমিশন
                   </h2>
-                  <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
-                    প্রশাসনিক অডিটের জন্য সাবমিট করার পূর্বে চিকিৎসকের সকল সংগৃহীত তথ্য ও প্রমাণপত্র যাচাই করুন।
-                  </p>
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#00803D',
+                    background: '#ECFDF5',
+                    border: '1px solid #A7F3D0',
+                    padding: '3px 8px',
+                    borderRadius: 14,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}>
+                    <ShieldCheck size={13} />
+                    <span>প্রস্তুত</span>
+                  </span>
                 </div>
-                <div style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: '#00803D',
-                  background: '#ECFDF5',
-                  border: '1px solid #A7F3D0',
-                  padding: '4px 10px',
-                  borderRadius: 20,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}>
-                  <ShieldCheck size={14} />
-                  <span>যাচাইয়ের জন্য প্রস্তুত</span>
-                </div>
+                <p style={{ fontSize: 12.5, color: '#64748B', margin: '4px 0 0', lineHeight: 1.45 }}>
+                  অ্যাডমিন অডিটের জন্য সাবমিট করার পূর্বে তথ্য ও প্রমাণপত্র যাচাই করুন।
+                </p>
               </div>
 
               {/* ── CARD 1: Doctor Personal & Contact Profile ── */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 14,
-                padding: '18px 20px',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#DCFCE7', color: '#00803D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <User size={16} />
+              <div className="doctor-review-card" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                <div className="doctor-review-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #F1F5F9', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#DCFCE7', color: '#00803D', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <User size={15} />
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>চিকিৎসক ক্যান্ডিডেট ও ব্যক্তিগত তথ্য</span>
+                    <span className="doctor-review-title" style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      ব্যক্তিগত ও যোগাযোগ তথ্য
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(1)}
+                    className="doctor-review-edit-btn"
                     style={{
-                      background: 'none',
-                      border: 'none',
+                      background: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
                       color: '#0284C7',
-                      fontSize: 12.5,
+                      fontSize: 11.5,
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
-                      padding: '4px 8px',
-                      borderRadius: 6
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    title="ধাপ ১ এডিট করুন"
                   >
-                    <Edit3 size={13} />
-                    <span>পরিবর্তন করুন</span>
+                    <Edit3 size={12} />
+                    <span>এডিট</span>
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>ডাক্তারের পুরো নাম</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>
-                      {formData.name} {formData.name_bn && <span style={{ fontSize: 12.5, fontWeight: 500, color: '#64748B' }}>({formData.name_bn})</span>}
+                <div className="doctor-review-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>ডাক্তারের নাম</div>
+                    <div className="doctor-review-val" style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
+                      {formData.name} {formData.name_bn && <span style={{ fontSize: 12, fontWeight: 500, color: '#64748B' }}>({formData.name_bn})</span>}
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>মোবাইল নম্বর</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Phone size={13} style={{ color: '#00803D' }} />
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>মোবাইল নম্বর</div>
+                    <div className="doctor-review-val" style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Phone size={12} style={{ color: '#00803D', flexShrink: 0 }} />
                       <span>{formData.phone}</span>
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>ইমেইল ঠিকানা</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Mail size={13} style={{ color: '#0284C7' }} />
-                      <span>{formData.email || '—'}</span>
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>ইমেইল ঠিকানা</div>
+                    <div className="doctor-review-val" style={{ fontSize: 12.5, fontWeight: 600, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <Mail size={12} style={{ color: '#0284C7', flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.email || '—'}</span>
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>মূল কর্মস্থল / প্রতিষ্ঠান</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Building2 size={13} style={{ color: '#8B5CF6' }} />
-                      <span>{formData.workplace || '—'}</span>
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>মূল কর্মস্থল</div>
+                    <div className="doctor-review-val" style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Building2 size={12} style={{ color: '#8B5CF6', flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{formData.workplace || '—'}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* ── CARD 2: Medical Credentials & Specialty ── */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 14,
-                padding: '18px 20px',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#E0F2FE', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Award size={16} />
+              <div className="doctor-review-card" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                <div className="doctor-review-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #F1F5F9', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#E0F2FE', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Award size={15} />
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>বিএমডিসি ও চিকিৎসা ক্রেডেনশিয়াল</span>
+                    <span className="doctor-review-title" style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      বিএমডিসি ও পেশাগত তথ্য
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(2)}
+                    className="doctor-review-edit-btn"
                     style={{
-                      background: 'none',
-                      border: 'none',
+                      background: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
                       color: '#0284C7',
-                      fontSize: 12.5,
+                      fontSize: 11.5,
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
-                      padding: '4px 8px',
-                      borderRadius: 6
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    title="ধাপ ২ এডিট করুন"
                   >
-                    <Edit3 size={13} />
-                    <span>পরিবর্তন করুন</span>
+                    <Edit3 size={12} />
+                    <span>এডিট</span>
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>BMDC রেজিস্ট্রেশন নম্বর</div>
+                <div className="doctor-review-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8 }}>
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>BMDC নম্বর</div>
                     <span style={{
                       fontFamily: 'monospace',
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: 800,
                       color: '#065F46',
                       background: '#ECFDF5',
                       border: '1px solid #A7F3D0',
-                      padding: '3px 10px',
+                      padding: '2px 8px',
                       borderRadius: 6,
                       display: 'inline-block'
                     }}>
@@ -2320,121 +2713,127 @@ export default function DoctorOnboardWizardPage() {
                     </span>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>বিশেষজ্ঞতা (Specialty)</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>{selectedSpecialtyName}</span>
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>বিশেষজ্ঞতা</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                      <span className="doctor-review-val" style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>{selectedSpecialtyName}</span>
                       {formData.custom_specialty_name && (
                         <span style={{
-                          fontSize: 10,
+                          fontSize: 9.5,
                           background: '#FEF3C7',
                           color: '#92400E',
-                          padding: '1px 6px',
-                          borderRadius: 6,
+                          padding: '1px 5px',
+                          borderRadius: 4,
                           fontWeight: 700,
                           border: '1px solid #FDE68A'
                         }}>
-                          নতুন রিকোয়েস্ট
+                          নতুন
                         </span>
                       )}
                     </div>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>মূল ডিগ্রি (Primary Degree)</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>মূল ডিগ্রি</div>
+                    <div className="doctor-review-val" style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
                       {formData.degree || 'MBBS'}
+                    </div>
+                  </div>
+
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 10px', border: '1px solid #F1F5F9' }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>অভিজ্ঞতা</div>
+                    <div className="doctor-review-val" style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
+                      {formData.experience_years ? `${formData.experience_years} বছর` : '—'}
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* ── CARD 3: Chamber Location, GPS & Visiting Fee ── */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 14,
-                padding: '18px 20px',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <MapPin size={16} />
+              <div className="doctor-review-card" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                <div className="doctor-review-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #F1F5F9', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <MapPin size={15} />
                     </div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>চেম্বার লোকেশন ও ভিজিটিং ফি</span>
+                    <span className="doctor-review-title" style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      লোকেশন ও ভিজিটিং ফি
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(3)}
+                    className="doctor-review-edit-btn"
                     style={{
-                      background: 'none',
-                      border: 'none',
+                      background: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
                       color: '#0284C7',
-                      fontSize: 12.5,
+                      fontSize: 11.5,
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
-                      padding: '4px 8px',
-                      borderRadius: 6
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    title="ধাপ ৩ এডিট করুন"
                   >
-                    <Edit3 size={13} />
-                    <span>পরিবর্তন করুন</span>
+                    <Edit3 size={12} />
+                    <span>এডিট</span>
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>কনসালটেশন ফি (Visiting Fee)</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px', border: '1px solid #F1F5F9', minWidth: 120 }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 3 }}>ভিজিট ফি</div>
                     <span style={{
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: 800,
                       color: '#00803D',
                       background: '#DCFCE7',
                       border: '1px solid #86EFAC',
-                      padding: '3px 12px',
+                      padding: '2px 8px',
                       borderRadius: 6,
                       display: 'inline-block'
                     }}>
-                      ৳{formData.fee} BDT
+                      ৳{formData.fee}
                     </span>
                   </div>
 
-                  <div>
-                    <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>প্রশাসনিক এলাকা</div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A' }}>
-                      {selectedDistrict?.name || '—'}, {selectedDivision?.name || '—'}
-                      {selectedUpazila && <span style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}> ({selectedUpazila.name})</span>}
+                  <div className="doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px', border: '1px solid #F1F5F9', flex: 1, minWidth: 220 }}>
+                    <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>
+                      এলাকা
+                    </div>
+                    <div className="doctor-review-val" style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', lineHeight: 1.5 }}>
+                      {locationBreadcrumb.length > 0 ? locationBreadcrumb.join(', ') : '—'}
                     </div>
                   </div>
 
                   {formData.address && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>চেম্বার / হাসপাতালের পূর্ণাঙ্গ ঠিকানা</div>
-                      <div style={{ fontSize: 13, color: '#1E293B', fontWeight: 600, background: '#F8FAFC', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                    <div className="doctor-review-grid-full doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px', border: '1px solid #F1F5F9', width: '100%', boxSizing: 'border-box' }}>
+                      <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>চেম্বার ঠিকানা</div>
+                      <div style={{ fontSize: 12.5, color: '#1E293B', fontWeight: 600 }}>
                         {formData.address}
                       </div>
                     </div>
                   )}
 
                   {formData.latitude && formData.longitude && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ fontSize: 11.5, color: '#047857', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Navigation size={13} color="#059669" />
-                        <span>জিপিএস কো-অর্ডিনেট: {formData.latitude}, {formData.longitude}</span>
+                    <div className="doctor-review-grid-full doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px', border: '1px solid #F1F5F9', width: '100%', boxSizing: 'border-box' }}>
+                      <div style={{ fontSize: 11, color: '#047857', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Navigation size={12} color="#059669" />
+                        <span>GPS: {formData.latitude}, {formData.longitude}</span>
                       </div>
                     </div>
                   )}
 
                   {formData.bio && (
-                    <div style={{ gridColumn: '1 / -1' }}>
-                      <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>ডাক্তারের পরিচিতি (Bio)</div>
-                      <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.5, background: '#F8FAFC', padding: '10px 12px', borderRadius: 8 }}>
+                    <div className="doctor-review-grid-full doctor-review-cell" style={{ background: '#F8FAFC', borderRadius: 10, padding: '8px 12px', border: '1px solid #F1F5F9', width: '100%', boxSizing: 'border-box' }}>
+                      <div className="doctor-review-label" style={{ fontSize: 10.5, color: '#64748B', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>পরিচিতি (Bio)</div>
+                      <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.45 }}>
                         {formData.bio}
                       </div>
                     </div>
@@ -2443,44 +2842,41 @@ export default function DoctorOnboardWizardPage() {
               </div>
 
               {/* ── CARD 4: Attached Verification Documents ── */}
-              <div style={{
-                background: '#FFFFFF',
-                border: '1px solid #E2E8F0',
-                borderRadius: 14,
-                padding: '18px 20px',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F3E8FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <FileCheck size={16} />
+              <div className="doctor-review-card" style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)' }}>
+                <div className="doctor-review-card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #F1F5F9', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#F3E8FF', color: '#9333EA', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileCheck size={15} />
                     </div>
-                    <div>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: '#0F172A' }}>সংযুক্ত প্রমাণপত্র ও ডকুমেন্টস</span>
-                      <span style={{ fontSize: 12, color: '#64748B', marginLeft: 8 }}>({activeDocumentCount}টি ফাইল সংযুক্ত)</span>
+                    <div style={{ minWidth: 0 }}>
+                      <span className="doctor-review-title" style={{ fontSize: 13.5, fontWeight: 800, color: '#0F172A' }}>
+                        সংযুক্ত প্রমাণপত্র ({activeDocumentCount}টি)
+                      </span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(4)}
+                    className="doctor-review-edit-btn"
                     style={{
-                      background: 'none',
-                      border: 'none',
+                      background: '#F0F9FF',
+                      border: '1px solid #BAE6FD',
                       color: '#0284C7',
-                      fontSize: 12.5,
+                      fontSize: 11.5,
                       fontWeight: 700,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 4,
-                      padding: '4px 8px',
-                      borderRadius: 6
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#F0F9FF'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    title="ধাপ ৪ এডিট করুন"
                   >
-                    <Edit3 size={13} />
-                    <span>পরিবর্তন করুন</span>
+                    <Edit3 size={12} />
+                    <span>এডিট</span>
                   </button>
                 </div>
 
@@ -2490,39 +2886,42 @@ export default function DoctorOnboardWizardPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '10px 14px',
+                      padding: '8px 10px',
                       background: '#F8FAFC',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 10
+                      borderRadius: 10,
+                      gap: 8
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <FileText size={18} style={{ color: '#0284C7' }} />
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
-                            বিএমডিসি সার্টিফিকেট (BMDC Certificate)
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                        <FileText size={16} style={{ color: '#0284C7', flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            BMDC রেজিস্ট্রেশন সনদ
                           </div>
-                          <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                          <div style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.documents.doctor_bmdc_cert.file_name} • {formData.documents.doctor_bmdc_cert.file_size}
                           </div>
                         </div>
                       </div>
                       <span style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 700,
                         color: '#15803D',
                         background: '#DCFCE7',
-                        padding: '3px 8px',
+                        padding: '2px 7px',
                         borderRadius: 6,
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4
+                        gap: 3,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}>
-                        <CheckCircle2 size={12} /> সংযুক্ত
+                        <CheckCircle2 size={11} /> সংযুক্ত
                       </span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12.5, color: '#94A3B8', fontStyle: 'italic', padding: '6px 0' }}>
-                      BMDC সার্টিফিকেট আপলোড করা হয়নি
+                    <div style={{ fontSize: 12, color: '#EF4444', fontStyle: 'italic', padding: '4px 0' }}>
+                      BMDC সনদপত্র আপলোড করা হয়নি
                     </div>
                   )}
 
@@ -2531,38 +2930,41 @@ export default function DoctorOnboardWizardPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      padding: '10px 14px',
+                      padding: '8px 10px',
                       background: '#F8FAFC',
                       border: '1px solid #E2E8F0',
-                      borderRadius: 10
+                      borderRadius: 10,
+                      gap: 8
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <FileText size={18} style={{ color: '#0284C7' }} />
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A' }}>
-                            জাতীয় পরিচয়পত্র (NID Card)
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                        <FileText size={16} style={{ color: '#0284C7', flexShrink: 0 }} />
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            জাতীয় পরিচয়পত্র (NID)
                           </div>
-                          <div style={{ fontSize: 11.5, color: '#64748B' }}>
+                          <div style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.documents.doctor_nid.file_name} • {formData.documents.doctor_nid.file_size}
                           </div>
                         </div>
                       </div>
                       <span style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 700,
                         color: '#15803D',
                         background: '#DCFCE7',
-                        padding: '3px 8px',
+                        padding: '2px 7px',
                         borderRadius: 6,
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4
+                        gap: 3,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
                       }}>
-                        <CheckCircle2 size={12} /> সংযুক্ত
+                        <CheckCircle2 size={11} /> সংযুক্ত
                       </span>
                     </div>
                   ) : (
-                    <div style={{ fontSize: 12.5, color: '#94A3B8', fontStyle: 'italic', padding: '6px 0' }}>
+                    <div style={{ fontSize: 12, color: '#EF4444', fontStyle: 'italic', padding: '4px 0' }}>
                       জাতীয় পরিচয়পত্র (NID) আপলোড করা হয়নি
                     </div>
                   )}
@@ -2574,15 +2976,15 @@ export default function DoctorOnboardWizardPage() {
                 background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
                 border: '1.5px solid #A7F3D0',
                 borderRadius: 14,
-                padding: '16px 20px',
+                padding: '12px 14px',
                 display: 'flex',
-                alignItems: 'flex-start',
-                gap: 14,
+                alignItems: 'center',
+                gap: 12,
                 boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
               }}>
                 <div style={{
-                  width: 38,
-                  height: 38,
+                  width: 34,
+                  height: 34,
                   borderRadius: 10,
                   background: '#00803D',
                   color: '#FFFFFF',
@@ -2590,28 +2992,30 @@ export default function DoctorOnboardWizardPage() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  boxShadow: '0 4px 10px rgba(0, 128, 61, 0.25)'
+                  boxShadow: '0 3px 8px rgba(0, 128, 61, 0.25)'
                 }}>
-                  <Sparkles size={20} />
+                  <Sparkles size={18} />
                 </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 900, color: '#064E3B' }}>
-                      ৳৫০০ পার্টনার কমিশন ও অ্যাডমিন অডিট নিশ্চিতকরণ
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 900, color: '#064E3B' }}>
+                      ৳৫০০ পার্টনার কমিশন নিশ্চয়তা
                     </span>
                     <span style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 800,
                       background: '#00803D',
                       color: '#FFFFFF',
-                      padding: '2px 8px',
-                      borderRadius: 12
+                      padding: '2px 7px',
+                      borderRadius: 6,
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
                     }}>
                       গ্যারান্টিযুক্ত
                     </span>
                   </div>
-                  <p style={{ fontSize: 12.5, color: '#065F46', margin: 0, lineHeight: 1.55 }}>
-                    আবেদনটি সাবমিট করার সাথে সাথে কেন্দ্রীয় <strong>Admin Onboarding Verification Desk</strong>-এ তালিকাভুক্ত হবে। জাতীয় BMDC রেজিস্ট্রি ও সনদপত্র যাচাই সম্পন্ন হওয়ামাত্র আপনার ফিল্ড এজেন্ট ওয়ালেটে <strong>৳৫০০ কমিশন</strong> স্বয়ংক্রিয়ভাবে ক্রেডিট হবে।
+                  <p style={{ fontSize: 11.5, color: '#065F46', margin: 0, lineHeight: 1.45 }}>
+                    অ্যাডমিন ভেরিফিকেশন ডেস্ক থেকে BMDC সনদপত্র যাচাই হওয়ামাত্র আপনার ওয়ালেটে ক্রেডিট হবে।
                   </p>
                 </div>
               </div>
@@ -2619,19 +3023,13 @@ export default function DoctorOnboardWizardPage() {
           )}
 
           {/* ── Wizard Navigation Controls ── */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginTop: 32,
-            paddingTop: 24,
-            borderTop: '1px solid #F1F5F9'
-          }}>
+          <div className="doctor-wizard-nav-controls">
             {currentStep > 1 ? (
               <button
                 type="button"
                 onClick={prevStep}
                 disabled={submitting}
+                className="doctor-wizard-btn-prev"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2644,18 +3042,20 @@ export default function DoctorOnboardWizardPage() {
                   fontSize: 13.5,
                   fontWeight: 700,
                   cursor: submitting ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.15s'
+                  transition: 'all 0.15s',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 <ArrowLeft size={16} />
-                <span>পূর্ববর্তী ধাপ</span>
+                <span>পূর্ববর্তী</span>
               </button>
-            ) : <div />}
+            ) : <div className="d-none d-sm-block" />}
 
             {currentStep < 5 ? (
               <button
                 type="button"
                 onClick={nextStep}
+                className="doctor-wizard-btn-next"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -2680,6 +3080,7 @@ export default function DoctorOnboardWizardPage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
+                className="doctor-wizard-btn-submit"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',

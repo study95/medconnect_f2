@@ -209,6 +209,7 @@ export function AuthProvider({ children }) {
         const resolvedType = rolesList.includes('admin') || rolesList.includes('super-admin') ? 'admin' 
           : rolesList.includes('doctor') ? 'doctor' 
           : (rolesList.includes('manager') || rolesList.includes('hospital')) ? 'hospital' 
+          : (rolesList.includes('agent') || userData?.registration_type === 'agent' || Boolean(userData?.agent)) ? 'agent'
           : (userData?.registration_type === 'doctor' ? 'doctor' : userData?.registration_type === 'hospital' ? 'hospital' : 'user')
 
         setUser((prevUser) => {
@@ -368,6 +369,7 @@ export function AuthProvider({ children }) {
     const resolvedType = rolesList.includes('admin') || rolesList.includes('super-admin') ? 'admin' 
       : rolesList.includes('doctor') ? 'doctor' 
       : (rolesList.includes('manager') || rolesList.includes('hospital')) ? 'hospital' 
+      : (rolesList.includes('agent') || userData?.registration_type === 'agent' || Boolean(userData?.agent) || type === 'agent') ? 'agent'
       : (userData?.registration_type === 'doctor' ? 'doctor' : userData?.registration_type === 'hospital' ? 'hospital' : (type || 'user'))
     localStorage.setItem('userType', resolvedType)
     setUser(userData)

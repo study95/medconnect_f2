@@ -76,7 +76,18 @@ class ErrorBoundary extends React.Component {
             {this.props.message || 'এই সেকশনটি লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে পুনরায় চেষ্টা করুন।'}
           </p>
           <button
-            onClick={() => this.setState({ hasError: false, error: null })}
+            onClick={() => {
+              const errMsg = this.state.error?.message || ''
+              if (
+                errMsg.includes('dynamically imported module') ||
+                errMsg.includes('Failed to fetch') ||
+                errMsg.includes('Loading chunk')
+              ) {
+                window.location.reload()
+              } else {
+                this.setState({ hasError: false, error: null })
+              }
+            }}
             style={{
               background: '#0B192C',
               color: '#FFFFFF',

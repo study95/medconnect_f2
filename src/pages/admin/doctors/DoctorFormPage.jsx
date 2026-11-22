@@ -499,7 +499,11 @@ export default function DoctorFormPage() {
     if (!form.slug || !form.slug.trim()) newErrors.slug = 'Profile Slug is required.'
     if (!form.specialty_id) newErrors.specialty_id = 'Specialty selection is required.'
     if (!form.workplace || !form.workplace.trim()) newErrors.workplace = 'Current Workplace / Hospital is required.'
-    if (!form.bmdc || !form.bmdc.trim()) newErrors.bmdc = 'BMDC Registration Number is required.'
+    if (!form.bmdc || !form.bmdc.trim()) {
+      newErrors.bmdc = 'BMDC Registration Number is required.'
+    } else if (form.bmdc.includes('@') || !/^[A-Za-z0-9\-\s]+$/.test(form.bmdc.trim())) {
+      newErrors.bmdc = 'Please enter a valid BMDC registration number (e.g. A-12345). Email addresses are not allowed.'
+    }
 
     // Phone validation
     if (!form.phone || !form.phone.trim()) {
@@ -986,6 +990,7 @@ export default function DoctorFormPage() {
                     name="bmdc" 
                     value={form.bmdc} 
                     onChange={handleChange} 
+                    autoComplete="off"
                     placeholder="A-12345"
                     disabled={!canEditBmdc}
                     readOnly={!canEditBmdc}

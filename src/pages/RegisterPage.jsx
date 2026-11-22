@@ -851,6 +851,13 @@ const RegisterPage = () => {
         scrollToFirstError(err)
         return
       }
+      if (form.bmdc_number.includes('@') || !/^[A-Za-z0-9\-\s]+$/.test(form.bmdc_number.trim())) {
+        setLoading(false)
+        const err = { bmdc_number: 'সঠিক বিএমডিসি নম্বর লিখুন (যেমনঃ A-12345)। কোনো ইমেইল ঠিকানা গ্রহণযোগ্য নয়।' }
+        setFieldErrors(err)
+        scrollToFirstError(err)
+        return
+      }
       if (form.custom_specialty_name?.trim()) {
         formData.append('custom_specialty_name', form.custom_specialty_name.trim())
       } else {
@@ -1189,20 +1196,36 @@ const RegisterPage = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    background: '#ECFDF5',
+                    background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
                     border: '1.5px solid #A7F3D0',
-                    borderRadius: 12,
-                    padding: '8px 14px',
-                    marginBottom: 16
+                    borderRadius: 10,
+                    padding: '7px 12px',
+                    marginBottom: 16,
+                    gap: 8,
+                    whiteSpace: 'nowrap'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <ShieldCheck size={16} color="#059669" />
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#065F46' }}>
-                        পার্টনার রেফারেল কোড: <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>{referralCode}</span>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <ShieldCheck size={14} color="#059669" style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#065F46', whiteSpace: 'nowrap' }}>
+                        রেফারেল কোড: <span style={{ fontFamily: 'monospace', fontWeight: 900, color: '#047857', letterSpacing: '0.03em' }}>{referralCode}</span>
                       </span>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', background: '#FFFFFF', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <Lock size={10} /> সংযুক্ত
+                    <span style={{
+                      fontSize: 10.5,
+                      fontWeight: 800,
+                      color: '#059669',
+                      background: '#FFFFFF',
+                      border: '1px solid #A7F3D0',
+                      padding: '2px 7px',
+                      borderRadius: 6,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3.5,
+                      flexShrink: 0,
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                    }}>
+                      <Lock size={10} strokeWidth={2.5} /> সংযুক্ত
                     </span>
                   </div>
                 )}
@@ -1583,20 +1606,36 @@ const RegisterPage = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      background: '#ECFDF5',
+                      background: 'linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%)',
                       border: '1.5px solid #A7F3D0',
                       borderRadius: 10,
-                      padding: '8px 14px',
-                      marginBottom: 16
+                      padding: '7px 12px',
+                      marginBottom: 16,
+                      gap: 8,
+                      whiteSpace: 'nowrap'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <ShieldCheck size={16} color="#059669" />
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: '#065F46' }}>
-                          পার্টনার রেফারেল কোড: <span style={{ fontFamily: 'monospace', fontWeight: 900 }}>{referralCode}</span>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <ShieldCheck size={14} color="#059669" style={{ flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#065F46', whiteSpace: 'nowrap' }}>
+                          রেফারেল কোড: <span style={{ fontFamily: 'monospace', fontWeight: 900, color: '#047857', letterSpacing: '0.03em' }}>{referralCode}</span>
                         </span>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 800, color: '#059669', background: '#FFFFFF', border: '1px solid #A7F3D0', padding: '2px 8px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <Lock size={10} /> সংযুক্ত
+                      <span style={{
+                        fontSize: 10.5,
+                        fontWeight: 800,
+                        color: '#059669',
+                        background: '#FFFFFF',
+                        border: '1px solid #A7F3D0',
+                        padding: '2px 7px',
+                        borderRadius: 6,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3.5,
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                      }}>
+                        <Lock size={10} strokeWidth={2.5} /> সংযুক্ত
                       </span>
                     </div>
                   )}
@@ -2226,6 +2265,7 @@ const RegisterPage = () => {
                             placeholder="যেমনঃ A-12345"
                             value={form.bmdc_number}
                             onChange={handleChange}
+                            autoComplete="off"
                             required
                             className={`auth-input-premium ${fieldErrors.bmdc_number ? 'is-invalid error' : ''}`}
                           />
