@@ -142,6 +142,9 @@ export const searchMedicines = (params) => axiosInstance.get('/medicines', { par
 export const getMedicineSuggestions = (params) => axiosInstance.get('/medicines/suggestions', { params })
 export const getMedicineCompanies = () => axiosInstance.get('/medicines/companies')
 export const getMedicinesPendingCount = () => axiosInstance.get('/medicines/pending-count')
+export const importMedicinesCsv = (formData) => axiosInstance.post('/medicines/import-csv', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+})
 export const approveMedicine = (id, data) => axiosInstance.put(`/medicines/${id}/approve`, data)
 export const rejectMedicine = (id) => axiosInstance.put(`/medicines/${id}/reject`)
 

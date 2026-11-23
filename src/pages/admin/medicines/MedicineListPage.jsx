@@ -13,6 +13,7 @@ import useDebounce from '../../../hooks/useDebounce'
 import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import DeleteModal from '../../../components/admin/DeleteModal'
 import ListToolbar from '../../../components/admin/ListToolbar'
+import ImportMedicineCsvModal from './ImportMedicineCsvModal'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import TableFooter from '../../../components/admin/TableFooter'
@@ -27,6 +28,8 @@ const DOSAGE_TYPES = [
   'Suspension',
   'Injection',
   'Drop',
+  'Eye Drop',
+  'Ear Drop',
   'Cream',
   'Ointment',
   'Suppository',
@@ -34,6 +37,9 @@ const DOSAGE_TYPES = [
   'Inhaler',
   'Gel',
   'Spray',
+  'Nasal Spray',
+  'Lotion',
+  'Solution',
   'Powder'
 ]
 
@@ -885,6 +891,7 @@ export default function MedicineListPage() {
   const [viewTarget, setViewTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   // Filters State synchronized with URL Query Parameters & SessionStorage
   const {
@@ -990,6 +997,8 @@ export default function MedicineListPage() {
     isBulkDeleting: bulkDeleting,
     rejectMedicine,
     isRejecting: rejecting,
+    importMedicinesCsv,
+    isImporting,
   } = useAdminMedicineMutations()
 
   const handleTabChange = (tab) => {
@@ -1086,7 +1095,19 @@ export default function MedicineListPage() {
           <p className="admin-page-subtitle">{pagination.total} medicine(s) in database</p>
         </div>
         {(isAdmin || hasPermission('medicine.create')) && (
-          <Link to="/admin/medicines/create" className="admin-btn admin-btn-primary">+ Add Medicine</Link>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {isAdmin && (
+              <button
+                type="button"
+                className="admin-btn admin-btn-secondary"
+                onClick={() => setShowImportModal(true)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                📥 Import CSV
+              </button>
+            )}
+            <Link to="/admin/medicines/create" className="admin-btn admin-btn-primary">+ Add Medicine</Link>
+          </div>
         )}
       </div>
 
@@ -1107,13 +1128,6 @@ export default function MedicineListPage() {
           strengthFilter && { key: 'strength', label: `Strength: ${strengthFilter}`, onRemove: () => setStrengthFilter('') },
           (sortBy !== 'id' || sortDir !== 'desc') && { key: 'sort', label: `Sort: ${sortBy} (${sortDir})`, onRemove: () => { setSortBy('id'); setSortDir('desc'); } },
         ].filter(Boolean)}
-        actions={
-          (isAdmin || hasPermission('medicine.create')) && (
-            <Link to="/admin/medicines/create" className="admin-btn admin-btn-primary" style={{ height: 38, display: 'inline-flex', alignItems: 'center' }}>
-              + Add Medicine
-            </Link>
-          )
-        }
       >
         {/* Dosage Type Filter */}
         <div style={{ minWidth: 140, flex: '1 1 140px' }}>
@@ -1587,6 +1601,16 @@ export default function MedicineListPage() {
           }}
         />
       )}
+
+      <ImportMedicineCsvModal
+        show={showImportModal}
+        onClose={() => {
+          setShowImportModal(false)
+          refetch()
+        }}
+        onImport={importMedicinesCsv}
+        loading={isImporting}
+      />
     </div>
   )
 }

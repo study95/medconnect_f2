@@ -20,8 +20,9 @@ import {
   updateMedicine,
   deleteMedicine,
   bulkDeleteMedicines,
-  getMedicinesPendingCount,
   getMedicineCompanies,
+  getMedicinesPendingCount,
+  importMedicinesCsv,
   approveMedicine,
   rejectMedicine,
 } from '../../api/adminApi'
@@ -143,6 +144,14 @@ export function useAdminMedicineMutations() {
     onSuccess: () => invalidate(),
   })
 
+  const importCsvMutation = useMutation({
+    mutationFn: (formData) => importMedicinesCsv(formData),
+    onSuccess: () => {
+      invalidate()
+      queryClient.invalidateQueries({ queryKey: ['medicines', 'companies'] })
+    },
+  })
+
   return {
     deleteMedicine: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
@@ -155,5 +164,8 @@ export function useAdminMedicineMutations() {
 
     rejectMedicine: rejectMutation.mutateAsync,
     isRejecting: rejectMutation.isPending,
+
+    importMedicinesCsv: importCsvMutation.mutateAsync,
+    isImporting: importCsvMutation.isPending,
   }
 }
