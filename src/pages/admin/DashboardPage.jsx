@@ -6,7 +6,8 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import { toast } from 'react-hot-toast'
 import { useAuth } from '../../context/AuthContext'
 import { useSubscription } from '../../context/SubscriptionContext'
-import { getDashboardStats, getDashboardAnalytics } from '../../api/adminApi'
+import { getDashboardStats, getDashboardAnalytics, getSystemTelemetry } from '../../api/adminApi'
+import { getAuditLogs } from '../../api/auditApi'
 import { queryKeys } from '../../lib/queryKeys'
 import { DashboardSkeleton } from '../../components/common/Skeletons'
 import {
@@ -16,7 +17,7 @@ import {
   DollarSign, Calendar, Stethoscope, Users, Building2,
   CheckCircle2, AlertCircle, ArrowUpRight, RefreshCw, ShieldCheck,
   ChevronRight, Clock, FileText, ArrowRight, Activity, ShieldAlert,
-  MessageSquare, Zap
+  MessageSquare, Zap, Shield
 } from 'lucide-react'
 
 const RANGE_OPTIONS = [
@@ -270,7 +271,8 @@ export default function DashboardPage() {
   const { isAdmin, isDoctor, isManager, user } = useAuth()
   const subscriptionContext = useSubscription()
   const [range, setRange] = useState('month')
-  const [inboundTab, setInboundTab] = useState('doctors') // 'doctors' | 'hospitals' | 'tickets' | 'reports'
+  const [inboundTab, setInboundTab] = useState('doctors') // 'doctors' | 'hospitals' | 'tickets' | 'reports' | 'commissions'
+  const [ledgerTab, setLedgerTab] = useState('bookings') // 'bookings' | 'audit'
   const [isManualRefreshing, setIsManualRefreshing] = useState(false)
 
   // Custom Month & Year trend filter state
@@ -328,6 +330,38 @@ export default function DashboardPage() {
     refetchOnMount: 'always',
     refetchInterval: 3 * 60 * 1000, // 3 minutes silent background auto-sync
     refetchIntervalInBackground: false, // PAUSE when tab is hidden or browser minimized
+  })
+
+  // Lightweight cached system telemetry query (Admin only, 60s background sync)
+  const { data: telemetry = null } = useQuery({
+    queryKey: ['admin', 'telemetry', 'summary'],
+    queryFn: async () => {
+      try {
+        const res = await getSystemTelemetry()
+        return res.data?.data || null
+      } catch {
+        return null
+      }
+    },
+    enabled: !!isAdmin,
+    staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: false,
+  })
+
+  // Lazy-loaded Security & Governance Audit Log Stream (Admin only, 45s cache)
+  const { data: auditLogs = [], isLoading: auditLoading } = useQuery({
+    queryKey: ['admin', 'audit-logs', 'recent-stream'],
+    queryFn: async () => {
+      try {
+        const res = await getAuditLogs({ per_page: 6 })
+        return res.data?.data?.data || res.data?.data || []
+      } catch {
+        return []
+      }
+    },
+    enabled: !!isAdmin && ledgerTab === 'audit',
+    staleTime: 45 * 1000,
   })
 
   const subInfo = useMemo(() => {
@@ -564,29 +598,36 @@ export default function DashboardPage() {
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out', maxWidth: 1400, margin: '0 auto' }}>
       {/* 1. EXECUTIVE HEADER BAR */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        flexWrap: 'wrap', gap: 16, marginBottom: 20, paddingBottom: 16,
-        borderBottom: '1px solid var(--admin-border)'
-      }}>
+      <div
+        className="dashboard-header-bar"
+        style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 16, marginBottom: 20, paddingBottom: 16,
+          borderBottom: '1px solid var(--admin-border)'
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <h1 style={{
                 margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--admin-text)',
                 letterSpacing: '-0.3px', lineHeight: 1.2
               }}>
                 {isDoctor ? `Dr. ${user?.name} · Clinical Overview` : isManager ? 'Hospital Operations Portal' : 'Executive Overview'}
               </h1>
-              <div 
-                title={statsFetching ? 'সার্ভারের সাথে রিয়েল-টাইম ডেটা সিঙ্ক হচ্ছে...' : 'সিস্টেম সম্পূর্ণ লাইভ ও সংযুক্ত'}
+
+              {/* Live System & Telemetry Pill */}
+              <Link
+                to={isAdmin ? '/admin/system-health' : '#'}
+                title={telemetry?.database?.write_node_ms ? `ডেটাবেজ রেসপন্স: ${telemetry.database.write_node_ms}ms · স্কোর: ${telemetry.score}%` : (statsFetching ? 'সার্ভারের সাথে রিয়েল-টাইম ডেটা সিঙ্ক হচ্ছে...' : 'সিস্টেম সম্পূর্ণ লাইভ ও সংযুক্ত')}
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '3px 8px', borderRadius: 20,
+                  padding: '3px 10px', borderRadius: 20,
                   background: statsFetching ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0, 184, 117, 0.08)',
-                  border: `1px solid ${statsFetching ? 'rgba(59, 130, 246, 0.25)' : 'rgba(0, 184, 117, 0.2)'}`,
+                  border: `1px solid ${statsFetching ? 'rgba(59, 130, 246, 0.25)' : 'rgba(0, 184, 117, 0.25)'}`,
                   fontSize: 11, fontWeight: 700, 
                   color: statsFetching ? '#2563EB' : '#00B875',
+                  textDecoration: 'none',
                   transition: 'all 0.2s ease'
                 }}
               >
@@ -595,19 +636,55 @@ export default function DashboardPage() {
                   background: statsFetching ? '#2563EB' : '#00B875',
                   animation: statsFetching ? 'dashPulse 1s infinite' : 'none'
                 }} />
-                <span>{statsFetching ? 'সিঙ্ক হচ্ছে...' : 'Live System'}</span>
-              </div>
+                <span>
+                  {statsFetching
+                    ? 'সিঙ্ক হচ্ছে...'
+                    : telemetry?.score
+                      ? `System ${telemetry.score}% · DB ${telemetry?.database?.write_node_ms ?? 2}ms`
+                      : 'Live System'}
+                </span>
+                {isAdmin && <ArrowUpRight size={11} />}
+              </Link>
+
+              {/* SMS Gateway Pill for Admin */}
+              {isAdmin && (
+                <Link
+                  to="/admin/sms-settings"
+                  title="এসএমএস ও ওটিপি গেটওয়ে পর্যবেক্ষণ"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '3px 9px', borderRadius: 20,
+                    background: 'var(--admin-bg)',
+                    border: '1px solid var(--admin-border)',
+                    fontSize: 11, fontWeight: 700,
+                    color: 'var(--admin-text-muted)',
+                    textDecoration: 'none',
+                    transition: '0.15s ease'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--admin-primary)'; e.currentTarget.style.color = 'var(--admin-text)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--admin-border)'; e.currentTarget.style.color = 'var(--admin-text-muted)' }}
+                >
+                  <MessageSquare size={12} color="var(--admin-primary)" />
+                  <span>SMS Gateway</span>
+                </Link>
+              )}
             </div>
+
             {isAdmin && (
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 6, marginTop: 4,
+                display: 'flex', alignItems: 'center', gap: 6, marginTop: 5,
                 fontSize: 11, color: 'var(--admin-text-muted)', fontWeight: 600, flexWrap: 'wrap'
               }}>
-                <span style={{ color: 'var(--admin-primary)' }}>নেটওয়ার্ক বিস্তার:</span>
-                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_divisions || 0} বিভাগ</span> · 
-                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_districts || 0} জেলা</span> · 
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '1px 6px', borderRadius: 4, background: 'rgba(0, 184, 117, 0.08)',
+                  color: 'var(--admin-primary)', fontWeight: 700
+                }}>
+                  জাতীয় কভারেজ:
+                </span>
+                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_districts || 64} জেলা</span> · 
+                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_divisions || 8} বিভাগ</span> · 
                 <span style={{ color: 'var(--admin-text)' }}>{stats?.total_upazilas || 0} উপজেলা</span> · 
-                <span style={{ color: 'var(--admin-text)' }}>{stats?.total_unions || 0} ইউনিয়ন</span> · 
                 <span style={{ color: 'var(--admin-text)' }}>{stats?.total_specialties || 0} স্পেশালিটি</span>
               </div>
             )}
@@ -615,7 +692,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Minimal Time-Horizon Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="dashboard-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
             display: 'flex', padding: 2, background: 'var(--admin-bg)',
             borderRadius: 8, border: '1px solid var(--admin-border)'
@@ -665,24 +742,45 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 2. THE 4 NORTH STAR METRICS (STRIPE-STYLE) */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: 14, marginBottom: 20, alignItems: 'stretch'
-      }}>
+      {/* 2. THE 6 EXECUTIVE NORTH STAR METRICS (STRIPE-STYLE) */}
+      <div
+        className="dashboard-kpi-grid"
+        style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+          gap: 14, marginBottom: 20, alignItems: 'stretch'
+        }}
+      >
         {isAdmin && (
           <>
             <ExecutiveMetricCard
-              title="নিবন্ধিত ডাক্তার (Total Doctors)"
+              title="মোট সংগৃহীত ফি (Gross Collections)"
+              value={`৳${Number(stats?.total_payments_collected || 0).toLocaleString()}`}
+              subtext={`আজ সংগৃহীত: ৳${Number(stats?.today?.revenue_collected || 0).toLocaleString()} · পরামর্শ ফি`}
+              icon={DollarSign}
+              badge={`+৳${Number(stats?.today?.revenue_collected || 0).toLocaleString()} আজ`}
+              trendPositive={Boolean(stats?.today?.revenue_collected)}
+              to="/admin/payments"
+            />
+            <ExecutiveMetricCard
+              title="কনসালটেশন থ্রুপুট (Consultations)"
+              value={`${Number(stats?.total_appointments || 0).toLocaleString()} টি`}
+              subtext={`সফলতার হার: ${successRate}% · সম্পন্ন: ${stats?.completed_appointments || 0} · বাতিল: ${stats?.cancelled_appointments || 0}`}
+              icon={Calendar}
+              badge={`${stats?.today?.appointments_total || 0} টি আজ`}
+              trendPositive={Boolean(stats?.today?.appointments_total)}
+              to="/admin/appointments"
+            />
+            <ExecutiveMetricCard
+              title="নিবন্ধিত ডাক্তার (Doctor Network)"
               value={`${Number(stats?.total_doctors || 0).toLocaleString()} জন`}
-              subtext={`সক্রিয়: ${Math.max(0, (stats?.total_doctors || 0) - (stats?.action_required?.inactive_doctors || 0))} জন · ${stats?.action_required?.inactive_doctors || 0} জন অপেক্ষমান`}
+              subtext={`সক্রিয়: ${Math.max(0, (stats?.total_doctors || 0) - (stats?.action_required?.inactive_doctors || 0))} জন · ${stats?.action_required?.inactive_doctors || 0} জন যাচাই বাকি`}
               icon={Stethoscope}
               badge={`+${stats?.today?.new_doctors || 0} আজ`}
               trendPositive={Boolean(stats?.today?.new_doctors)}
               to="/admin/doctors"
             />
             <ExecutiveMetricCard
-              title="হাসপাতাল ও ক্লিনিক (Hospitals)"
+              title="হাসপাতাল ও ক্লিনিক (Facilities)"
               value={`${Number(stats?.total_hospitals || 0).toLocaleString()} টি`}
               subtext={`সক্রিয়: ${Math.max(0, (stats?.total_hospitals || 0) - (stats?.action_required?.inactive_hospitals || 0))} টি · ${stats?.action_required?.inactive_hospitals || 0} টি অপেক্ষমান`}
               icon={Building2}
@@ -691,22 +789,22 @@ export default function DashboardPage() {
               to="/admin/hospitals"
             />
             <ExecutiveMetricCard
-              title="অ্যাপয়েন্টমেন্ট থ্রুপুট (Bookings)"
-              value={`${Number(stats?.total_appointments || 0).toLocaleString()} টি`}
-              subtext={`সম্পন্ন: ${stats?.completed_appointments || 0} · কনফার্মড: ${stats?.confirmed_appointments || 0} · পেন্ডিং: ${stats?.pending_appointments || 0} · বাতিল: ${stats?.cancelled_appointments || 0}`}
-              icon={Calendar}
-              badge={`${stats?.today?.appointments_total || 0} টি আজ`}
-              trendPositive={Boolean(stats?.today?.appointments_total)}
-              to="/admin/appointments"
-            />
-            <ExecutiveMetricCard
               title="নিবন্ধিত রোগী (Patients)"
               value={`${Number(stats?.total_patients ?? stats?.total_users ?? 0).toLocaleString()} জন`}
-              subtext={`${stats?.total_prescriptions || 0} টি ডিজিটাল প্রেসক্রিপশন সংরক্ষিত`}
+              subtext={`${Number(stats?.total_prescriptions || 0).toLocaleString()} টি ডিজিটাল প্রেসক্রিপশন সংরক্ষিত`}
               icon={Users}
               badge={`+${stats?.today?.new_patients || 0} আজ`}
               trendPositive={Boolean(stats?.today?.new_patients)}
               to="/admin/patients"
+            />
+            <ExecutiveMetricCard
+              title="সক্রিয় সাবস্ক্রিপশন (Subscriptions)"
+              value={`${Number(stats?.business?.active_subscribers || 0).toLocaleString()} টি`}
+              subtext="প্যাকেজ ও সেবা সক্রিয় সাবস্ক্রাইবার"
+              icon={Zap}
+              badge="Active"
+              trendPositive={true}
+              to="/admin/billing/subscribers"
             />
           </>
         )}
@@ -772,12 +870,185 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* 2.5 DAILY OPERATIONAL TRIAGE & ACTION RIBBON (ADMIN ONLY) */}
+      {isAdmin && (
+        <div
+          className="dashboard-alert-ribbon"
+          style={{
+            background: 'var(--admin-card-bg)',
+            border: '1px solid var(--admin-border)',
+            borderRadius: 12,
+            padding: '12px 18px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 12, fontWeight: 800, color: 'var(--admin-text)',
+              textTransform: 'uppercase', letterSpacing: '0.4px'
+            }}>
+              <AlertCircle size={15} color="#D97706" />
+              <span>দৈনিক অপারেশন ওয়াচলিস্ট:</span>
+            </span>
+
+            {/* Inactive Doctors Warning */}
+            {stats?.action_required?.inactive_doctors > 0 ? (
+              <Link
+                to="/admin/doctors?is_active=0"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 8,
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  color: '#D97706', fontSize: 11.5, fontWeight: 700,
+                  textDecoration: 'none', transition: '0.15s ease'
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706' }} />
+                <span>{stats.action_required.inactive_doctors} জন ডাক্তার যাচাই বাকি</span>
+                <ChevronRight size={12} />
+              </Link>
+            ) : null}
+
+            {/* Inactive Hospitals Warning */}
+            {stats?.action_required?.inactive_hospitals > 0 ? (
+              <Link
+                to="/admin/hospitals?is_active=0"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 8,
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  color: '#2563EB', fontSize: 11.5, fontWeight: 700,
+                  textDecoration: 'none', transition: '0.15s ease'
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563EB' }} />
+                <span>{stats.action_required.inactive_hospitals} টি হাসপাতাল অনবোর্ডিং বাকি</span>
+                <ChevronRight size={12} />
+              </Link>
+            ) : null}
+
+            {/* Pending Dispute Reports */}
+            {stats?.action_required?.pending_reports > 0 ? (
+              <Link
+                to="/admin/reviews/reports"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 8,
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  color: '#EF4444', fontSize: 11.5, fontWeight: 700,
+                  textDecoration: 'none', transition: '0.15s ease'
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
+                <span>{stats.action_required.pending_reports} টি রিভিউ বিরোধ নিষ্পত্তি বাকি</span>
+                <ChevronRight size={12} />
+              </Link>
+            ) : null}
+
+            {/* Pending Commissions Settlement */}
+            {stats?.action_required?.pending_commissions > 0 ? (
+              <Link
+                to="/admin/reports/commission?commission_status=pending"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 8,
+                  background: 'rgba(139, 92, 246, 0.1)',
+                  border: '1px solid rgba(139, 92, 246, 0.25)',
+                  color: '#7C3AED', fontSize: 11.5, fontWeight: 700,
+                  textDecoration: 'none', transition: '0.15s ease'
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED' }} />
+                <span>{stats.action_required.pending_commissions} টি কমিশন সেটেলমেন্ট বাকি</span>
+                <ChevronRight size={12} />
+              </Link>
+            ) : null}
+
+            {/* Support Tickets Waiting */}
+            {(stats?.action_required?.pending_tickets > 0 || stats?.inbound_requests?.counts?.tickets > 0) ? (
+              <Link
+                to="/admin/services"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '4px 10px', borderRadius: 8,
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  color: '#059669', fontSize: 11.5, fontWeight: 700,
+                  textDecoration: 'none', transition: '0.15s ease'
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
+                <span>{stats?.action_required?.pending_tickets || stats?.inbound_requests?.counts?.tickets} টি সাপোর্ট টিকিট ওপেন</span>
+                <ChevronRight size={12} />
+              </Link>
+            ) : null}
+
+            {/* If all clean */}
+            {(!stats?.action_required?.inactive_doctors &&
+              !stats?.action_required?.inactive_hospitals &&
+              !stats?.action_required?.pending_reports &&
+              !stats?.action_required?.pending_commissions &&
+              !stats?.action_required?.pending_tickets) && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 8,
+                background: 'rgba(0, 184, 117, 0.08)',
+                color: '#00B875', fontSize: 12, fontWeight: 700
+              }}>
+                <ShieldCheck size={14} color="#00B875" />
+                <span>আজকের সকল দৈনন্দিন অপারেশনাল কিউ ক্লিয়ার — কোনো জরুরি পেন্ডিং কাজ নেই ✓</span>
+              </span>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Link
+              to="/admin/doctor-leaves"
+              style={{
+                fontSize: 11.5, fontWeight: 700, color: 'var(--admin-text-muted)',
+                textDecoration: 'none', padding: '4px 8px', borderRadius: 6,
+                border: '1px solid var(--admin-border)', background: 'var(--admin-bg)',
+                display: 'inline-flex', alignItems: 'center', gap: 4
+              }}
+            >
+              <Calendar size={12} />
+              <span>ডাক্তারদের ছুটি</span>
+            </Link>
+            <Link
+              to="/admin/billing/dashboard"
+              style={{
+                fontSize: 11.5, fontWeight: 700, color: 'var(--admin-primary)',
+                textDecoration: 'none', padding: '4px 8px', borderRadius: 6,
+                border: '1px solid rgba(0, 184, 117, 0.3)', background: 'rgba(0, 184, 117, 0.06)',
+                display: 'inline-flex', alignItems: 'center', gap: 4
+              }}
+            >
+              <DollarSign size={12} />
+              <span>বিলিং কনসোল ↗</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 3. DUAL GRID: UNIFIED ANALYTICAL TREND (60%) + ACTION DESK (40%) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isAdmin ? '1.5fr 1fr' : '1fr',
-        gap: 16, marginBottom: 20
-      }}>
+      <div
+        className="dashboard-dual-grid"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: isAdmin ? '1.5fr 1fr' : '1fr',
+          gap: 16, marginBottom: 20
+        }}
+      >
         {/* Left: Primary Operational Trend Chart */}
         <div style={{
           background: 'var(--admin-card-bg)',
@@ -808,6 +1079,12 @@ export default function DashboardPage() {
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981' }} />
                   <span style={{ color: 'var(--admin-text-muted)' }}>সম্পন্ন সেবা</span>
                 </div>
+                {isAdmin && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6' }} />
+                    <span style={{ color: '#2563EB' }}>আদায়কৃত ফি (৳)</span>
+                  </div>
+                )}
               </div>
 
               {/* Month & Year Selectors */}
@@ -913,18 +1190,33 @@ export default function DashboardPage() {
               </div>
             ) : combinedTrendData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={combinedTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={combinedTrendData} margin={{ top: 10, right: isAdmin ? 15 : 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="primaryAreaGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#00B875" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#00B875" stopOpacity={0.0} />
                     </linearGradient>
+                    <linearGradient id="revenueAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0} />
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--admin-border)" vertical={false} opacity={0.6} />
                   <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'var(--admin-text-muted)' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  {isAdmin && (
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      tick={{ fontSize: 10, fill: '#3B82F6' }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(val) => `৳${val >= 1000 ? `${Math.round(val / 1000)}k` : val}`}
+                    />
+                  )}
                   <Tooltip content={<MetricTooltip />} />
                   <Area
+                    yAxisId="left"
                     type="monotone"
                     dataKey="Appointments"
                     name="মোট বুকিং"
@@ -933,6 +1225,7 @@ export default function DashboardPage() {
                     fill="url(#primaryAreaGrad)"
                   />
                   <Area
+                    yAxisId="left"
                     type="monotone"
                     dataKey="Completed"
                     name="সম্পন্ন সেবা"
@@ -941,6 +1234,17 @@ export default function DashboardPage() {
                     strokeDasharray="4 4"
                     fill="none"
                   />
+                  {isAdmin && (
+                    <Area
+                      yAxisId="right"
+                      type="monotone"
+                      dataKey="Revenue"
+                      name="আদায়কৃত ফি"
+                      stroke="#3B82F6"
+                      strokeWidth={2}
+                      fill="url(#revenueAreaGrad)"
+                    />
+                  )}
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -966,9 +1270,18 @@ export default function DashboardPage() {
             { key: 'hospitals', label: 'হাসপাতাল', count: inbound.counts?.hospitals || 0, viewAll: '/admin/hospitals?is_active=0' },
             { key: 'tickets', label: 'সাপোর্ট টিকিট', count: inbound.counts?.tickets || 0, viewAll: '/admin/services' },
             { key: 'reports', label: 'রিভিউ বিরোধ', count: inbound.counts?.reports || 0, viewAll: '/admin/reviews/reports' },
+            { key: 'commissions', label: 'কমিশন', count: stats?.action_required?.pending_commissions || 0, viewAll: '/admin/reports/commission?commission_status=pending' },
           ]
 
-          const activeInboundList = inbound[inboundTab] || []
+          const activeInboundList = inboundTab === 'commissions'
+            ? (stats?.action_required?.pending_commissions > 0 ? [{
+                id: 'comm-pending',
+                title: `${stats.action_required.pending_commissions}টি অ্যাপয়েন্টমেন্টের কমিশন সেটেলমেন্ট বাকি`,
+                subtitle: 'ডাক্তার ও হাসপাতাল কমিশন নিষ্পত্তির অপেক্ষায়',
+                time: 'চলমান বকেয়া',
+                action_url: '/admin/reports/commission?commission_status=pending'
+              }] : [])
+            : (inbound[inboundTab] || [])
 
           return (
             <div style={{
@@ -1010,7 +1323,8 @@ export default function DashboardPage() {
               {/* Pipeline Category Sub-tabs */}
               <div style={{
                 display: 'flex', gap: 4, background: 'var(--admin-bg)', padding: 3,
-                borderRadius: 8, border: '1px solid var(--admin-border)', marginBottom: 12
+                borderRadius: 8, border: '1px solid var(--admin-border)', marginBottom: 12,
+                overflowX: 'auto', WebkitOverflowScrolling: 'touch'
               }}>
                 {inboundTabs.map(tab => (
                   <button
@@ -1078,7 +1392,7 @@ export default function DashboardPage() {
                         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--admin-primary)'; e.currentTarget.style.color = 'var(--admin-primary)' }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--admin-border)'; e.currentTarget.style.color = 'var(--admin-text)' }}
                       >
-                        <span>{inboundTab === 'tickets' ? 'সমাধান' : inboundTab === 'reports' ? 'মডারেশন' : 'যাচাই'}</span>
+                        <span>{inboundTab === 'tickets' ? 'সমাধান' : inboundTab === 'reports' ? 'মডারেশন' : inboundTab === 'commissions' ? 'নিষ্পত্তি' : 'যাচাই'}</span>
                         <ChevronRight size={11} />
                       </Link>
                     </div>
@@ -1111,7 +1425,7 @@ export default function DashboardPage() {
         })()}
       </div>
 
-      {/* 4. LIVE TRANSACTION & RECENT ACTIVITY LEDGER (STRIPE-STYLE TABLE) */}
+      {/* 4. LIVE TRANSACTION & RECENT ACTIVITY LEDGER (DUAL-TAB: BOOKINGS VS AUDIT) */}
       {isAdmin && (
         <div style={{
           background: 'var(--admin-card-bg)',
@@ -1121,159 +1435,363 @@ export default function DashboardPage() {
           marginBottom: 20
         }}>
           <div style={{
-            padding: '16px 20px',
+            padding: '14px 20px',
             borderBottom: '1px solid var(--admin-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            flexWrap: 'wrap', gap: 12,
             background: 'var(--admin-card-bg)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-text)' }}>
-                রিয়েল-টাইম অপারেশন লেজার (Live Bookings Ledger)
-              </span>
-              <span style={{
-                fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
-                background: 'var(--admin-bg)', color: 'var(--admin-text-muted)',
-                border: '1px solid var(--admin-border)'
-              }}>
-                সর্বশেষ ৬টি লেনদেন
-              </span>
+            {/* Dual Tabs for Ledger */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--admin-bg)', padding: 3, borderRadius: 8, border: '1px solid var(--admin-border)' }}>
+              <button
+                type="button"
+                onClick={() => setLedgerTab('bookings')}
+                style={{
+                  border: 'none', padding: '6px 12px', borderRadius: 6,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: '0.15s ease',
+                  background: ledgerTab === 'bookings' ? 'var(--admin-card-bg)' : 'transparent',
+                  color: ledgerTab === 'bookings' ? 'var(--admin-text)' : 'var(--admin-text-muted)',
+                  boxShadow: ledgerTab === 'bookings' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: 6
+                }}
+              >
+                <span>চলমান বুকিং লেজার (Bookings)</span>
+                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: 'var(--admin-border)', color: 'var(--admin-text-muted)' }}>
+                  {stats?.recent_activities?.length || 0}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setLedgerTab('audit')}
+                style={{
+                  border: 'none', padding: '6px 12px', borderRadius: 6,
+                  fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: '0.15s ease',
+                  background: ledgerTab === 'audit' ? 'var(--admin-card-bg)' : 'transparent',
+                  color: ledgerTab === 'audit' ? 'var(--admin-text)' : 'var(--admin-text-muted)',
+                  boxShadow: ledgerTab === 'audit' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: 6
+                }}
+              >
+                <Shield size={13} color={ledgerTab === 'audit' ? 'var(--admin-primary)' : 'currentColor'} />
+                <span>প্রশাসনিক অডিট স্ট্রিম (Audit Log)</span>
+              </button>
             </div>
+
             <Link
-              to="/admin/appointments"
+              to={ledgerTab === 'bookings' ? '/admin/appointments' : '/admin/audit-logs'}
               style={{
                 fontSize: 12, fontWeight: 700, color: 'var(--admin-primary)',
                 textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4
               }}
             >
-              <span>সকল অ্যাপয়েন্টমেন্ট</span>
+              <span>{ledgerTab === 'bookings' ? 'সকল অ্যাপয়েন্টমেন্ট দেখুন' : 'পূর্ণাঙ্গ অডিট হিস্ট্রি দেখুন'}</span>
               <ArrowRight size={13} />
             </Link>
           </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: 'var(--admin-bg)', borderBottom: '1px solid var(--admin-border)' }}>
-                  <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>রোগী</th>
-                  <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>চিকিৎসক ও প্রতিষ্ঠান</th>
-                  <th style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>পরামর্শ ফি</th>
-                  <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>পেমেন্ট</th>
-                  <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>স্ট্যাটাস</th>
-                  <th style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>সময়কাল</th>
-                  <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>অ্যাকশন</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats?.recent_activities && stats.recent_activities.length > 0 ? (
-                  stats.recent_activities.map((act) => (
-                    <tr
-                      key={act.id}
-                      style={{
-                        borderBottom: '1px solid var(--admin-border)',
-                        transition: 'background 0.15s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <td style={{ padding: '12px 18px', fontWeight: 700, color: 'var(--admin-text)' }}>
-                        {act.patient_name}
-                      </td>
-                      <td style={{ padding: '12px 18px' }}>
-                        <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{act.doctor_name}</div>
-                        {act.hospital_name && (
-                          <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>{act.hospital_name}</div>
-                        )}
-                      </td>
-                      <td style={{ padding: '12px 18px', textAlign: 'right', fontWeight: 800, color: 'var(--admin-text)', fontVariantNumeric: 'tabular-nums' }}>
-                        ৳{act.amount}
-                      </td>
-                      <td style={{ padding: '12px 18px', textAlign: 'center' }}>
-                        <span style={{
-                          display: 'inline-block', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 4,
-                          background: act.payment_status === 'Paid' ? 'rgba(0, 184, 117, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                          color: act.payment_status === 'Paid' ? '#00B875' : '#D97706',
-                          textTransform: 'uppercase'
-                        }}>
-                          {act.payment_status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 18px', textAlign: 'center' }}>
-                        <span style={{
-                          display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
-                          background: 'var(--admin-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)',
-                          textTransform: 'capitalize'
-                        }}>
-                          {act.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 18px', textAlign: 'right', fontSize: 12, color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
-                        {act.time}
-                      </td>
-                      <td style={{ padding: '12px 18px', textAlign: 'center' }}>
-                        <Link
-                          to={`/admin/appointments/view/${act.id}`}
-                          style={{
-                            fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)',
-                            textDecoration: 'none', padding: '4px 8px', borderRadius: 4
-                          }}
-                        >
-                          দেখুন
-                        </Link>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {ledgerTab === 'bookings' ? (
+              <table style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: 'var(--admin-bg)', borderBottom: '1px solid var(--admin-border)' }}>
+                    <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>রোগী</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>চিকিৎসক ও প্রতিষ্ঠান</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>পরামর্শ ফি</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>পেমেন্ট</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>স্ট্যাটাস</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>সময়কাল</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>অ্যাকশন</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats?.recent_activities && stats.recent_activities.length > 0 ? (
+                    stats.recent_activities.map((act) => (
+                      <tr
+                        key={act.id}
+                        style={{
+                          borderBottom: '1px solid var(--admin-border)',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <td style={{ padding: '12px 18px', fontWeight: 700, color: 'var(--admin-text)' }}>
+                          {act.patient_name}
+                        </td>
+                        <td style={{ padding: '12px 18px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--admin-text)' }}>{act.doctor_name}</div>
+                          {act.hospital_name && (
+                            <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 2 }}>{act.hospital_name}</div>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 18px', textAlign: 'right', fontWeight: 800, color: 'var(--admin-text)', fontVariantNumeric: 'tabular-nums' }}>
+                          ৳{act.amount}
+                        </td>
+                        <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-block', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 4,
+                            background: act.payment_status === 'Paid' ? 'rgba(0, 184, 117, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            color: act.payment_status === 'Paid' ? '#00B875' : '#D97706',
+                            textTransform: 'uppercase'
+                          }}>
+                            {act.payment_status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                            background: 'var(--admin-bg)', color: 'var(--admin-text)', border: '1px solid var(--admin-border)',
+                            textTransform: 'capitalize'
+                          }}>
+                            {act.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 18px', textAlign: 'right', fontSize: 12, color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
+                          {act.time}
+                        </td>
+                        <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                          <Link
+                            to={`/admin/appointments/view/${act.id}`}
+                            style={{
+                              fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)',
+                              textDecoration: 'none', padding: '4px 8px', borderRadius: 4
+                            }}
+                          >
+                            দেখুন
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} style={{ padding: 32, textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
+                        কোনো সাম্প্রতিক ট্রানজ্যাকশন নেই
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} style={{ padding: 32, textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
-                      কোনো সাম্প্রতিক ট্রানজ্যাকশন নেই
-                    </td>
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table style={{ width: '100%', minWidth: 680, borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: 'var(--admin-bg)', borderBottom: '1px solid var(--admin-border)' }}>
+                    <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>ব্যবহারকারী ও ভূমিকা</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>মডিউল ও অ্যাকশন</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'left', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>বিবরণ</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>ঝুঁকির মাত্রা</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>আইপি ও সময়</th>
+                    <th style={{ padding: '10px 18px', textAlign: 'center', fontWeight: 600, color: 'var(--admin-text-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.4px' }}>অ্যাকশন</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {auditLoading ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 32, textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
+                        লোড হচ্ছে অডিট স্ট্রিম...
+                      </td>
+                    </tr>
+                  ) : auditLogs && auditLogs.length > 0 ? (
+                    auditLogs.map((log) => {
+                      const isHighRisk = log.risk_level === 'high' || log.risk_level === 'critical'
+                      return (
+                        <tr
+                          key={log.id}
+                          style={{
+                            borderBottom: '1px solid var(--admin-border)',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-bg)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <td style={{ padding: '12px 18px' }}>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>
+                              {log.user_name || log.user?.name || 'System / Staff'}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', textTransform: 'capitalize' }}>
+                              {log.user_role || log.user?.role || 'User'}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 18px' }}>
+                            <span style={{
+                              display: 'inline-block', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 4,
+                              background: 'var(--admin-bg)', border: '1px solid var(--admin-border)',
+                              color: 'var(--admin-text)', textTransform: 'uppercase', marginRight: 6
+                            }}>
+                              {log.module}
+                            </span>
+                            <span style={{
+                              display: 'inline-block', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                              background: log.action === 'delete' ? 'rgba(239, 68, 68, 0.1)' : log.action === 'login' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                              color: log.action === 'delete' ? '#EF4444' : log.action === 'login' ? '#2563EB' : '#059669',
+                              textTransform: 'capitalize'
+                            }}>
+                              {log.action}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 18px', color: 'var(--admin-text)', fontSize: 12, maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {log.description || `${log.action} on ${log.model_type || log.module}`}
+                          </td>
+                          <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                            <span style={{
+                              display: 'inline-block', fontSize: 10, fontWeight: 800, padding: '2px 7px', borderRadius: 4,
+                              background: isHighRisk ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 184, 117, 0.1)',
+                              color: isHighRisk ? '#DC2626' : '#00B875', textTransform: 'uppercase'
+                            }}>
+                              {log.risk_level || 'low'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 18px', textAlign: 'right', fontSize: 11, color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
+                            <div>{log.created_at ? new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently'}</div>
+                            <div style={{ fontSize: 10, opacity: 0.7 }}>{log.ip_address || '127.0.0.1'}</div>
+                          </td>
+                          <td style={{ padding: '12px 18px', textAlign: 'center' }}>
+                            <Link
+                              to="/admin/audit-logs"
+                              style={{
+                                fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)',
+                                textDecoration: 'none', padding: '4px 8px', borderRadius: 4
+                              }}
+                            >
+                              অডিট
+                            </Link>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} style={{ padding: 32, textAlign: 'center', color: 'var(--admin-text-muted)', fontSize: 12 }}>
+                        কোনো সাম্প্রতিক অডিট রেকর্ড নেই
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
 
-      {/* 5. TOP PERFORMING SPECIALTIES & HEALTHCARE FOOTPRINT (COMPACT 2-COLUMN BOTTOM) */}
-      {isAdmin && stats?.top_specialties && stats.top_specialties.length > 0 && (
-        <div style={{
-          background: 'var(--admin-card-bg)',
-          border: '1px solid var(--admin-border)',
-          borderRadius: 14,
-          padding: '18px 20px',
-          marginBottom: 20
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>
-              জনপ্রিয় স্পেশালিটি ও ডাক্তার কভারেজ (Specialty Coverage)
-            </span>
-            <Link to="/admin/specialties" style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)', textDecoration: 'none' }}>
-              সকল স্পেশালিটি দেখুন →
-            </Link>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-            {stats.top_specialties.map((spec, i) => (
-              <div key={spec.id} style={{
-                background: 'var(--admin-bg)',
-                border: '1px solid var(--admin-border)',
-                borderRadius: 8,
-                padding: '10px 14px',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-              }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text)' }}>{spec.name}</span>
-                <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  {spec.doctors_count} জন
+      {/* 5. TOP PERFORMING SPECIALTIES & HEALTHCARE FOOTPRINT (RATIO BAR + GRID) */}
+      {isAdmin && stats?.top_specialties && stats.top_specialties.length > 0 && (() => {
+        const totalTopSpecialtyDocs = stats.top_specialties.reduce((sum, s) => sum + (s.doctors_count || 0), 0) || 1
+        const palette = ['#00B875', '#3B82F6', '#8B5CF6', '#F59E0B', '#EC4899', '#06B6D4']
+
+        return (
+          <div style={{
+            background: 'var(--admin-card-bg)',
+            border: '1px solid var(--admin-border)',
+            borderRadius: 14,
+            padding: '18px 20px',
+            marginBottom: 20
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>
+                  জনপ্রিয় স্পেশালিটি ও ডাক্তার কভারেজ শেয়ার (Specialty Market Share)
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginLeft: 8 }}>
+                  শীর্ষ {stats.top_specialties.length}টি বিভাগে মোট {totalTopSpecialtyDocs} জন বিশেষজ্ঞ
                 </span>
               </div>
-            ))}
+              <Link to="/admin/specialties" style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-primary)', textDecoration: 'none' }}>
+                সকল স্পেশালিটি ডিরেক্টরি →
+              </Link>
+            </div>
+
+            {/* Segmented Distribution Ratio Bar */}
+            <div style={{
+              display: 'flex', height: 8, borderRadius: 999, overflow: 'hidden',
+              width: '100%', marginBottom: 16, background: 'var(--admin-border)'
+            }}>
+              {stats.top_specialties.map((spec, i) => {
+                const pct = Math.round((spec.doctors_count / totalTopSpecialtyDocs) * 100)
+                return (
+                  <div
+                    key={spec.id}
+                    title={`${spec.name}: ${spec.doctors_count} জন (${pct}%)`}
+                    style={{
+                      width: `${Math.max(4, pct)}%`,
+                      background: palette[i % palette.length],
+                      transition: 'width 0.3s ease'
+                    }}
+                  />
+                )
+              })}
+            </div>
+
+            {/* Specialty Cards with Color Dot & Percentage Share */}
+            <div className="dashboard-specialty-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+              {stats.top_specialties.map((spec, i) => {
+                const pct = Math.round((spec.doctors_count / totalTopSpecialtyDocs) * 100)
+                const color = palette[i % palette.length]
+                return (
+                  <div key={spec.id} style={{
+                    background: 'var(--admin-bg)',
+                    border: '1px solid var(--admin-border)',
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-text)' }}>{spec.name}</span>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--admin-text)', fontVariantNumeric: 'tabular-nums' }}>
+                        {spec.doctors_count} জন
+                      </span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: color, marginLeft: 4 }}>
+                        ({pct}%)
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes dashSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes dashPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+
+        @media (max-width: 992px) {
+          .dashboard-dual-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .dashboard-kpi-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .dashboard-kpi-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          .dashboard-specialty-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .dashboard-header-bar {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+          .dashboard-header-actions {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          .dashboard-alert-ribbon {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+          }
+        }
       `}} />
     </div>
   )
