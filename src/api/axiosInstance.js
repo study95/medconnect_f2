@@ -56,7 +56,37 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+let lastUserInteractionTime = Date.now()
+if (typeof window !== 'undefined') {
+  const recordUserInteraction = () => {
+    lastUserInteractionTime = Date.now()
+    if (window.__sessionIdleExpired) {
+      window.__sessionIdleExpired = false
+      clearAuthAndNotify()
+    }
+  }
+
+  ;['mousedown', 'keydown', 'touchstart', 'click'].forEach((evt) => {
+    window.addEventListener(evt, recordUserInteraction, { passive: true, capture: true })
+  })
+}
+
+const savePostIdleReturnUrl = () => {
+  if (typeof window !== 'undefined') {
+    const currentPath = window.location.pathname + window.location.search + window.location.hash
+    if (
+      currentPath &&
+      !currentPath.includes('/login') &&
+      !currentPath.includes('/admin-secure-access') &&
+      !currentPath.includes('/register')
+    ) {
+      sessionStorage.setItem('post_idle_return_url', currentPath)
+    }
+  }
+}
+
 const clearAuthAndNotify = () => {
+  savePostIdleReturnUrl()
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   localStorage.removeItem('userType')
@@ -113,12 +143,23 @@ axiosInstance.interceptors.response.use(
     // Immediately terminate session if backend revokes token due to device mismatch or idle timeout
     const errorCode = error.response?.data?.code
     if (error.response?.status === 401 && (errorCode === 'DEVICE_MISMATCH_REVOKED' || errorCode === 'SESSION_EXPIRED_IDLE')) {
-      clearAuthAndNotify()
+      if (errorCode === 'SESSION_EXPIRED_IDLE') {
+        // Zero-toast, smooth idle handling:
+        // If the user clicked/interacted recently, smoothly log out without jarring error toasts.
+        // If the user is idle/away (e.g. background poll/refetch), keep the view intact and transition on next click.
+        const isUserActiveRecently = (Date.now() - lastUserInteractionTime) < 8000
+        if (isUserActiveRecently) {
+          clearAuthAndNotify()
+        } else {
+          savePostIdleReturnUrl()
+          window.__sessionIdleExpired = true
+        }
+        return Promise.reject(error)
+      }
 
-      const fallbackMsg = errorCode === 'SESSION_EXPIRED_IDLE'
-        ? 'দীর্ঘক্ষণ নিষ্ক্রিয় থাকায় নিরাপত্তার স্বার্থে আপনার সেশনটি স্বয়ংক্রিয়ভাবে বন্ধ করা হয়েছে।'
-        : 'নিরাপত্তা সতর্কতা: অন্য ডিভাইস থেকে সেশন ব্যবহারের চেষ্টা শনাক্ত হওয়ায় পুনরায় লগইন করুন।'
-      const securityMsg = error.response?.data?.message || fallbackMsg
+      // DEVICE_MISMATCH_REVOKED: Security alert (e.g. session accessed from another device)
+      clearAuthAndNotify()
+      const securityMsg = error.response?.data?.message || 'নিরাপত্তা সতর্কতা: অন্য ডিভাইস থেকে সেশন ব্যবহারের চেষ্টা শনাক্ত হওয়ায় পুনরায় লগইন করুন।'
       if (!isPublicAuthRoute && !error.config?.skipGlobalToast) {
         toast.error(securityMsg, { id: `security-logout-${errorCode}` })
       }

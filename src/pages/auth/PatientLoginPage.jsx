@@ -56,7 +56,13 @@ export default function PatientLoginPage() {
 
     if (result.success) {
       
-      navigate(from, { replace: true })
+      let savedReturnPath = null
+      try {
+        savedReturnPath = sessionStorage.getItem('post_idle_return_url')
+        if (savedReturnPath) sessionStorage.removeItem('post_idle_return_url')
+      } catch {}
+      const target = (from && from !== '/' && !from.startsWith('/login')) ? from : (savedReturnPath || '/')
+      navigate(target, { replace: true })
     } else {
       setError(result.message || 'Invalid credentials. Please try again.')
     }

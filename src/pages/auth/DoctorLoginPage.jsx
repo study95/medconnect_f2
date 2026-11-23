@@ -70,7 +70,12 @@ export default function DoctorLoginPage() {
       return
     }
 
-    const target = from && from !== '/' && !from.startsWith('/login') ? from : '/admin'
+    let savedReturnPath = null
+    try {
+      savedReturnPath = sessionStorage.getItem('post_idle_return_url')
+      if (savedReturnPath) sessionStorage.removeItem('post_idle_return_url')
+    } catch {}
+    const target = (from && from !== '/' && !from.startsWith('/login')) ? from : (savedReturnPath || '/admin')
     navigate(target, { replace: true })
   }
 

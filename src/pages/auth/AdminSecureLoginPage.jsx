@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
 import { 
   Lock, Mail, Eye, EyeOff, AlertTriangle, ArrowLeft, ShieldCheck, 
@@ -29,7 +29,25 @@ export default function AdminSecureLoginPage() {
   const [backupConfirmed, setBackupConfirmed] = useState(false);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { storeAuth } = useAuth();
+
+  const resolveRedirectPath = () => {
+    const fromState = location.state?.from;
+    const statePath = fromState?.pathname
+      ? `${fromState.pathname}${fromState.search || ''}${fromState.hash || ''}`
+      : null;
+    let savedPath = null;
+    try {
+      savedPath = sessionStorage.getItem('post_idle_return_url');
+      if (savedPath) {
+        sessionStorage.removeItem('post_idle_return_url');
+      }
+    } catch {}
+    const queryUrl = new URLSearchParams(location.search).get('returnUrl');
+    const target = statePath || savedPath || queryUrl;
+    return target && !target.includes('/admin-secure-access') ? target : '/admin/dashboard';
+  };
 
   // Step 1: Submit Credentials
   const handleLogin = async (e) => {
@@ -57,7 +75,7 @@ export default function AdminSecureLoginPage() {
         setPassword('');
       } else if (response.data.success) {
         storeAuth(response.data.token, response.data.user, 'admin');
-        navigate('/admin/dashboard', { replace: true });
+        navigate(resolveRedirectPath(), { replace: true });
       }
     } catch (err) {
       setPassword('');
@@ -98,7 +116,7 @@ export default function AdminSecureLoginPage() {
 
       if (response.data.success) {
         storeAuth(response.data.token, response.data.user, 'admin');
-        navigate('/admin/dashboard', { replace: true });
+        navigate(resolveRedirectPath(), { replace: true });
       }
     } catch (err) {
       setCode('');

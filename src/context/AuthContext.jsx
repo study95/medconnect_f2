@@ -694,10 +694,20 @@ export function AuthProvider({ children }) {
     enabled: !!user?.id,
     timeoutMs: idleTimeoutMs,
     onTimeout: () => {
-      toast.error('দীর্ঘক্ষণ নিষ্ক্রিয় থাকায় নিরাপত্তার স্বার্থে আপনার সেশনটি স্বয়ংক্রিয়ভাবে বন্ধ করা হয়েছে।', {
-        id: 'idle-auto-logout',
-      })
-      logout()
+      // Passive idle handling: Do not force auto-redirect or show disruptive toast while user is away.
+      // Mark session as expired; the next user interaction will smoothly trigger re-authentication.
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname + window.location.search + window.location.hash
+        if (
+          currentPath &&
+          !currentPath.includes('/login') &&
+          !currentPath.includes('/admin-secure-access') &&
+          !currentPath.includes('/register')
+        ) {
+          sessionStorage.setItem('post_idle_return_url', currentPath)
+        }
+        window.__sessionIdleExpired = true
+      }
     },
     onKeepAlive: () => {
       // Non-poll request so backend resets last_activity_at
@@ -708,12 +718,6 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
-      <IdleWarningModal
-        show={showWarning}
-        remainingSeconds={remainingSeconds}
-        onStayLoggedIn={stayLoggedIn}
-        onLogoutNow={logout}
-      />
       <SudoVerifyModal />
     </AuthContext.Provider>
   )

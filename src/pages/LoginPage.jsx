@@ -154,8 +154,17 @@ function LoginPage() {
     }
 
     // Smart Role-Based Redirect:
-    if (from && from !== '/' && !from.startsWith('/login') && !from.startsWith('/register')) {
-      navigate(from, { replace: true })
+    let savedReturnPath = null
+    try {
+      savedReturnPath = sessionStorage.getItem('post_idle_return_url')
+      if (savedReturnPath) sessionStorage.removeItem('post_idle_return_url')
+    } catch {}
+    const effectiveTarget = (from && from !== '/' && !from.startsWith('/login') && !from.startsWith('/register'))
+      ? from
+      : (savedReturnPath && !savedReturnPath.startsWith('/login') && !savedReturnPath.startsWith('/register') ? savedReturnPath : null)
+
+    if (effectiveTarget) {
+      navigate(effectiveTarget, { replace: true })
     } else if (role === 'doctor' || roles.includes('doctor') || userData?.role_id === 2) {
       navigate('/doctor/dashboard', { replace: true })
     } else if (role === 'hospital' || roles.includes('hospital') || roles.includes('manager') || userData?.role_id === 3) {
