@@ -6,7 +6,7 @@ import axiosInstance from '../../api/axiosInstance'
 import { 
   Phone, Mail, HelpCircle, MessageSquare, Clock, ShieldCheck, 
   ChevronDown, ChevronUp, ArrowRight, LifeBuoy, Sparkles,
-  CheckCircle2, AlertTriangle, Send, RefreshCw, ThumbsUp, ThumbsDown,
+  CheckCircle2, AlertTriangle, AlertCircle, Send, RefreshCw, ThumbsUp, ThumbsDown,
   Ticket, FileText, Headphones, PhoneCall, Copy, Search, X, Plus, Minus,
   Layers, Calendar, CreditCard, UserCheck, Stethoscope
 } from 'lucide-react'
@@ -45,7 +45,9 @@ export default function SupportPage() {
   const [ticketSubmitting, setTicketSubmitting] = useState(false)
   const [submittedTicket, setSubmittedTicket] = useState(null)
   const [autoDismissSeconds, setAutoDismissSeconds] = useState(120)
-  const [contactWarning, setContactWarning] = useState('')
+  const [ticketFieldErrors, setTicketFieldErrors] = useState({})
+  const [ticketGeneralError, setTicketGeneralError] = useState('')
+  const [contactIsUnregistered, setContactIsUnregistered] = useState(false)
   const [contactSuccess, setContactSuccess] = useState('')
   const [contactChecking, setContactChecking] = useState(false)
 
@@ -187,21 +189,88 @@ export default function SupportPage() {
   // Handle Ticket Submission — validates registered contact and creates unique TID- ticket
   const handleTicketSubmit = async (e) => {
     e.preventDefault()
-    if (!ticketForm.name || !ticketForm.contact || !ticketForm.subject || !ticketForm.message) return
+
+    const name = ticketForm.name.trim()
+    const contact = ticketForm.contact.trim()
+    const subject = ticketForm.subject.trim()
+    const message = ticketForm.message.trim()
+
+    const errs = {}
+
+    if (!name) {
+      errs.name = 'আপনার পুরো নাম লিখুন।'
+    } else if (name.length < 3) {
+      errs.name = 'আপনার পুরো নাম কমপক্ষে ৩ অক্ষরের হতে হবে।'
+    } else if (name.length > 100) {
+      errs.name = 'আপনার পুরো নাম সর্বোচ্চ ১০০ অক্ষরের মধ্যে রাখুন।'
+    }
+
+    if (!contact) {
+      errs.contact = 'মোবাইল নম্বর অথবা ইমেইল ঠিকানা প্রদান করুন।'
+    } else {
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact)
+      const rawDigits = contact.replace(/[^\d]/g, '')
+      const cleanPhone = (rawDigits.startsWith('8801') && rawDigits.length === 13) ? rawDigits.slice(2) : rawDigits
+      const isPhone = /^01[3-9]\d{8}$/.test(cleanPhone)
+
+      if (!isEmail && !isPhone) {
+        errs.contact = 'অনুগ্রহ করে সঠিক ১১ ডিজিটের মোবাইল নম্বর (যেমন: 017XXXXXXXX) অথবা বৈধ ইমেইল ঠিকানা প্রদান করুন।'
+      }
+    }
+
+    if (!subject) {
+      errs.subject = 'অভিযোগ বা বিষয়ের শিরোনাম লিখুন।'
+    } else if (subject.length < 5) {
+      errs.subject = 'বিষয়ের শিরোনাম কমপক্ষে ৫ অক্ষরের হতে হবে।'
+    } else if (subject.length > 200) {
+      errs.subject = 'বিষয়ের শিরোনাম সর্বোচ্চ ২০০ অক্ষরের মধ্যে রাখুন।'
+    }
+
+    if (!message) {
+      errs.message = 'সমস্যার বিস্তারিত বিবরণ লিখুন।'
+    } else if (message.length < 15) {
+      errs.message = 'সমস্যার বিস্তারিত বিবরণ অত্যন্ত সংক্ষিপ্ত। অনুগ্রহ করে অন্তত ১৫ অক্ষরে বিস্তারিত লিখুন।'
+    } else if (message.length > 1000) {
+      errs.message = 'সমস্যার বিস্তারিত বিবরণ সর্বোচ্চ ১০০০ অক্ষরের মধ্যে সীমাবদ্ধ রাখুন।'
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setTicketFieldErrors(errs)
+      setTicketGeneralError('')
+      setContactIsUnregistered(false)
+      const firstField = ['name', 'contact', 'subject', 'message'].find(f => errs[f])
+      if (firstField) {
+        const el = document.getElementById(`ticket-${firstField}-input`)
+        if (el) {
+          el.focus()
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+      return
+    }
+
+    setTicketFieldErrors({})
+    setTicketGeneralError('')
+    setContactIsUnregistered(false)
     setTicketSubmitting(true)
-    setContactWarning('')
 
     try {
+      const rawDigits = contact.replace(/[^\d]/g, '')
+      const cleanPhone = (rawDigits.startsWith('8801') && rawDigits.length === 13) ? rawDigits.slice(2) : rawDigits
+      const isPhone = /^01[3-9]\d{8}$/.test(cleanPhone)
+
       const payload = {
-        name: ticketForm.name.trim(),
-        contact: ticketForm.contact.trim(),
+        name,
+        contact: isPhone ? cleanPhone : contact,
         category: ticketForm.category,
         priority: ticketForm.priority,
-        subject: ticketForm.subject.trim(),
-        message: ticketForm.message.trim(),
+        subject,
+        message,
       }
       
-      const res = await axiosInstance.post('/services', payload)
+      const res = await axiosInstance.post('/services', payload, {
+        skipGlobalToast: true,
+      })
       const ticketId = res.data?.ticket_number || ('TID-' + Math.floor(100000 + Math.random() * 900000))
       
       const newTicket = {
@@ -215,11 +284,37 @@ export default function SupportPage() {
       setSubmittedTicket(newTicket)
       setAutoDismissSeconds(120) // Reset 2 minutes countdown
       setTicketForm({ name: '', contact: '', category: 'অ্যাপয়েন্টমেন্ট সমস্যা', priority: 'সাধারণ', subject: '', message: '' })
-      setContactWarning('')
+      setTicketFieldErrors({})
+      setTicketGeneralError('')
+      setContactIsUnregistered(false)
       setContactSuccess('')
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'টিকিট সাবমিট করা সম্ভব হয়নি।'
-      setContactWarning(errorMsg)
+      const isUnreg = err.response?.data?.is_registered === false && !err.response?.data?.invalid_format
+
+      if (isUnreg) {
+        setTicketFieldErrors({ contact: errorMsg })
+        setContactIsUnregistered(true)
+        const el = document.getElementById('ticket-contact-input')
+        if (el) {
+          el.focus()
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      } else if (err.response?.data?.invalid_format) {
+        setTicketFieldErrors({ contact: errorMsg })
+        setContactIsUnregistered(false)
+        const el = document.getElementById('ticket-contact-input')
+        if (el) {
+          el.focus()
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      } else {
+        setTicketGeneralError(errorMsg)
+        setTimeout(() => {
+          const errEl = document.getElementById('ticket-general-error-banner')
+          if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 100)
+      }
     } finally {
       setTicketSubmitting(false)
     }
@@ -238,7 +333,9 @@ export default function SupportPage() {
     }
 
     try {
-      const res = await axiosInstance.get(`/services/track/${cleanId}`)
+      const res = await axiosInstance.get(`/services/track/${cleanId}`, {
+        skipGlobalToast: true,
+      })
       if (res.data) {
         const d = res.data
         const statusMap = {
@@ -259,9 +356,10 @@ export default function SupportPage() {
         })
         return
       }
-    } catch {
+    } catch (err) {
       setSearchedTicketResult(null)
-      setStatusError(`টিকিট আইডি "${cleanId}" সিস্টেমের রেকর্ডে পাওয়া যায়নি। অনুগ্রহ করে সঠিক আইডি প্রদান করুন।`)
+      const msg = err.response?.data?.message || `টিকিট আইডি "${cleanId}" সিস্টেমের রেকর্ডে পাওয়া যায়নি। অনুগ্রহ করে সঠিক আইডি প্রদান করুন।`
+      setStatusError(msg)
     }
   }
 
@@ -1154,12 +1252,29 @@ export default function SupportPage() {
                         আপনার নাম <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input
-                        required
+                        id="ticket-name-input"
+                        maxLength={100}
                         value={ticketForm.name}
-                        onChange={e => setTicketForm({ ...ticketForm, name: e.target.value })}
+                        onChange={e => {
+                          setTicketForm({ ...ticketForm, name: e.target.value.slice(0, 100) })
+                          if (ticketFieldErrors.name) setTicketFieldErrors(prev => ({ ...prev, name: '' }))
+                        }}
                         placeholder="উদাঃ সাকিব হাসান"
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          borderRadius: 12,
+                          border: ticketFieldErrors.name ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0',
+                          background: ticketFieldErrors.name ? '#FEF2F2' : 'white',
+                          outline: 'none',
+                          fontSize: 14
+                        }}
                       />
+                      {ticketFieldErrors.name && (
+                        <div style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <AlertCircle size={14} /> {ticketFieldErrors.name}
+                        </div>
+                      )}
                     </Col>
 
                     <Col md={6}>
@@ -1168,34 +1283,39 @@ export default function SupportPage() {
                       </label>
                       <div style={{ position: 'relative' }}>
                         <input
-                          required
+                          id="ticket-contact-input"
                           value={ticketForm.contact}
                           onChange={e => {
                             setTicketForm({ ...ticketForm, contact: e.target.value })
-                            if (contactWarning) setContactWarning('')
+                            if (ticketFieldErrors.contact) {
+                              setTicketFieldErrors(prev => ({ ...prev, contact: '' }))
+                              setContactIsUnregistered(false)
+                            }
                             if (contactSuccess) setContactSuccess('')
                           }}
-                          onBlur={e => checkContactRegistration(e.target.value)}
                           placeholder="017XXXXXXXX / email@example.com"
                           style={{
                             width: '100%',
                             padding: '12px 16px',
                             borderRadius: 12,
-                            border: contactWarning ? '1.5px solid #EF4444' : contactSuccess ? '1.5px solid #10B981' : '1.5px solid #E2E8F0',
+                            border: ticketFieldErrors.contact ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0',
                             outline: 'none',
                             fontSize: 14,
-                            background: contactWarning ? '#FEF2F2' : contactSuccess ? '#F0FDF4' : 'white'
+                            background: ticketFieldErrors.contact ? '#FEF2F2' : 'white'
                           }}
                         />
-                        {contactChecking && (
-                          <div style={{ position: 'absolute', right: 12, top: 13, fontSize: 12, color: '#64748B' }}>
-                            যাচাই হচ্ছে...
-                          </div>
-                        )}
                       </div>
-                      {contactSuccess && (
-                        <div style={{ marginTop: 6, fontSize: 12.5, color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <CheckCircle2 size={14} /> {contactSuccess}
+                      {ticketFieldErrors.contact && (
+                        <div style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 6, display: 'flex', alignItems: 'flex-start', gap: 6, lineHeight: 1.4 }}>
+                          <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                          <div>
+                            <div>{ticketFieldErrors.contact}</div>
+                            {contactIsUnregistered && (
+                              <div style={{ marginTop: 4, fontSize: 12, color: '#B91C1C' }}>
+                                অ্যাকাউন্ট নেই? <a href="/patient/register" style={{ color: '#00B875', fontWeight: 800, textDecoration: 'underline' }}>এখানে ক্লিক করে বিনামূল্যে অ্যাকাউন্ট তৈরি করুন</a>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                     </Col>
@@ -1237,43 +1357,94 @@ export default function SupportPage() {
                     </Col>
 
                     <Col md={12}>
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
-                        বিষয়ের শিরোনাম <span style={{ color: '#EF4444' }}>*</span>
-                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', margin: 0 }}>
+                          বিষয়ের শিরোনাম <span style={{ color: '#EF4444' }}>*</span>
+                        </label>
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: '#94A3B8' }}>
+                          {ticketForm.subject.length}/২০০
+                        </span>
+                      </div>
                       <input
-                        required
+                        id="ticket-subject-input"
+                        maxLength={200}
                         value={ticketForm.subject}
-                        onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })}
-                        placeholder="উদাঃ বিকাশ পেমেন্ট সম্পন্ন কিন্তু স্লট কনফার্ম হয়নি"
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14 }}
+                        onChange={e => {
+                          setTicketForm({ ...ticketForm, subject: e.target.value.slice(0, 200) })
+                          if (ticketFieldErrors.subject) setTicketFieldErrors(prev => ({ ...prev, subject: '' }))
+                        }}
+                        placeholder="উদাঃ বিকাশ পেমেন্ট সম্পন্ন কিন্তু স্লট কনফার্ম হয়নি (কমপক্ষে ৫ অক্ষর)"
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          borderRadius: 12,
+                          border: ticketFieldErrors.subject ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0',
+                          background: ticketFieldErrors.subject ? '#FEF2F2' : 'white',
+                          outline: 'none',
+                          fontSize: 14
+                        }}
                       />
+                      {ticketFieldErrors.subject && (
+                        <div style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <AlertCircle size={14} /> {ticketFieldErrors.subject}
+                        </div>
+                      )}
                     </Col>
 
                     <Col md={12}>
-                      <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
-                        সমস্যার বিস্তারিত বিবরণ <span style={{ color: '#EF4444' }}>*</span>
-                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <label style={{ fontSize: 13, fontWeight: 700, color: '#475569', margin: 0 }}>
+                          সমস্যার বিস্তারিত বিবরণ <span style={{ color: '#EF4444' }}>*</span>
+                        </label>
+                        <span style={{ 
+                          fontSize: 12, 
+                          fontWeight: 700, 
+                          color: ticketForm.message.length > 0 && ticketForm.message.trim().length < 15 
+                            ? '#DC2626' 
+                            : (ticketForm.message.length >= 950 ? '#D97706' : '#64748B') 
+                        }}>
+                          {ticketForm.message.length}/১০০০ অক্ষর
+                        </span>
+                      </div>
                       <textarea
-                        required
+                        id="ticket-message-input"
                         rows={4}
+                        maxLength={1000}
                         value={ticketForm.message}
-                        onChange={e => setTicketForm({ ...ticketForm, message: e.target.value })}
-                        placeholder="আপনার সমস্যাটি বিস্তারিত লিখুন..."
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: 12, border: '1.5px solid #E2E8F0', outline: 'none', fontSize: 14, resize: 'vertical' }}
+                        onChange={e => {
+                          setTicketForm({ ...ticketForm, message: e.target.value.slice(0, 1000) })
+                          if (ticketFieldErrors.message) setTicketFieldErrors(prev => ({ ...prev, message: '' }))
+                        }}
+                        placeholder="আপনার সমস্যার বিস্তারিত বিবরণ লিখুন (কমপক্ষে ১৫ অক্ষর ও সর্বোচ্চ ১০০০ অক্ষর)..."
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          borderRadius: 12,
+                          border: ticketFieldErrors.message ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0',
+                          background: ticketFieldErrors.message ? '#FEF2F2' : 'white',
+                          outline: 'none',
+                          fontSize: 14,
+                          resize: 'vertical',
+                          minHeight: 110
+                        }}
                       />
+                      {ticketFieldErrors.message && (
+                        <div style={{ color: '#DC2626', fontSize: 12.5, fontWeight: 600, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <AlertCircle size={14} /> {ticketFieldErrors.message}
+                        </div>
+                      )}
                     </Col>
 
-                    {/* Unregistered Warning Message Banner */}
-                    {contactWarning && (
+                    {/* General / Rate-Limit Error Banner */}
+                    {ticketGeneralError && (
                       <Col md={12}>
-                        <div style={{ padding: '14px 18px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 14, color: '#991B1B', fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                        <div 
+                          id="ticket-general-error-banner"
+                          tabIndex="-1"
+                          style={{ padding: '14px 18px', background: '#FEF2F2', border: '1.5px solid #FCA5A5', borderRadius: 14, color: '#991B1B', fontSize: 13.5, fontWeight: 600, display: 'flex', alignItems: 'flex-start', gap: 12, outline: 'none' }}
+                        >
                           <AlertTriangle size={20} style={{ flexShrink: 0, marginTop: 2, color: '#EF4444' }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ lineHeight: 1.5 }}>{contactWarning}</div>
-                            <div style={{ marginTop: 8, fontSize: 13, color: '#B91C1C' }}>
-                              অ্যাকাউন্ট নেই? <a href="/patient/register" style={{ color: '#00B875', fontWeight: 800, textDecoration: 'underline' }}>এখানে ক্লিক করে বিনামূল্যে অ্যাকাউন্ট তৈরি করুন</a>
-                            </div>
-                          </div>
+                          <div style={{ flex: 1, lineHeight: 1.5 }}>{ticketGeneralError}</div>
                         </div>
                       </Col>
                     )}

@@ -267,7 +267,9 @@ export default function ContactPage() {
         website_url_check: honeypot || null,
       }
 
-      const res = await axiosInstance.post('/contact-messages', payload)
+      const res = await axiosInstance.post('/contact-messages', payload, {
+        skipGlobalToast: true,
+      })
       const generatedCid = res.data?.token_id || res.data?.data?.token_id || ''
 
       setNewCidToken(generatedCid)
@@ -301,8 +303,16 @@ export default function ContactPage() {
         setFieldErrors(backendErrors)
         scrollToFirstError(backendErrors)
       } else {
-        const msg = err.response?.data?.message || 'বার্তা পাঠানো সম্ভব হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন বা হেল্পলাইনে কল করুন।'
-        setSubmitError(msg)
+        const rawMsg = err.response?.data?.message || err.response?.data?.error || ''
+        let friendlyMsg = 'সাময়িক প্রযুক্তিগত বা নেটওয়ার্ক সমস্যার কারণে বার্তাটি গ্রহণ করা সম্ভব হয়নি। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন অথবা জরুরি প্রয়োজনে সরাসরি আমাদের হেল্পলাইনে যোগাযোগ করুন।'
+
+        if (err.response?.status === 429) {
+          friendlyMsg = rawMsg || 'অতিরিক্ত বার্তার অনুরোধ পাওয়া গেছে। অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন অথবা আমাদের হেল্পলাইনে যোগাযোগ করুন।'
+        } else if (rawMsg && !/database error|sqlstate|query|server error|internal error/i.test(rawMsg)) {
+          friendlyMsg = rawMsg
+        }
+
+        setSubmitError(friendlyMsg)
         scrollToSubmitError()
       }
     } finally {
@@ -311,9 +321,9 @@ export default function ContactPage() {
   }
 
   const handleTrack = async (cidToTrack) => {
-    const token = (cidToTrack !== undefined ? cidToTrack : trackCid).trim().toUpperCase()
-    if (!token) {
-      setTrackError('অনুগ্রহ করে ট্র্যাকিং আইডি (CID) লিখুন।')
+    const rawInput = (cidToTrack !== undefined ? cidToTrack : trackCid).trim()
+    if (!rawInput) {
+      setTrackError('অনুগ্রহ করে ট্র্যাকিং আইডি (CID) অথবা মোবাইল নম্বর লিখুন।')
       return
     }
     setTrackLoading(true)
@@ -321,10 +331,12 @@ export default function ContactPage() {
     setTrackResult(null)
 
     try {
-      const res = await axiosInstance.get(`/contact-messages/track/${token}`)
+      const res = await axiosInstance.get(`/contact-messages/track/${encodeURIComponent(rawInput)}`, {
+        skipGlobalToast: true,
+      })
       setTrackResult(res.data)
     } catch (err) {
-      const msg = err.response?.data?.message || 'এই ট্র্যাকিং আইডি (CID) দিয়ে কোনো বার্তা খুঁজে পাওয়া যায়নি। অনুগ্রহ করে সঠিক আইডিটি দিন।'
+      const msg = err.response?.data?.message || 'এই ট্র্যাকিং আইডি (CID) বা মোবাইল নম্বর দিয়ে কোনো বার্তা খুঁজে পাওয়া যায়নি। অনুগ্রহ করে সঠিক তথ্য দিন।'
       setTrackError(msg)
     } finally {
       setTrackLoading(false)
@@ -1847,10 +1859,10 @@ export default function ContactPage() {
                 aria-selected={activeFormTab === 'track'}
                 onClick={() => setActiveFormTab('track')}
                 className={`contact-switcher-btn ${activeFormTab === 'track' ? 'active' : ''}`}
-                title="সিআইডি দিয়ে স্ট্যাটাস যাচাই করতে ক্লিক করুন"
+                title="সিআইডি বা মোবাইল নম্বর দিয়ে স্ট্যাটাস যাচাই করতে ক্লিক করুন"
               >
                 <Search size={15} />
-                <span>স্ট্যাটাস (CID)</span>
+                <span>স্ট্যাটাস (CID / ফোন)</span>
                 <span className="live-badge">লাইভ</span>
               </button>
             </div>
@@ -1913,19 +1925,44 @@ export default function ContactPage() {
                         background: '#FEF2F2', 
                         border: '1.5px solid #FECACA', 
                         borderRadius: 16, 
-                        padding: '14px 18px', 
-                        marginBottom: 20, 
+                        padding: '16px 20px', 
+                        marginBottom: 22, 
                         display: 'flex', 
                         alignItems: 'flex-start', 
-                        gap: 12,
+                        gap: 14,
                         color: '#991B1B',
                         outline: 'none',
                         boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
                       }}
                     >
-                      <AlertTriangle size={22} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
-                      <div style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.5 }}>
-                        {submitError}
+                      <AlertTriangle size={24} color="#DC2626" style={{ flexShrink: 0, marginTop: 2 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#991B1B', marginBottom: 4 }}>
+                          বার্তা পাঠানো সম্পন্ন করা যায়নি
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: '#7F1D1D', lineHeight: 1.5 }}>
+                          {submitError}
+                        </div>
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <a
+                            href="tel:09613868438"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: '#991B1B',
+                              background: '#FEE2E2',
+                              padding: '4px 10px',
+                              borderRadius: 8,
+                              textDecoration: 'none',
+                              border: '1px solid #FECACA'
+                            }}
+                          >
+                            <Phone size={12} /> হেল্পলাইন: ০৯৬১৩৮৬৮৪৩৮
+                          </a>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1967,8 +2004,9 @@ export default function ContactPage() {
                           <User size={17} className="input-icon" />
                           <input
                             id="contact-name"
+                            maxLength={100}
                             value={form.name}
-                            onChange={e => handleFieldChange('name', e.target.value)}
+                            onChange={e => handleFieldChange('name', e.target.value.slice(0, 100))}
                             placeholder="উদাঃ মোঃ রহিম আহমেদ"
                             className={`contact-input ${fieldErrors.name ? 'has-error' : ''}`}
                           />
@@ -2019,8 +2057,9 @@ export default function ContactPage() {
                           <input
                             id="contact-email"
                             type="email"
+                            maxLength={100}
                             value={form.email}
-                            onChange={e => handleFieldChange('email', e.target.value)}
+                            onChange={e => handleFieldChange('email', e.target.value.slice(0, 100))}
                             placeholder="rahim@example.com"
                             className={`contact-input ${fieldErrors.email ? 'has-error' : ''}`}
                           />
@@ -2090,10 +2129,11 @@ export default function ContactPage() {
                         </div>
                         <textarea
                           id="contact-message"
+                          maxLength={500}
                           value={form.message}
                           onChange={e => handleFieldChange('message', e.target.value.slice(0, 500))}
                           rows={4}
-                          placeholder="আপনার জিজ্ঞাসা, সমস্যা বা প্রয়োজনীয় সেবা সম্পর্কে বিস্তারিত লিখুন (কমপক্ষে ১৫ অক্ষর)..."
+                          placeholder="আপনার জিজ্ঞাসা, সমস্যা বা প্রয়োজনীয় সেবা সম্পর্কে বিস্তারিত লিখুন (কমপক্ষে ১৫ অক্ষর ও সর্বোচ্চ ৫০০ অক্ষর)..."
                           className={`contact-input ${fieldErrors.message ? 'has-error' : ''}`}
                           style={{ resize: 'vertical', minHeight: 115 }}
                         />
@@ -2185,7 +2225,7 @@ export default function ContactPage() {
                       পূর্বে পাঠানো বার্তার স্ট্যাটাস দেখুন
                     </h3>
                     <p style={{ color: '#64748B', fontSize: 14, margin: 0, lineHeight: 1.6 }}>
-                      বার্তা প্রেরণের সময় প্রাপ্ত <strong>CID ট্র্যাকিং আইডি</strong> (উদাঃ CID-123456) লিখে অনুসন্ধান করুন।
+                      বার্তা প্রেরণের সময় প্রাপ্ত <strong>CID ট্র্যাকিং আইডি</strong> অথবা <strong>মোবাইল নম্বর</strong> (যেমন: 017XXXXXXXX) লিখে অনুসন্ধান করুন।
                     </p>
                   </div>
 
@@ -2197,14 +2237,14 @@ export default function ContactPage() {
                           type="text"
                           className="cid-track-input"
                           value={trackCid}
-                          onChange={(e) => setTrackCid(e.target.value.toUpperCase())}
-                          placeholder="CID লিখুন (যেমন: CID-123456)"
+                          onChange={(e) => setTrackCid(e.target.value)}
+                          placeholder="CID অথবা মোবাইল নম্বর লিখুন (উদা: CID-123456 বা 017XXXXXXXX)"
                           style={{
                             padding: trackCid ? '0 40px 0 42px' : '0 16px 0 42px',
                             fontSize: trackCid ? 15 : 13.5,
-                            fontWeight: trackCid ? 800 : 500,
-                            fontFamily: trackCid ? 'monospace' : 'inherit',
-                            letterSpacing: trackCid ? 0.75 : 'normal'
+                            fontWeight: trackCid ? 700 : 500,
+                            fontFamily: 'inherit',
+                            letterSpacing: trackCid ? 0.5 : 'normal'
                           }}
                         />
                         <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: 15, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
@@ -2291,9 +2331,31 @@ export default function ContactPage() {
                     <div className="track-result-card">
                       {/* Top Details: Status & Timestamp */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                        <span className={`track-status-pill ${trackResult.status}`}>
-                          {trackResult.status === 'replied' ? '✓ উত্তর সম্পন্ন' : (trackResult.status === 'read' ? '• পর্যালোচিত' : '• অপেক্ষমান')}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span className={`track-status-pill ${trackResult.status}`}>
+                            {trackResult.status === 'replied' ? '✓ উত্তর সম্পন্ন' : (trackResult.status === 'read' ? '• পর্যালোচিত' : '• অপেক্ষমান')}
+                          </span>
+                          {trackResult.token_id && (
+                            <span 
+                              style={{ 
+                                fontSize: 12, 
+                                fontWeight: 700, 
+                                color: '#0F766E', 
+                                background: '#F0FDFA', 
+                                border: '1px solid #CCFBF1', 
+                                padding: '3px 8px', 
+                                borderRadius: 6, 
+                                fontFamily: 'monospace',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                              }}
+                            >
+                              <span>CID:</span>
+                              <strong>{trackResult.token_id}</strong>
+                            </span>
+                          )}
+                        </div>
 
                         {trackResult.submitted_at && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#64748B' }}>
@@ -2302,6 +2364,16 @@ export default function ContactPage() {
                           </div>
                         )}
                       </div>
+
+                      {/* Phone Search Indicator Banner if applicable */}
+                      {trackResult.search_by_phone && (
+                        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, padding: '9px 14px', fontSize: 12.5, color: '#166534', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span>📱 মোবাইল নম্বর দিয়ে অনুসন্ধান সম্পন্ন হয়েছে</span>
+                          {trackResult.total_messages > 1 && (
+                            <span style={{ fontWeight: 600 }}>• মোট {trackResult.total_messages}টি বার্তার মধ্যে সর্বশেষ বার্তাটির স্ট্যাটাস প্রদর্শিত হচ্ছে</span>
+                          )}
+                        </div>
+                      )}
 
                       {/* 2-Column Info Card (Sender & Dept) */}
                       <div className="track-info-card">
