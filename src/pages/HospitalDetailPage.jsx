@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Container, Row, Col, Nav, Modal } from 'react-bootstrap'
 import useHospitalDetail from '../hooks/useHospitalDetail'
@@ -60,6 +61,326 @@ function HospitalDetailPage() {
   }
 
   const [deptModalOpen, setDeptModalOpen] = useState(false)
+  const [isDeptSheetExpanded, setIsDeptSheetExpanded] = useState(false)
+  const isDeptSheetExpandedRef = useRef(false)
+  const lastDeptDragEndTimeRef = useRef(0)
+  const deptSheetRef = useRef(null)
+  const deptOverlayRef = useRef(null)
+  const deptBodyRef = useRef(null)
+
+  useEffect(() => {
+    isDeptSheetExpandedRef.current = isDeptSheetExpanded
+  }, [isDeptSheetExpanded])
+
+  const closeDeptModal = useCallback(() => {
+    if (deptSheetRef.current) {
+      deptSheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
+      deptSheetRef.current.style.transform = 'translateY(100%)'
+    }
+    if (deptOverlayRef.current) {
+      deptOverlayRef.current.style.transition = 'opacity 0.25s ease'
+      deptOverlayRef.current.style.opacity = '0'
+    }
+    setTimeout(() => {
+      setDeptModalOpen(false)
+      setIsDeptSheetExpanded(false)
+      isDeptSheetExpandedRef.current = false
+      setDeptSearchQuery('')
+      if (deptSheetRef.current) {
+        deptSheetRef.current.style.transform = ''
+        deptSheetRef.current.style.height = ''
+        deptSheetRef.current.style.maxHeight = ''
+        deptSheetRef.current.style.transition = ''
+      }
+    }, 260)
+  }, [])
+
+  // ── YOUTUBE / FB STYLE 2-STAGE SNAP BOTTOM SHEET GESTURES FOR ALL DEPARTMENTS DRAWER ──
+  useEffect(() => {
+    if (!deptModalOpen) return
+    const sheet = deptSheetRef.current
+    const overlay = deptOverlayRef.current
+    const body = deptBodyRef.current
+    if (!sheet) return
+
+    let startY = 0
+    let startX = 0
+    let initialHeight = 0
+    let isDragging = false
+    let dragMode = null // 'expand' | 'collapse' | 'dismiss'
+    let startScrollTop = 0
+    let isHandleTouch = false
+    let currentDeltaY = 0
+
+    const getMinHeight = () => Math.round(window.innerHeight * 0.70)
+    const getMaxHeight = () => Math.round(window.innerHeight * 0.92)
+
+    const handleTouchStart = (e) => {
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+
+      const touch = e.touches[0]
+      startY = touch.clientY
+      startX = touch.clientX
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.hosp-dept-drag-zone') ||
+        e.target.closest('.hosp-dept-header')
+      )
+
+      const isInsideBody = body && body.contains(e.target)
+      startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
+      isDragging = false
+      dragMode = null
+    }
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - startY
+      const deltaX = touch.clientX - startX
+
+      if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
+
+      const minH = getMinHeight()
+      const maxH = getMaxHeight()
+      const isExpanded = isDeptSheetExpandedRef.current
+
+      // Drag up: only expand from handle/header
+      if (deltaY < -5) {
+        if (!isExpanded && isHandleTouch) {
+          if (e.cancelable) e.preventDefault()
+          isDragging = true
+          dragMode = 'expand'
+          currentDeltaY = deltaY
+          const targetH = Math.min(maxH, initialHeight - deltaY)
+          sheet.style.transition = 'none'
+          sheet.style.height = `${targetH}px`
+          sheet.style.maxHeight = `${targetH}px`
+          sheet.style.transform = ''
+        }
+      }
+      // Drag down
+      else if (deltaY > 5) {
+        if (isExpanded) {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'collapse'
+            currentDeltaY = deltaY
+            const targetH = Math.max(minH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'dismiss'
+            currentDeltaY = deltaY
+            sheet.style.transition = 'none'
+            sheet.style.transform = `translateY(${deltaY}px)`
+            if (overlay) {
+              overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+            }
+          }
+        }
+      }
+    }
+
+    const handleTouchEnd = (e) => {
+      if (!isDragging) return
+      isDragging = false
+      lastDeptDragEndTimeRef.current = Date.now()
+
+      const endTouch = e.changedTouches ? e.changedTouches[0] : null
+      const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (endTouch ? endTouch.clientY - startY : 0)
+
+      if (dragMode === 'expand') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY < -30) {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsDeptSheetExpanded(true)
+          isDeptSheetExpandedRef.current = true
+        } else {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsDeptSheetExpanded(false)
+          isDeptSheetExpandedRef.current = false
+        }
+      } else if (dragMode === 'collapse') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY > 35) {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsDeptSheetExpanded(false)
+          isDeptSheetExpandedRef.current = false
+        } else {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsDeptSheetExpanded(true)
+          isDeptSheetExpandedRef.current = true
+        }
+      } else if (dragMode === 'dismiss') {
+        if (finalDeltaY > 55) {
+          closeDeptModal()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
+        }
+      }
+    }
+
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+
+      startY = e.clientY
+      startX = e.clientX
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.hosp-dept-drag-zone') ||
+        e.target.closest('.hosp-dept-header')
+      )
+
+      const isInsideBody = body && body.contains(e.target)
+      startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
+      isDragging = false
+      dragMode = null
+
+      const handleMouseMove = (moveEvent) => {
+        const deltaY = moveEvent.clientY - startY
+        const deltaX = moveEvent.clientX - startX
+
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
+
+        const minH = getMinHeight()
+        const maxH = getMaxHeight()
+        const isExpanded = isDeptSheetExpandedRef.current
+
+        if (deltaY < -5) {
+          if (!isExpanded && isHandleTouch) {
+            moveEvent.preventDefault()
+            isDragging = true
+            dragMode = 'expand'
+            currentDeltaY = deltaY
+            const targetH = Math.min(maxH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else if (deltaY > 5) {
+          if (isExpanded) {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'collapse'
+              currentDeltaY = deltaY
+              const targetH = Math.max(minH, initialHeight - deltaY)
+              sheet.style.transition = 'none'
+              sheet.style.height = `${targetH}px`
+              sheet.style.maxHeight = `${targetH}px`
+              sheet.style.transform = ''
+            }
+          } else {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'dismiss'
+              currentDeltaY = deltaY
+              sheet.style.transition = 'none'
+              sheet.style.transform = `translateY(${deltaY}px)`
+              if (overlay) {
+                overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+              }
+            }
+          }
+        }
+      }
+
+      const handleMouseUp = (upEvent) => {
+        window.removeEventListener('mousemove', handleMouseMove)
+        window.removeEventListener('mouseup', handleMouseUp)
+
+        if (!isDragging) return
+        isDragging = false
+        lastDeptDragEndTimeRef.current = Date.now()
+
+        const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (upEvent.clientY - startY)
+
+        if (dragMode === 'expand') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY < -30) {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsDeptSheetExpanded(true)
+            isDeptSheetExpandedRef.current = true
+          } else {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsDeptSheetExpanded(false)
+            isDeptSheetExpandedRef.current = false
+          }
+        } else if (dragMode === 'collapse') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY > 35) {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsDeptSheetExpanded(false)
+            isDeptSheetExpandedRef.current = false
+          } else {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsDeptSheetExpanded(true)
+            isDeptSheetExpandedRef.current = true
+          }
+        } else if (dragMode === 'dismiss') {
+          if (finalDeltaY > 55) {
+            closeDeptModal()
+          } else {
+            sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            sheet.style.transform = ''
+            if (overlay) {
+              overlay.style.transition = 'opacity 0.28s ease'
+              overlay.style.opacity = '1'
+            }
+          }
+        }
+      }
+
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true })
+    sheet.addEventListener('touchmove', handleTouchMove, { passive: false })
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true })
+    sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+    sheet.addEventListener('mousedown', handleMouseDown)
+
+    return () => {
+      sheet.removeEventListener('touchstart', handleTouchStart)
+      sheet.removeEventListener('touchmove', handleTouchMove)
+      sheet.removeEventListener('touchend', handleTouchEnd)
+      sheet.removeEventListener('touchcancel', handleTouchEnd)
+      sheet.removeEventListener('mousedown', handleMouseDown)
+    }
+  }, [deptModalOpen, closeDeptModal])
 
   // Review Module Modal States
   const [selectedReviewForReply, setSelectedReviewForReply] = useState(null)
@@ -2729,142 +3050,277 @@ function HospitalDetailPage() {
             align-self: start;
           }
         }
+
+        /* ── All Departments 2-Stage Responsive Bottom Sheet ── */
+        .hosp-dept-drawer-backdrop {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.65);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          z-index: 99999;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          animation: deptFadeIn 0.25s ease;
+          touch-action: none;
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
+        }
+
+        .hosp-dept-drawer {
+          background: #FFFFFF;
+          width: 100%;
+          max-width: 520px;
+          height: 70vh;
+          height: 70dvh;
+          max-height: 72dvh;
+          border-radius: 18px 18px 0 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.28);
+          animation: deptSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          position: relative;
+          transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+          overscroll-behavior: none;
+          overscroll-behavior-y: none;
+        }
+
+        .hosp-dept-drawer.is-expanded {
+          height: 92vh !important;
+          height: 92dvh !important;
+          max-height: 94dvh !important;
+        }
+
+        .hosp-dept-drag-zone {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px 0 6px 0;
+          cursor: grab;
+          touch-action: none;
+          user-select: none;
+          background: #FAFAFA;
+          flex-shrink: 0;
+        }
+
+        .hosp-dept-drag-bar {
+          width: 44px;
+          height: 4.5px;
+          border-radius: 999px;
+          background: #CBD5E1;
+        }
+
+        @media (min-width: 992px) {
+          .hosp-dept-drawer-backdrop {
+            align-items: center !important;
+            padding: 24px !important;
+          }
+          .hosp-dept-drawer {
+            border-radius: 20px !important;
+            max-width: 820px !important;
+            height: auto !important;
+            max-height: 82vh !important;
+            animation: deptFadeIn 0.2s ease !important;
+          }
+        }
+
+        @keyframes deptFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes deptSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
       ` }} />
 
-      
-      {/* All Departments Modal Popup */}
-      <Modal 
-        show={deptModalOpen} 
-        onHide={() => { setDeptModalOpen(false); setDeptSearchQuery('') }}
-        centered 
-        size="lg"
-        contentClassName="border-0 shadow-lg"
-        style={{ borderRadius: 20 }}
-      >
-        <Modal.Header 
-          closeButton 
-          style={{ 
-            borderBottom: `1px solid #F1F5F9`, 
-            padding: '20px 24px', 
-            background: '#FAFAFA',
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20
-          }}
+      {/* All Departments Responsive 2-Stage Bottom Sheet / Modal */}
+      {deptModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={deptOverlayRef}
+          className="hosp-dept-drawer-backdrop"
+          onClick={closeDeptModal}
         >
-          <div>
-            <Modal.Title style={{ fontSize: 20, fontWeight: 950, color: textColor, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <IconStethoscope size={20} />
-              </div>
-              আমাদের সকল ডিপার্টমেন্ট সমূহ
-            </Modal.Title>
-            <p style={{ fontSize: 13, color: mutedColor, margin: '4px 0 0 0', fontWeight: 600 }}>
-              {hospital?.name || 'হাসপাতাল'}-এর মোট {stats?.departments?.count ?? departments.length}টি বিশেষায়িত বিভাগ
-            </p>
-          </div>
-        </Modal.Header>
-        <Modal.Body style={{ padding: '20px 24px', maxHeight: '70vh', overflowY: 'auto' }}>
-          {/* Search Box */}
-          <div style={{ position: 'relative', marginBottom: 20 }}>
-            <IconSearch size={18} color="#94A3B8" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
-            <input 
-              type="text"
-              placeholder="ডিপার্টমেন্টের নাম দিয়ে খুঁজুন..."
-              value={deptSearchQuery}
-              onChange={(e) => setDeptSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 14px 10px 40px',
-                borderRadius: 12,
-                border: '1.5px solid #E2E8F0',
-                fontSize: 14,
-                fontWeight: 600,
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                fontFamily: 'inherit'
+          <div
+            ref={deptSheetRef}
+            className={`hosp-dept-drawer ${isDeptSheetExpanded ? 'is-expanded' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss, tap to expand/collapse) */}
+            <div
+              className="hosp-dept-drag-zone d-lg-none"
+              onClick={() => {
+                if (Date.now() - lastDeptDragEndTimeRef.current < 250) return
+                const next = !isDeptSheetExpandedRef.current
+                setIsDeptSheetExpanded(next)
+                isDeptSheetExpandedRef.current = next
+                if (deptSheetRef.current) {
+                  deptSheetRef.current.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+                  deptSheetRef.current.style.height = next ? '92dvh' : '70dvh'
+                  deptSheetRef.current.style.maxHeight = next ? '92dvh' : '70dvh'
+                }
               }}
-              onFocus={(e) => e.target.style.borderColor = primaryGreen}
-              onBlur={(e) => e.target.style.borderColor = '#E2E8F0'}
-            />
-            {deptSearchQuery && (
-              <button 
-                onClick={() => setDeptSearchQuery('')}
-                style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer' }}
-              >
-                <IconX size={16} />
-              </button>
-            )}
-          </div>
+            >
+              <div className="hosp-dept-drag-bar" />
+            </div>
 
-          {/* Department Grid in Modal */}
-          <Row className="g-3">
-            {filteredDepartments.map((dept, idx) => (
-              <Col key={dept.id || idx} xs={12} sm={6} md={4}>
-                <div 
-                  onClick={() => {
-                    setDeptModalOpen(false)
-                    const hId = hospital?.id || hospital?.public_id || id;
-                    const hName = hospital?.name || hospital?.name_bn || '';
-                    const sId = dept.specialty_id || (/^\d+$/.test(String(dept.id)) ? dept.id : '');
-                    const specParam = sId ? `&specialty_id=${sId}` : (dept.slug ? `&specialty=${encodeURIComponent(dept.slug)}` : '');
-                    const deptParam = dept.name_en ? `&department=${encodeURIComponent(dept.name_en)}` : (dept.name ? `&department=${encodeURIComponent(dept.name)}` : '');
-                    navigate(`/doctors?hospital_id=${hId}${specParam}${deptParam}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
-                  }}
-                  style={{ 
-                    padding: '16px 18px', 
-                    borderRadius: 14, 
-                    border: `1.5px solid #F1F5F9`, 
-                    background: '#FFFFFF', 
-                    color: textColor, 
-                    height: '100%',
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 14, 
-                    transition: 'all 0.2s ease', 
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
-                  }} 
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = primaryGreen
-                    e.currentTarget.style.background = '#F0FDF4'
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                  }} 
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = '#F1F5F9'
-                    e.currentTarget.style.background = '#FFFFFF'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
-                >
-                  <div style={{ 
-                    width: 42, 
-                    height: 42, 
-                    borderRadius: 12, 
-                    background: '#E6F8F3', 
-                    color: primaryGreen, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    flexShrink: 0 
-                  }}>
-                    {dept.icon}
+            {/* Header */}
+            <div
+              className="hosp-dept-header"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px 22px 14px',
+                borderBottom: '1px solid #F1F5F9',
+                background: '#FAFAFA',
+                flexShrink: 0
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 950, color: textColor, display: 'flex', alignItems: 'center', gap: 10, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: '#E6F8F3', color: primaryGreen, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconStethoscope size={20} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 15, fontWeight: 900, margin: 0, color: textColor }}>{dept.name}</p>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: mutedColor, margin: '2px 0 0 0' }}>{dept.sub}</p>
-                  </div>
+                  আমাদের সকল ডিপার্টমেন্ট সমূহ
                 </div>
-              </Col>
-            ))}
-            {filteredDepartments.length === 0 && (
-              <Col xs={12}>
-                <div className="text-center py-4" style={{ color: mutedColor }}>
-                  <p style={{ margin: 0, fontWeight: 600 }}>কোনো ডিপার্টমেন্ট পাওয়া যায়নি</p>
-                </div>
-              </Col>
-            )}
-          </Row>
-        </Modal.Body>
-      </Modal>
+                <p style={{ fontSize: 12.5, color: mutedColor, margin: '4px 0 0 0', fontWeight: 600, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                  {hospital?.name || 'হাসপাতাল'}-এর মোট {stats?.departments?.count ?? departments.length}টি বিশেষায়িত বিভাগ
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeDeptModal}
+                style={{
+                  background: '#F1F5F9',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 34,
+                  height: 34,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748B',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease'
+                }}
+                title="বন্ধ করুন"
+              >
+                <IconX size={18} />
+              </button>
+            </div>
+
+            {/* Search Box */}
+            <div style={{ padding: '12px 20px 8px', background: '#FFFFFF', borderBottom: '1px solid #F1F5F9', flexShrink: 0 }}>
+              <div style={{ position: 'relative' }}>
+                <IconSearch size={18} color="#94A3B8" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  placeholder="ডিপার্টমেন্টের নাম দিয়ে খুঁজুন..."
+                  value={deptSearchQuery}
+                  onChange={(e) => setDeptSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px 10px 40px',
+                    borderRadius: 12,
+                    border: '1.5px solid #E2E8F0',
+                    fontSize: 14,
+                    fontWeight: 600,
+                    outline: 'none',
+                    transition: 'border-color 0.2s',
+                    fontFamily: 'inherit'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = primaryGreen}
+                  onBlur={(e) => e.target.style.borderColor = '#E2E8F0'}
+                />
+                {deptSearchQuery && (
+                  <button
+                    onClick={() => setDeptSearchQuery('')}
+                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer' }}
+                  >
+                    <IconX size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Department Grid in Modal */}
+            <div ref={deptBodyRef} style={{ padding: '16px 20px 24px', flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <Row className="g-3">
+                {filteredDepartments.map((dept, idx) => (
+                  <Col key={dept.id || idx} xs={12} sm={6} md={4}>
+                    <div
+                      onClick={() => {
+                        closeDeptModal()
+                        const hId = hospital?.id || hospital?.public_id || id;
+                        const hName = hospital?.name || hospital?.name_bn || '';
+                        const sId = dept.specialty_id || (/^\d+$/.test(String(dept.id)) ? dept.id : '');
+                        const specParam = sId ? `&specialty_id=${sId}` : (dept.slug ? `&specialty=${encodeURIComponent(dept.slug)}` : '');
+                        const deptParam = dept.name_en ? `&department=${encodeURIComponent(dept.name_en)}` : (dept.name ? `&department=${encodeURIComponent(dept.name)}` : '');
+                        navigate(`/doctors?hospital_id=${hId}${specParam}${deptParam}${hName ? `&hospital_name=${encodeURIComponent(hName)}` : ''}`)
+                      }}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: 14,
+                        border: `1.5px solid #F1F5F9`,
+                        background: '#FFFFFF',
+                        color: textColor,
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = primaryGreen
+                        e.currentTarget.style.background = '#F0FDF4'
+                        e.currentTarget.style.transform = 'translateY(-2px)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = '#F1F5F9'
+                        e.currentTarget.style.background = '#FFFFFF'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      <div style={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: 12,
+                        background: '#E6F8F3',
+                        color: primaryGreen,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {dept.icon}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 15, fontWeight: 900, margin: 0, color: textColor }}>{dept.name}</p>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: mutedColor, margin: '2px 0 0 0' }}>{dept.sub}</p>
+                      </div>
+                    </div>
+                  </Col>
+                ))}
+                {filteredDepartments.length === 0 && (
+                  <Col xs={12}>
+                    <div className="text-center py-4" style={{ color: mutedColor }}>
+                      <p style={{ margin: 0, fontWeight: 600 }}>কোনো ডিপার্টমেন্ট পাওয়া যায়নি</p>
+                    </div>
+                  </Col>
+                )}
+              </Row>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Review Modals */}
       <ReviewReplyModal

@@ -56,6 +56,13 @@ export default function QuickAppointmentPage() {
   const [isSpecialtyDropdownOpen, setIsSpecialtyDropdownOpen] = useState(false)
   const [isAllSpecialtiesModalOpen, setIsAllSpecialtiesModalOpen] = useState(false)
   const [modalSpecialtySearch, setModalSpecialtySearch] = useState('')
+  const [isAllSpecExpanded, setIsAllSpecExpanded] = useState(false)
+  const isAllSpecExpandedRef = useRef(false)
+  const lastAllSpecDragEndTimeRef = useRef(0)
+
+  useEffect(() => {
+    isAllSpecExpandedRef.current = isAllSpecExpanded
+  }, [isAllSpecExpanded])
 
   // Doctor selection state
   const [doctorsList, setDoctorsList] = useState([])
@@ -641,15 +648,19 @@ export default function QuickAppointmentPage() {
     }
     setTimeout(() => {
       setIsAllSpecialtiesModalOpen(false)
+      setIsAllSpecExpanded(false)
+      isAllSpecExpandedRef.current = false
       setModalSpecialtySearch('')
       allSpecCurrentY.current = 0
       if (allSpecSheetRef.current) {
         allSpecSheetRef.current.style.transform = ''
+        allSpecSheetRef.current.style.height = ''
+        allSpecSheetRef.current.style.maxHeight = ''
       }
     }, 260)
   }, [])
 
-  // ── UNIFIED SWIPE DOWN FROM ANYWHERE TO CLOSE ALL SPECIALTIES MODAL ──
+  // ── YOUTUBE 2-STAGE SNAP (70dvh <-> 92dvh) GESTURE HANDLER ──
   useEffect(() => {
     if (!isAllSpecialtiesModalOpen) return
     const sheet = allSpecSheetRef.current
@@ -659,20 +670,37 @@ export default function QuickAppointmentPage() {
 
     let startY = 0
     let startX = 0
-    let currentDragY = 0
+    let currentDeltaY = 0
     let isDragging = false
     let startScrollTop = 0
+    let initialHeight = 0
+    let dragMode = null // 'expand' | 'collapse' | 'dismiss'
+    let isHandleTouch = false
 
+    const getMinHeight = () => Math.round(window.innerHeight * 0.70)
+    const getMaxHeight = () => Math.round(window.innerHeight * 0.92)
+
+    // Touch
     const handleTouchStart = (e) => {
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+
       const touch = e.touches[0]
       startY = touch.clientY
       startX = touch.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.quick-spec-sheet-drag-zone') ||
+        e.target.closest('.quick-spec-sheet-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
     }
 
     const handleTouchMove = (e) => {
@@ -683,14 +711,50 @@ export default function QuickAppointmentPage() {
 
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-      if (deltaY > 5 && startScrollTop <= 2) {
-        if (e.cancelable) e.preventDefault()
-        isDragging = true
-        currentDragY = deltaY
-        sheet.style.transition = 'none'
-        sheet.style.transform = "translateY(" + deltaY + "px)"
-        if (overlay) {
-          overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+      const minH = getMinHeight()
+      const maxH = getMaxHeight()
+      const isExpanded = isAllSpecExpandedRef.current
+
+      // Drag up: only expand from handle/header
+      if (deltaY < -5) {
+        if (!isExpanded && isHandleTouch) {
+          if (e.cancelable) e.preventDefault()
+          isDragging = true
+          dragMode = 'expand'
+          currentDeltaY = deltaY
+          const targetH = Math.min(maxH, initialHeight - deltaY)
+          sheet.style.transition = 'none'
+          sheet.style.height = `${targetH}px`
+          sheet.style.maxHeight = `${targetH}px`
+          sheet.style.transform = ''
+        }
+      }
+      // Drag down
+      else if (deltaY > 5) {
+        if (isExpanded) {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'collapse'
+            currentDeltaY = deltaY
+            const targetH = Math.max(minH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'dismiss'
+            currentDeltaY = deltaY
+            sheet.style.transition = 'none'
+            sheet.style.transform = `translateY(${deltaY}px)`
+            if (overlay) {
+              overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+            }
+          }
         }
       }
     }
@@ -698,33 +762,72 @@ export default function QuickAppointmentPage() {
     const handleTouchEnd = (e) => {
       if (!isDragging) return
       isDragging = false
+      lastAllSpecDragEndTimeRef.current = Date.now()
 
       const endTouch = e.changedTouches ? e.changedTouches[0] : null
-      const finalDeltaY = Math.max(currentDragY, endTouch ? endTouch.clientY - startY : currentDragY)
+      const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (endTouch ? endTouch.clientY - startY : 0)
 
-      if (finalDeltaY > 50) {
-        closeAllSpecialtiesSheet()
-      } else {
-        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-        sheet.style.transform = ''
-        if (overlay) {
-          overlay.style.transition = 'opacity 0.28s ease'
-          overlay.style.opacity = '1'
+      if (dragMode === 'expand') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY < -30) {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsAllSpecExpanded(true)
+          isAllSpecExpandedRef.current = true
+        } else {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsAllSpecExpanded(false)
+          isAllSpecExpandedRef.current = false
+        }
+      } else if (dragMode === 'collapse') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY > 35) {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsAllSpecExpanded(false)
+          isAllSpecExpandedRef.current = false
+        } else {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsAllSpecExpanded(true)
+          isAllSpecExpandedRef.current = true
+        }
+      } else if (dragMode === 'dismiss') {
+        if (finalDeltaY > 55) {
+          closeAllSpecialtiesSheet()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
         }
       }
     }
 
+    // Mouse
     const handleMouseDown = (e) => {
       if (e.button !== 0) return
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
 
       startY = e.clientY
       startX = e.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.quick-spec-sheet-drag-zone') ||
+        e.target.closest('.quick-spec-sheet-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
 
       const handleMouseMove = (moveEvent) => {
         const deltaY = moveEvent.clientY - startY
@@ -732,14 +835,47 @@ export default function QuickAppointmentPage() {
 
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-        if (deltaY > 5 && startScrollTop <= 2) {
-          moveEvent.preventDefault()
-          isDragging = true
-          currentDragY = deltaY
-          sheet.style.transition = 'none'
-          sheet.style.transform = "translateY(" + deltaY + "px)"
-          if (overlay) {
-            overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+        const minH = getMinHeight()
+        const maxH = getMaxHeight()
+        const isExpanded = isAllSpecExpandedRef.current
+
+        if (deltaY < -5) {
+          if (!isExpanded && isHandleTouch) {
+            moveEvent.preventDefault()
+            isDragging = true
+            dragMode = 'expand'
+            currentDeltaY = deltaY
+            const targetH = Math.min(maxH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else if (deltaY > 5) {
+          if (isExpanded) {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'collapse'
+              currentDeltaY = deltaY
+              const targetH = Math.max(minH, initialHeight - deltaY)
+              sheet.style.transition = 'none'
+              sheet.style.height = `${targetH}px`
+              sheet.style.maxHeight = `${targetH}px`
+              sheet.style.transform = ''
+            }
+          } else {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'dismiss'
+              currentDeltaY = deltaY
+              sheet.style.transition = 'none'
+              sheet.style.transform = `translateY(${deltaY}px)`
+              if (overlay) {
+                overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+              }
+            }
           }
         }
       }
@@ -750,17 +886,46 @@ export default function QuickAppointmentPage() {
 
         if (!isDragging) return
         isDragging = false
+        lastAllSpecDragEndTimeRef.current = Date.now()
 
-        const finalDeltaY = Math.max(currentDragY, upEvent.clientY - startY)
+        const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (upEvent.clientY - startY)
 
-        if (finalDeltaY > 50) {
-          closeAllSpecialtiesSheet()
-        } else {
-          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-          sheet.style.transform = ''
-          if (overlay) {
-            overlay.style.transition = 'opacity 0.28s ease'
-            overlay.style.opacity = '1'
+        if (dragMode === 'expand') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY < -30) {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsAllSpecExpanded(true)
+            isAllSpecExpandedRef.current = true
+          } else {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsAllSpecExpanded(false)
+            isAllSpecExpandedRef.current = false
+          }
+        } else if (dragMode === 'collapse') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY > 35) {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsAllSpecExpanded(false)
+            isAllSpecExpandedRef.current = false
+          } else {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsAllSpecExpanded(true)
+            isAllSpecExpandedRef.current = true
+          }
+        } else if (dragMode === 'dismiss') {
+          if (finalDeltaY > 55) {
+            closeAllSpecialtiesSheet()
+          } else {
+            sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            sheet.style.transform = ''
+            if (overlay) {
+              overlay.style.transition = 'opacity 0.28s ease'
+              overlay.style.opacity = '1'
+            }
           }
         }
       }
@@ -3110,12 +3275,13 @@ export default function QuickAppointmentPage() {
         >
           <div
             ref={allSpecSheetRef}
+            className={`quick-spec-sheet ${isAllSpecExpanded ? 'is-expanded' : ''}`}
             style={{
               background: '#FFFFFF',
               width: '100%',
               maxWidth: 540,
-              height: '75vh',
-              maxHeight: '78vh',
+              height: isAllSpecExpanded ? '92dvh' : '70dvh',
+              maxHeight: isAllSpecExpanded ? '92dvh' : '70dvh',
               borderRadius: '16px 16px 0 0',
               display: 'flex',
               flexDirection: 'column',
@@ -3129,8 +3295,9 @@ export default function QuickAppointmentPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss, tap to expand/collapse) */}
             <div
+              className="quick-spec-sheet-drag-zone"
               style={{
                 padding: '12px 0 8px',
                 display: 'flex',
@@ -3140,19 +3307,24 @@ export default function QuickAppointmentPage() {
                 userSelect: 'none',
                 width: '100%'
               }}
-              onTouchStart={handleAllSpecTouchStart}
-              onTouchMove={handleAllSpecTouchMove}
-              onTouchEnd={handleAllSpecTouchEnd}
-              onPointerDown={handleAllSpecPointerDown}
-              onPointerMove={handleAllSpecPointerMove}
-              onPointerUp={handleAllSpecPointerUp}
-              onPointerCancel={handleAllSpecPointerUp}
+              onClick={() => {
+                if (Date.now() - lastAllSpecDragEndTimeRef.current < 250) return
+                const next = !isAllSpecExpandedRef.current
+                setIsAllSpecExpanded(next)
+                isAllSpecExpandedRef.current = next
+                if (allSpecSheetRef.current) {
+                  allSpecSheetRef.current.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+                  allSpecSheetRef.current.style.height = next ? '92dvh' : '70dvh'
+                  allSpecSheetRef.current.style.maxHeight = next ? '92dvh' : '70dvh'
+                }
+              }}
             >
               <div style={{ width: 44, height: 4.5, borderRadius: 3, background: '#CBD5E1', pointerEvents: 'none' }} />
             </div>
 
             {/* Header with Title and YouTube-style circular Close button (Also draggable) */}
             <div
+              className="quick-spec-sheet-header"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -3162,13 +3334,6 @@ export default function QuickAppointmentPage() {
                 touchAction: 'none',
                 userSelect: 'none'
               }}
-              onTouchStart={handleAllSpecTouchStart}
-              onTouchMove={handleAllSpecTouchMove}
-              onTouchEnd={handleAllSpecTouchEnd}
-              onPointerDown={handleAllSpecPointerDown}
-              onPointerMove={handleAllSpecPointerMove}
-              onPointerUp={handleAllSpecPointerUp}
-              onPointerCancel={handleAllSpecPointerUp}
             >
               <div style={{ pointerEvents: 'none' }}>
                 <h5 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: '#0F172A', fontFamily: "'Hind Siliguri', sans-serif" }}>

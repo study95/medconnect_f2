@@ -56,10 +56,14 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-let lastUserInteractionTime = Date.now()
+let lastUserInteractionTime = 0
 if (typeof window !== 'undefined') {
   const recordUserInteraction = () => {
     lastUserInteractionTime = Date.now()
+    try {
+      localStorage.setItem('medconnect_last_active_at', String(Date.now()))
+    } catch {}
+
     if (window.__sessionIdleExpired) {
       window.__sessionIdleExpired = false
       clearAuthAndNotify()
@@ -90,6 +94,7 @@ const clearAuthAndNotify = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   localStorage.removeItem('userType')
+  localStorage.removeItem('medconnect_last_active_at')
   window.dispatchEvent(new Event('auth-expired'))
 }
 

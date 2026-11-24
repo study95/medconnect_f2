@@ -785,6 +785,13 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const sheetTouchStartY = useRef(0)
   const sheetCurrentY = useRef(0)
   const isSheetDragging = useRef(false)
+  const [isUnifiedSheetExpanded, setIsUnifiedSheetExpanded] = useState(false)
+  const isUnifiedSheetExpandedRef = useRef(false)
+  const lastUnifiedDragEndTimeRef = useRef(0)
+
+  useEffect(() => {
+    isUnifiedSheetExpandedRef.current = isUnifiedSheetExpanded
+  }, [isUnifiedSheetExpanded])
 
   const closeUnifiedSheet = useCallback(() => {
     if (unifiedSheetRef.current) {
@@ -797,14 +804,19 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     }
     setTimeout(() => {
       setShowUnifiedModal(false)
+      setIsUnifiedSheetExpanded(false)
+      isUnifiedSheetExpandedRef.current = false
       sheetCurrentY.current = 0
       if (unifiedSheetRef.current) {
         unifiedSheetRef.current.style.transform = ''
+        unifiedSheetRef.current.style.height = ''
+        unifiedSheetRef.current.style.maxHeight = ''
+        unifiedSheetRef.current.style.transition = ''
       }
     }, 260)
   }, [])
 
-  // ── UNIFIED BOTTOM SHEET GESTURE LISTENER (SWIPE DOWN FROM ANYWHERE TO CLOSE) ──
+  // ── UNIFIED BOTTOM SHEET 2-STAGE SNAP GESTURE LISTENER ──
   useEffect(() => {
     if (!showUnifiedModal) return
     const sheet = unifiedSheetRef.current
@@ -814,20 +826,36 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
     let startY = 0
     let startX = 0
-    let currentDragY = 0
+    let initialHeight = 0
     let isDragging = false
+    let dragMode = null // 'expand' | 'collapse' | 'dismiss'
     let startScrollTop = 0
+    let isHandleTouch = false
+    let currentDeltaY = 0
+
+    const getMinHeight = () => Math.round(window.innerHeight * 0.70)
+    const getMaxHeight = () => Math.round(window.innerHeight * 0.92)
 
     const handleTouchStart = (e) => {
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+
       const touch = e.touches[0]
       startY = touch.clientY
       startX = touch.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.hero-mobile-sheet-drag-zone') ||
+        e.target.closest('.hero-mobile-unified-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
     }
 
     const handleTouchMove = (e) => {
@@ -838,14 +866,50 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-      if (deltaY > 5 && startScrollTop <= 2) {
-        if (e.cancelable) e.preventDefault()
-        isDragging = true
-        currentDragY = deltaY
-        sheet.style.transition = 'none'
-        sheet.style.transform = `translateY(${deltaY}px)`
-        if (overlay) {
-          overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+      const minH = getMinHeight()
+      const maxH = getMaxHeight()
+      const isExpanded = isUnifiedSheetExpandedRef.current
+
+      // Drag up: only expand from handle/header
+      if (deltaY < -5) {
+        if (!isExpanded && isHandleTouch) {
+          if (e.cancelable) e.preventDefault()
+          isDragging = true
+          dragMode = 'expand'
+          currentDeltaY = deltaY
+          const targetH = Math.min(maxH, initialHeight - deltaY)
+          sheet.style.transition = 'none'
+          sheet.style.height = `${targetH}px`
+          sheet.style.maxHeight = `${targetH}px`
+          sheet.style.transform = ''
+        }
+      }
+      // Drag down
+      else if (deltaY > 5) {
+        if (isExpanded) {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'collapse'
+            currentDeltaY = deltaY
+            const targetH = Math.max(minH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'dismiss'
+            currentDeltaY = deltaY
+            sheet.style.transition = 'none'
+            sheet.style.transform = `translateY(${deltaY}px)`
+            if (overlay) {
+              overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+            }
+          }
         }
       }
     }
@@ -853,18 +917,47 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     const handleTouchEnd = (e) => {
       if (!isDragging) return
       isDragging = false
+      lastUnifiedDragEndTimeRef.current = Date.now()
 
       const endTouch = e.changedTouches ? e.changedTouches[0] : null
-      const finalDeltaY = Math.max(currentDragY, endTouch ? endTouch.clientY - startY : currentDragY)
+      const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (endTouch ? endTouch.clientY - startY : 0)
 
-      if (finalDeltaY > 50) {
-        closeUnifiedSheet()
-      } else {
-        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-        sheet.style.transform = ''
-        if (overlay) {
-          overlay.style.transition = 'opacity 0.28s ease'
-          overlay.style.opacity = '1'
+      if (dragMode === 'expand') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY < -30) {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsUnifiedSheetExpanded(true)
+          isUnifiedSheetExpandedRef.current = true
+        } else {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsUnifiedSheetExpanded(false)
+          isUnifiedSheetExpandedRef.current = false
+        }
+      } else if (dragMode === 'collapse') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY > 35) {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsUnifiedSheetExpanded(false)
+          isUnifiedSheetExpandedRef.current = false
+        } else {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsUnifiedSheetExpanded(true)
+          isUnifiedSheetExpandedRef.current = true
+        }
+      } else if (dragMode === 'dismiss') {
+        if (finalDeltaY > 55) {
+          closeUnifiedSheet()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
         }
       }
     }
@@ -872,14 +965,23 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     const handleMouseDown = (e) => {
       if (e.button !== 0) return
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
 
       startY = e.clientY
       startX = e.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.hero-mobile-sheet-drag-zone') ||
+        e.target.closest('.hero-mobile-unified-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
 
       const handleMouseMove = (moveEvent) => {
         const deltaY = moveEvent.clientY - startY
@@ -887,14 +989,47 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-        if (deltaY > 5 && startScrollTop <= 2) {
-          moveEvent.preventDefault()
-          isDragging = true
-          currentDragY = deltaY
-          sheet.style.transition = 'none'
-          sheet.style.transform = `translateY(${deltaY}px)`
-          if (overlay) {
-            overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+        const minH = getMinHeight()
+        const maxH = getMaxHeight()
+        const isExpanded = isUnifiedSheetExpandedRef.current
+
+        if (deltaY < -5) {
+          if (!isExpanded && isHandleTouch) {
+            moveEvent.preventDefault()
+            isDragging = true
+            dragMode = 'expand'
+            currentDeltaY = deltaY
+            const targetH = Math.min(maxH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else if (deltaY > 5) {
+          if (isExpanded) {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'collapse'
+              currentDeltaY = deltaY
+              const targetH = Math.max(minH, initialHeight - deltaY)
+              sheet.style.transition = 'none'
+              sheet.style.height = `${targetH}px`
+              sheet.style.maxHeight = `${targetH}px`
+              sheet.style.transform = ''
+            }
+          } else {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'dismiss'
+              currentDeltaY = deltaY
+              sheet.style.transition = 'none'
+              sheet.style.transform = `translateY(${deltaY}px)`
+              if (overlay) {
+                overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+              }
+            }
           }
         }
       }
@@ -905,17 +1040,46 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
         if (!isDragging) return
         isDragging = false
+        lastUnifiedDragEndTimeRef.current = Date.now()
 
-        const finalDeltaY = Math.max(currentDragY, upEvent.clientY - startY)
+        const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (upEvent.clientY - startY)
 
-        if (finalDeltaY > 50) {
-          closeUnifiedSheet()
-        } else {
-          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-          sheet.style.transform = ''
-          if (overlay) {
-            overlay.style.transition = 'opacity 0.28s ease'
-            overlay.style.opacity = '1'
+        if (dragMode === 'expand') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY < -30) {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsUnifiedSheetExpanded(true)
+            isUnifiedSheetExpandedRef.current = true
+          } else {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsUnifiedSheetExpanded(false)
+            isUnifiedSheetExpandedRef.current = false
+          }
+        } else if (dragMode === 'collapse') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY > 35) {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsUnifiedSheetExpanded(false)
+            isUnifiedSheetExpandedRef.current = false
+          } else {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsUnifiedSheetExpanded(true)
+            isUnifiedSheetExpandedRef.current = true
+          }
+        } else if (dragMode === 'dismiss') {
+          if (finalDeltaY > 55) {
+            closeUnifiedSheet()
+          } else {
+            sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            sheet.style.transform = ''
+            if (overlay) {
+              overlay.style.transition = 'opacity 0.28s ease'
+              overlay.style.opacity = '1'
+            }
           }
         }
       }
@@ -930,27 +1094,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
     sheet.addEventListener('mousedown', handleMouseDown)
 
-    if (overlay) {
-      overlay.addEventListener('touchstart', handleTouchStart, { passive: true })
-      overlay.addEventListener('touchmove', handleTouchMove, { passive: false })
-      overlay.addEventListener('touchend', handleTouchEnd, { passive: true })
-      overlay.addEventListener('touchcancel', handleTouchEnd, { passive: true })
-      overlay.addEventListener('mousedown', handleMouseDown)
-    }
-
     return () => {
       sheet.removeEventListener('touchstart', handleTouchStart)
       sheet.removeEventListener('touchmove', handleTouchMove)
       sheet.removeEventListener('touchend', handleTouchEnd)
       sheet.removeEventListener('touchcancel', handleTouchEnd)
       sheet.removeEventListener('mousedown', handleMouseDown)
-      if (overlay) {
-        overlay.removeEventListener('touchstart', handleTouchStart)
-        overlay.removeEventListener('touchmove', handleTouchMove)
-        overlay.removeEventListener('touchend', handleTouchEnd)
-        overlay.removeEventListener('touchcancel', handleTouchEnd)
-        overlay.removeEventListener('mousedown', handleMouseDown)
-      }
     }
   }, [showUnifiedModal, closeUnifiedSheet])
 
@@ -965,6 +1114,13 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const specSheetTouchStartY = useRef(0)
   const specSheetCurrentY = useRef(0)
   const isSpecSheetDragging = useRef(false)
+  const [isSpecPopupExpanded, setIsSpecPopupExpanded] = useState(false)
+  const isSpecPopupExpandedRef = useRef(false)
+  const lastSpecPopupDragEndTimeRef = useRef(0)
+
+  useEffect(() => {
+    isSpecPopupExpandedRef.current = isSpecPopupExpanded
+  }, [isSpecPopupExpanded])
 
   const closeSpecialtiesPopup = useCallback(() => {
     if (specSheetRef.current) {
@@ -977,14 +1133,19 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     }
     setTimeout(() => {
       setShowAllSpecialtiesPopup(false)
+      setIsSpecPopupExpanded(false)
+      isSpecPopupExpandedRef.current = false
       specSheetCurrentY.current = 0
       if (specSheetRef.current) {
         specSheetRef.current.style.transform = ''
+        specSheetRef.current.style.height = ''
+        specSheetRef.current.style.maxHeight = ''
+        specSheetRef.current.style.transition = ''
       }
     }, 260)
   }, [])
 
-  // ── ALL SPECIALTIES POPUP GESTURE LISTENER (SWIPE DOWN FROM ANYWHERE TO CLOSE) ──
+  // ── ALL SPECIALTIES POPUP 2-STAGE SNAP GESTURE LISTENER ──
   useEffect(() => {
     if (!showAllSpecialtiesPopup) return
     const sheet = specSheetRef.current
@@ -994,20 +1155,36 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
     let startY = 0
     let startX = 0
-    let currentDragY = 0
+    let initialHeight = 0
     let isDragging = false
+    let dragMode = null // 'expand' | 'collapse' | 'dismiss'
     let startScrollTop = 0
+    let isHandleTouch = false
+    let currentDeltaY = 0
+
+    const getMinHeight = () => Math.round(window.innerHeight * 0.70)
+    const getMaxHeight = () => Math.round(window.innerHeight * 0.92)
 
     const handleTouchStart = (e) => {
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+
       const touch = e.touches[0]
       startY = touch.clientY
       startX = touch.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.hero-mobile-sheet-drag-zone') ||
+        e.target.closest('.hero-mobile-specialties-popup-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
     }
 
     const handleTouchMove = (e) => {
@@ -1018,14 +1195,50 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-      if (deltaY > 5 && startScrollTop <= 2) {
-        if (e.cancelable) e.preventDefault()
-        isDragging = true
-        currentDragY = deltaY
-        sheet.style.transition = 'none'
-        sheet.style.transform = `translateY(${deltaY}px)`
-        if (overlay) {
-          overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+      const minH = getMinHeight()
+      const maxH = getMaxHeight()
+      const isExpanded = isSpecPopupExpandedRef.current
+
+      // Drag up: only expand from handle/header
+      if (deltaY < -5) {
+        if (!isExpanded && isHandleTouch) {
+          if (e.cancelable) e.preventDefault()
+          isDragging = true
+          dragMode = 'expand'
+          currentDeltaY = deltaY
+          const targetH = Math.min(maxH, initialHeight - deltaY)
+          sheet.style.transition = 'none'
+          sheet.style.height = `${targetH}px`
+          sheet.style.maxHeight = `${targetH}px`
+          sheet.style.transform = ''
+        }
+      }
+      // Drag down
+      else if (deltaY > 5) {
+        if (isExpanded) {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'collapse'
+            currentDeltaY = deltaY
+            const targetH = Math.max(minH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'dismiss'
+            currentDeltaY = deltaY
+            sheet.style.transition = 'none'
+            sheet.style.transform = `translateY(${deltaY}px)`
+            if (overlay) {
+              overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+            }
+          }
         }
       }
     }
@@ -1033,18 +1246,47 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     const handleTouchEnd = (e) => {
       if (!isDragging) return
       isDragging = false
+      lastSpecPopupDragEndTimeRef.current = Date.now()
 
       const endTouch = e.changedTouches ? e.changedTouches[0] : null
-      const finalDeltaY = Math.max(currentDragY, endTouch ? endTouch.clientY - startY : currentDragY)
+      const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (endTouch ? endTouch.clientY - startY : 0)
 
-      if (finalDeltaY > 50) {
-        closeSpecialtiesPopup()
-      } else {
-        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-        sheet.style.transform = ''
-        if (overlay) {
-          overlay.style.transition = 'opacity 0.28s ease'
-          overlay.style.opacity = '1'
+      if (dragMode === 'expand') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY < -30) {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsSpecPopupExpanded(true)
+          isSpecPopupExpandedRef.current = true
+        } else {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsSpecPopupExpanded(false)
+          isSpecPopupExpandedRef.current = false
+        }
+      } else if (dragMode === 'collapse') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY > 35) {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsSpecPopupExpanded(false)
+          isSpecPopupExpandedRef.current = false
+        } else {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsSpecPopupExpanded(true)
+          isSpecPopupExpandedRef.current = true
+        }
+      } else if (dragMode === 'dismiss') {
+        if (finalDeltaY > 55) {
+          closeSpecialtiesPopup()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
         }
       }
     }
@@ -1052,14 +1294,23 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     const handleMouseDown = (e) => {
       if (e.button !== 0) return
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
 
       startY = e.clientY
       startX = e.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.hero-mobile-sheet-drag-zone') ||
+        e.target.closest('.hero-mobile-specialties-popup-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
 
       const handleMouseMove = (moveEvent) => {
         const deltaY = moveEvent.clientY - startY
@@ -1067,14 +1318,47 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-        if (deltaY > 5 && startScrollTop <= 2) {
-          moveEvent.preventDefault()
-          isDragging = true
-          currentDragY = deltaY
-          sheet.style.transition = 'none'
-          sheet.style.transform = `translateY(${deltaY}px)`
-          if (overlay) {
-            overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+        const minH = getMinHeight()
+        const maxH = getMaxHeight()
+        const isExpanded = isSpecPopupExpandedRef.current
+
+        if (deltaY < -5) {
+          if (!isExpanded && isHandleTouch) {
+            moveEvent.preventDefault()
+            isDragging = true
+            dragMode = 'expand'
+            currentDeltaY = deltaY
+            const targetH = Math.min(maxH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else if (deltaY > 5) {
+          if (isExpanded) {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'collapse'
+              currentDeltaY = deltaY
+              const targetH = Math.max(minH, initialHeight - deltaY)
+              sheet.style.transition = 'none'
+              sheet.style.height = `${targetH}px`
+              sheet.style.maxHeight = `${targetH}px`
+              sheet.style.transform = ''
+            }
+          } else {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'dismiss'
+              currentDeltaY = deltaY
+              sheet.style.transition = 'none'
+              sheet.style.transform = `translateY(${deltaY}px)`
+              if (overlay) {
+                overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+              }
+            }
           }
         }
       }
@@ -1085,17 +1369,46 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
         if (!isDragging) return
         isDragging = false
+        lastSpecPopupDragEndTimeRef.current = Date.now()
 
-        const finalDeltaY = Math.max(currentDragY, upEvent.clientY - startY)
+        const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (upEvent.clientY - startY)
 
-        if (finalDeltaY > 50) {
-          closeSpecialtiesPopup()
-        } else {
-          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-          sheet.style.transform = ''
-          if (overlay) {
-            overlay.style.transition = 'opacity 0.28s ease'
-            overlay.style.opacity = '1'
+        if (dragMode === 'expand') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY < -30) {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsSpecPopupExpanded(true)
+            isSpecPopupExpandedRef.current = true
+          } else {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsSpecPopupExpanded(false)
+            isSpecPopupExpandedRef.current = false
+          }
+        } else if (dragMode === 'collapse') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY > 35) {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsSpecPopupExpanded(false)
+            isSpecPopupExpandedRef.current = false
+          } else {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsSpecPopupExpanded(true)
+            isSpecPopupExpandedRef.current = true
+          }
+        } else if (dragMode === 'dismiss') {
+          if (finalDeltaY > 55) {
+            closeSpecialtiesPopup()
+          } else {
+            sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            sheet.style.transform = ''
+            if (overlay) {
+              overlay.style.transition = 'opacity 0.28s ease'
+              overlay.style.opacity = '1'
+            }
           }
         }
       }
@@ -1110,27 +1423,12 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
     sheet.addEventListener('mousedown', handleMouseDown)
 
-    if (overlay) {
-      overlay.addEventListener('touchstart', handleTouchStart, { passive: true })
-      overlay.addEventListener('touchmove', handleTouchMove, { passive: false })
-      overlay.addEventListener('touchend', handleTouchEnd, { passive: true })
-      overlay.addEventListener('touchcancel', handleTouchEnd, { passive: true })
-      overlay.addEventListener('mousedown', handleMouseDown)
-    }
-
     return () => {
       sheet.removeEventListener('touchstart', handleTouchStart)
       sheet.removeEventListener('touchmove', handleTouchMove)
       sheet.removeEventListener('touchend', handleTouchEnd)
       sheet.removeEventListener('touchcancel', handleTouchEnd)
       sheet.removeEventListener('mousedown', handleMouseDown)
-      if (overlay) {
-        overlay.removeEventListener('touchstart', handleTouchStart)
-        overlay.removeEventListener('touchmove', handleTouchMove)
-        overlay.removeEventListener('touchend', handleTouchEnd)
-        overlay.removeEventListener('touchcancel', handleTouchEnd)
-        overlay.removeEventListener('mousedown', handleMouseDown)
-      }
     }
   }, [showAllSpecialtiesPopup, closeSpecialtiesPopup])
 
@@ -2703,15 +3001,23 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         >
           <div
             ref={unifiedSheetRef}
-            className="hero-mobile-unified-popup"
+            className={`hero-mobile-unified-popup ${isUnifiedSheetExpanded ? 'is-expanded' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss, tap to expand/collapse) */}
             <div
               className="hero-mobile-sheet-drag-zone"
-              onTouchStart={handleSheetTouchStart}
-              onTouchMove={handleSheetTouchMove}
-              onTouchEnd={handleSheetTouchEnd}
+              onClick={() => {
+                if (Date.now() - lastUnifiedDragEndTimeRef.current < 250) return
+                const next = !isUnifiedSheetExpandedRef.current
+                setIsUnifiedSheetExpanded(next)
+                isUnifiedSheetExpandedRef.current = next
+                if (unifiedSheetRef.current) {
+                  unifiedSheetRef.current.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+                  unifiedSheetRef.current.style.height = next ? '92dvh' : '70dvh'
+                  unifiedSheetRef.current.style.maxHeight = next ? '92dvh' : '70dvh'
+                }
+              }}
             >
               <div className="hero-mobile-sheet-drag-bar" />
             </div>
@@ -2719,9 +3025,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             {/* Header (swipe-enabled, no close button) */}
             <div
               className="hero-mobile-unified-header"
-              onTouchStart={handleSheetTouchStart}
-              onTouchMove={handleSheetTouchMove}
-              onTouchEnd={handleSheetTouchEnd}
             >
               <div>
                 <div className="hero-mobile-unified-title">
@@ -2870,15 +3173,23 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
         >
           <div
             ref={specSheetRef}
-            className="hero-mobile-specialties-popup"
+            className={`hero-mobile-specialties-popup ${isSpecPopupExpanded ? 'is-expanded' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss, tap to expand/collapse) */}
             <div
               className="hero-mobile-sheet-drag-zone"
-              onTouchStart={handleSpecSheetTouchStart}
-              onTouchMove={handleSpecSheetTouchMove}
-              onTouchEnd={handleSpecSheetTouchEnd}
+              onClick={() => {
+                if (Date.now() - lastSpecPopupDragEndTimeRef.current < 250) return
+                const next = !isSpecPopupExpandedRef.current
+                setIsSpecPopupExpanded(next)
+                isSpecPopupExpandedRef.current = next
+                if (specSheetRef.current) {
+                  specSheetRef.current.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+                  specSheetRef.current.style.height = next ? '92dvh' : '70dvh'
+                  specSheetRef.current.style.maxHeight = next ? '92dvh' : '70dvh'
+                }
+              }}
             >
               <div className="hero-mobile-sheet-drag-bar" />
             </div>
@@ -2886,9 +3197,6 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             {/* Header (Swipeable) */}
             <div
               className="hero-mobile-specialties-popup-header"
-              onTouchStart={handleSpecSheetTouchStart}
-              onTouchMove={handleSpecSheetTouchMove}
-              onTouchEnd={handleSpecSheetTouchEnd}
             >
               <div>
                 <div className="hero-mobile-specialties-popup-title">
@@ -5662,16 +5970,25 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             background: #FFFFFF;
             width: 100%;
             max-width: 480px;
-            max-height: 75vh;
+            height: 70vh;
+            height: 70dvh;
+            max-height: 72dvh;
             border-radius: 16px 16px 0 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
-            animation: mobileFilterSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1);
+            animation: mobileFilterSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform;
             overscroll-behavior: none;
             overscroll-behavior-y: none;
+            transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          .hero-mobile-specialties-popup.is-expanded {
+            height: 92vh !important;
+            height: 92dvh !important;
+            max-height: 94dvh !important;
           }
 
           .hero-mobile-specialties-popup-header {
@@ -5967,9 +6284,9 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             background: #FFFFFF;
             width: 100%;
             max-width: 480px;
-            height: 75vh;
-            height: 75dvh;
-            max-height: 78vh;
+            height: 70vh;
+            height: 70dvh;
+            max-height: 72dvh;
             border-radius: 16px 16px 0 0;
             display: flex;
             flex-direction: column;
@@ -5980,6 +6297,13 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
             touch-action: pan-y;
             overscroll-behavior: none;
             overscroll-behavior-y: none;
+            transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          .hero-mobile-unified-popup.is-expanded {
+            height: 92vh !important;
+            height: 92dvh !important;
+            max-height: 94dvh !important;
           }
 
           /* Top Drag Handle Indicator Bar */

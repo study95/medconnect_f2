@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Modal } from 'react-bootstrap'
 import { 
   IconCopy, IconCheck, IconBrandWhatsapp, IconBrandFacebook, 
@@ -145,9 +145,111 @@ export default function ShareModal({ show, onHide, shareData }) {
     }
   ]
 
+  const sheetRef = useRef(null)
+  const isDragging = useRef(false)
+  const startY = useRef(0)
+  const currentDragY = useRef(0)
+
+  useEffect(() => {
+    if (!show) return
+    const sheet = sheetRef.current
+    if (!sheet) return
+
+    const handleTouchStart = (e) => {
+      if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+      const touch = e.touches[0]
+      startY.current = touch.clientY
+      currentDragY.current = 0
+      isDragging.current = false
+    }
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - startY.current
+      if (deltaY > 5) {
+        if (e.cancelable) e.preventDefault()
+        isDragging.current = true
+        currentDragY.current = deltaY
+        sheet.style.transition = 'none'
+        sheet.style.transform = `translateY(${deltaY}px)`
+      }
+    }
+
+    const handleTouchEnd = (e) => {
+      if (!isDragging.current) return
+      isDragging.current = false
+      const endTouch = e.changedTouches ? e.changedTouches[0] : null
+      const finalDeltaY = Math.max(currentDragY.current, endTouch ? endTouch.clientY - startY.current : currentDragY.current)
+
+      if (finalDeltaY > 55) {
+        sheet.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)'
+        sheet.style.transform = 'translateY(100%)'
+        setTimeout(() => {
+          if (onHide) onHide()
+          if (sheet) sheet.style.transform = ''
+        }, 250)
+      } else {
+        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+        sheet.style.transform = ''
+      }
+    }
+
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true })
+    sheet.addEventListener('touchmove', handleTouchMove, { passive: false })
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true })
+    sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+
+    return () => {
+      sheet.removeEventListener('touchstart', handleTouchStart)
+      sheet.removeEventListener('touchmove', handleTouchMove)
+      sheet.removeEventListener('touchend', handleTouchEnd)
+      sheet.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [show, onHide])
+
   return (
     <Modal show={show} onHide={onHide} centered className="share-modal" contentClassName="border-0 shadow-lg" style={{ borderRadius: 20 }}>
-      <div style={{ background: 'white', borderRadius: 20, padding: '24px 24px 28px', overflow: 'hidden' }}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767.98px) {
+          .share-modal .modal-dialog {
+            margin: 0 !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            transform: none !important;
+          }
+          .share-modal .modal-content {
+            border-radius: 20px 20px 0 0 !important;
+            border: none !important;
+            animation: shareSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          }
+          @keyframes shareSheetSlideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+          }
+        }
+      ` }} />
+      <div ref={sheetRef} style={{ background: 'white', borderRadius: 20, padding: '16px 24px 28px', overflow: 'hidden' }}>
+        {/* Mobile Drag Indicator Handle */}
+        <div
+          className="share-drag-zone d-md-none"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0 0 14px 0',
+            cursor: 'grab'
+          }}
+        >
+          <div style={{ width: 44, height: 4.5, borderRadius: 999, background: '#CBD5E1' }} />
+        </div>
+
         {/* Header */}
         <div className="d-flex align-items-center justify-content-between mb-3 pb-2" style={{ borderBottom: '1px solid #F1F5F9' }}>
           <div className="d-flex align-items-center gap-2">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Modal, Button, Form } from 'react-bootstrap'
 import StarRating from './StarRating'
 import { useCreateReview, useUpdateReview } from '../../features/reviews/useReviews'
@@ -63,6 +63,73 @@ export default function ReviewFormModal({
   const createReviewMutation = useCreateReview()
   const updateReviewMutation = useUpdateReview()
   const isSubmitting = createReviewMutation.isPending || updateReviewMutation.isPending
+
+  const sheetRef = useRef(null)
+  const isDragging = useRef(false)
+  const startY = useRef(0)
+  const currentDragY = useRef(0)
+
+  useEffect(() => {
+    if (!show) return
+    const sheet = sheetRef.current
+    if (!sheet) return
+
+    const handleTouchStart = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+      const isHandle = Boolean(e.target.closest('.review-sheet-drag-zone') || e.target.closest('.modal-header'))
+      if (!isHandle) return
+
+      const touch = e.touches[0]
+      startY.current = touch.clientY
+      currentDragY.current = 0
+      isDragging.current = false
+    }
+
+    const handleTouchMove = (e) => {
+      if (e.touches.length > 1) return
+      const touch = e.touches[0]
+      const deltaY = touch.clientY - startY.current
+      if (deltaY > 5) {
+        if (e.cancelable) e.preventDefault()
+        isDragging.current = true
+        currentDragY.current = deltaY
+        sheet.style.transition = 'none'
+        sheet.style.transform = `translateY(${deltaY}px)`
+      }
+    }
+
+    const handleTouchEnd = (e) => {
+      if (!isDragging.current) return
+      isDragging.current = false
+      const endTouch = e.changedTouches ? e.changedTouches[0] : null
+      const finalDeltaY = Math.max(currentDragY.current, endTouch ? endTouch.clientY - startY.current : currentDragY.current)
+
+      if (finalDeltaY > 55) {
+        sheet.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.72, 0, 1)'
+        sheet.style.transform = 'translateY(100%)'
+        setTimeout(() => {
+          if (onHide && !isSubmitting) onHide()
+          if (sheet) sheet.style.transform = ''
+        }, 250)
+      } else {
+        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+        sheet.style.transform = ''
+      }
+    }
+
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true })
+    sheet.addEventListener('touchmove', handleTouchMove, { passive: false })
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true })
+    sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+
+    return () => {
+      sheet.removeEventListener('touchstart', handleTouchStart)
+      sheet.removeEventListener('touchmove', handleTouchMove)
+      sheet.removeEventListener('touchend', handleTouchEnd)
+      sheet.removeEventListener('touchcancel', handleTouchEnd)
+    }
+  }, [show, onHide, isSubmitting])
 
   // Initialize or recover draft state
   useEffect(() => {
@@ -262,20 +329,69 @@ export default function ReviewFormModal({
       keyboard={!isSubmitting}
       className="review-form-modal"
     >
-      <Modal.Header closeButton={!isSubmitting} className="border-bottom-0 pb-0 pt-4 px-4">
-        <div>
-          <Modal.Title className="fw-bold text-dark fs-5 mb-1">
-            {isEditing
-              ? (isHospital ? 'হাসপাতাল রিভিউ পরিবর্তন করুন' : 'আপনার রিভিউ পরিবর্তন করুন')
-              : (isHospital ? 'হাসপাতালের অভিজ্ঞতা শেয়ার করুন' : 'ডাক্তার দেখানোর অভিজ্ঞতা শেয়ার করুন')}
-          </Modal.Title>
-          <div className="text-muted small">
-            {isHospital
-              ? 'আপনার সৎ মতামত অন্য রোগীদের সঠিক চিকিৎসাকেন্দ্র ও হাসপাতাল নির্বাচন করতে সাহায্য করবে।'
-              : 'আপনার সৎ মতামত অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।'}
-          </div>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media (max-width: 767.98px) {
+          .review-form-modal .modal-dialog {
+            margin: 0 !important;
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            transform: none !important;
+          }
+          .review-form-modal .modal-content {
+            border-radius: 20px 20px 0 0 !important;
+            border: none !important;
+            max-height: 88vh !important;
+            max-height: 88dvh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            overflow: hidden !important;
+            animation: reviewSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          }
+          .review-form-modal .modal-body {
+            overflow-y: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+          }
+          @keyframes reviewSheetSlideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+          }
+        }
+      ` }} />
+      <div ref={sheetRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        {/* Top Drag Indicator Handle Bar */}
+        <div
+          className="review-sheet-drag-zone d-md-none"
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '12px 0 4px 0',
+            cursor: 'grab',
+            background: '#FFFFFF',
+            flexShrink: 0
+          }}
+        >
+          <div style={{ width: 44, height: 4.5, borderRadius: 999, background: '#CBD5E1' }} />
         </div>
-      </Modal.Header>
+        <Modal.Header closeButton={!isSubmitting} className="border-bottom-0 pb-0 pt-3 pt-md-4 px-4">
+          <div>
+            <Modal.Title className="fw-bold text-dark fs-5 mb-1">
+              {isEditing
+                ? (isHospital ? 'হাসপাতাল রিভিউ পরিবর্তন করুন' : 'আপনার রিভিউ পরিবর্তন করুন')
+                : (isHospital ? 'হাসপাতালের অভিজ্ঞতা শেয়ার করুন' : 'ডাক্তার দেখানোর অভিজ্ঞতা শেয়ার করুন')}
+            </Modal.Title>
+            <div className="text-muted small">
+              {isHospital
+                ? 'আপনার সৎ মতামত অন্য রোগীদের সঠিক চিকিৎসাকেন্দ্র ও হাসপাতাল নির্বাচন করতে সাহায্য করবে।'
+                : 'আপনার সৎ মতামত অন্য রোগীদের সঠিক ডাক্তার নির্বাচন করতে সাহায্য করবে।'}
+            </div>
+          </div>
+        </Modal.Header>
 
       <Form onSubmit={handleSubmit}>
         <Modal.Body className="px-4 py-3">
@@ -552,6 +668,7 @@ export default function ReviewFormModal({
           </Button>
         </Modal.Footer>
       </Form>
+      </div>
     </Modal>
   )
 }

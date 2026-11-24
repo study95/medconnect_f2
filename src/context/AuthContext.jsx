@@ -23,6 +23,7 @@ function purgeClientSessionState() {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   localStorage.removeItem('userType')
+  localStorage.removeItem('medconnect_last_active_at')
 
   try {
     const keysToRemove = []
@@ -106,6 +107,15 @@ export function AuthProvider({ children }) {
           setUser(parsed)
           setUserType(savedUserType || null)
           setLoading(false)
+
+          // Check if session timed out while browser was closed / tab was away
+          const lastActiveStr = localStorage.getItem('medconnect_last_active_at')
+          const lastActive = lastActiveStr ? parseInt(lastActiveStr, 10) : 0
+          const idleLimit = getRoleIdleTimeoutMs(savedUserType, false, false, false)
+          if (lastActive && (Date.now() - lastActive) > idleLimit) {
+            window.__sessionIdleExpired = true
+          }
+
           fetchCurrentUser()
         } catch (e) {
           console.error("Auth init error:", e)
@@ -372,6 +382,10 @@ export function AuthProvider({ children }) {
       : (rolesList.includes('agent') || userData?.registration_type === 'agent' || Boolean(userData?.agent) || type === 'agent') ? 'agent'
       : (userData?.registration_type === 'doctor' ? 'doctor' : userData?.registration_type === 'hospital' ? 'hospital' : (type || 'user'))
     localStorage.setItem('userType', resolvedType)
+    localStorage.setItem('medconnect_last_active_at', String(Date.now()))
+    if (typeof window !== 'undefined') {
+      window.__sessionIdleExpired = false
+    }
     setUser(userData)
     setUserType(resolvedType)
     postAuthSync({ type: 'LOGIN', user: userData, userType: resolvedType })

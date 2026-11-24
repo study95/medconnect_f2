@@ -1370,6 +1370,13 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
   const sheetTouchStartY = useRef(0)
   const sheetCurrentY = useRef(0)
   const isSheetDragging = useRef(false)
+  const [isLocationSheetExpanded, setIsLocationSheetExpanded] = useState(false)
+  const isLocationSheetExpandedRef = useRef(false)
+  const lastLocationDragEndTimeRef = useRef(0)
+
+  useEffect(() => {
+    isLocationSheetExpandedRef.current = isLocationSheetExpanded
+  }, [isLocationSheetExpanded])
 
   const resetDrillState = () => {
     setDrillStep('divisions')
@@ -1385,7 +1392,7 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
   const closeLocationModal = useCallback(() => {
     if (sheetRef.current) {
-      sheetRef.current.style.transition = 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+      sheetRef.current.style.transition = 'transform 0.28s cubic-bezier(0.32, 0.72, 0, 1)'
       sheetRef.current.style.transform = 'translateY(100%)'
     }
     if (overlayRef.current) {
@@ -1394,14 +1401,19 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     }
     setTimeout(() => {
       setShowLocationModal(false)
+      setIsLocationSheetExpanded(false)
+      isLocationSheetExpandedRef.current = false
       resetDrillState()
       if (sheetRef.current) {
         sheetRef.current.style.transform = ''
+        sheetRef.current.style.height = ''
+        sheetRef.current.style.maxHeight = ''
+        sheetRef.current.style.transition = ''
       }
-    }, 250)
+    }, 260)
   }, [])
 
-  // ── UNIFIED SWIPE DOWN FROM ANYWHERE TO CLOSE LOCATION MODAL ──
+  // ── YOUTUBE / FB STYLE 2-STAGE SNAP BOTTOM SHEET GESTURES FOR LOCATION MODAL ──
   useEffect(() => {
     if (!showLocationModal) return
     const sheet = sheetRef.current
@@ -1411,20 +1423,37 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
     let startY = 0
     let startX = 0
-    let currentDragY = 0
+    let initialHeight = 0
     let isDragging = false
+    let dragMode = null // 'expand' | 'collapse' | 'dismiss'
     let startScrollTop = 0
+    let isHandleTouch = false
+    let currentDeltaY = 0
 
+    const getMinHeight = () => Math.round(window.innerHeight * 0.70)
+    const getMaxHeight = () => Math.round(window.innerHeight * 0.92)
+
+    // ── TOUCH GESTURES (Mobile / Touch Devices) ──
     const handleTouchStart = (e) => {
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
+
       const touch = e.touches[0]
       startY = touch.clientY
       startX = touch.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.bbl-sheet-drag-zone') ||
+        e.target.closest('.bbl-popup-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
     }
 
     const handleTouchMove = (e) => {
@@ -1435,14 +1464,54 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
       if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-      if (deltaY > 5 && startScrollTop <= 2) {
-        if (e.cancelable) e.preventDefault()
-        isDragging = true
-        currentDragY = deltaY
-        sheet.style.transition = 'none'
-        sheet.style.transform = `translateY(${deltaY}px)`
-        if (overlay) {
-          overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+      const minH = getMinHeight()
+      const maxH = getMaxHeight()
+      const isExpanded = isLocationSheetExpandedRef.current
+
+      // 1. DRAG UP (deltaY < -5): Only expand from top handle/header
+      if (deltaY < -5) {
+        if (!isExpanded && isHandleTouch) {
+          if (e.cancelable) e.preventDefault()
+          isDragging = true
+          dragMode = 'expand'
+          currentDeltaY = deltaY
+          const targetH = Math.min(maxH, initialHeight - deltaY)
+          sheet.style.transition = 'none'
+          sheet.style.height = `${targetH}px`
+          sheet.style.maxHeight = `${targetH}px`
+          sheet.style.transform = ''
+        }
+      }
+
+      // 2. DRAG DOWN (deltaY > 5):
+      else if (deltaY > 5) {
+        // Stage 2 (Expanded 92dvh) -> Pulling down collapses back to Stage 1 (70dvh) without closing
+        if (isExpanded) {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'collapse'
+            currentDeltaY = deltaY
+            const targetH = Math.max(minH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        }
+        // Stage 1 (Normal 70dvh) -> Pulling down dismisses / closes drawer
+        else {
+          if (isHandleTouch || startScrollTop <= 0) {
+            if (e.cancelable) e.preventDefault()
+            isDragging = true
+            dragMode = 'dismiss'
+            currentDeltaY = deltaY
+            sheet.style.transition = 'none'
+            sheet.style.transform = `translateY(${deltaY}px)`
+            if (overlay) {
+              overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+            }
+          }
         }
       }
     }
@@ -1450,33 +1519,72 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     const handleTouchEnd = (e) => {
       if (!isDragging) return
       isDragging = false
+      lastLocationDragEndTimeRef.current = Date.now()
 
       const endTouch = e.changedTouches ? e.changedTouches[0] : null
-      const finalDeltaY = Math.max(currentDragY, endTouch ? endTouch.clientY - startY : currentDragY)
+      const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (endTouch ? endTouch.clientY - startY : 0)
 
-      if (finalDeltaY > 50) {
-        closeLocationModal()
-      } else {
-        sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-        sheet.style.transform = ''
-        if (overlay) {
-          overlay.style.transition = 'opacity 0.28s ease'
-          overlay.style.opacity = '1'
+      if (dragMode === 'expand') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY < -30) {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsLocationSheetExpanded(true)
+          isLocationSheetExpandedRef.current = true
+        } else {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsLocationSheetExpanded(false)
+          isLocationSheetExpandedRef.current = false
+        }
+      } else if (dragMode === 'collapse') {
+        sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+        if (finalDeltaY > 35) {
+          sheet.style.height = '70dvh'
+          sheet.style.maxHeight = '70dvh'
+          setIsLocationSheetExpanded(false)
+          isLocationSheetExpandedRef.current = false
+        } else {
+          sheet.style.height = '92dvh'
+          sheet.style.maxHeight = '92dvh'
+          setIsLocationSheetExpanded(true)
+          isLocationSheetExpandedRef.current = true
+        }
+      } else if (dragMode === 'dismiss') {
+        if (finalDeltaY > 55) {
+          closeLocationModal()
+        } else {
+          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+          sheet.style.transform = ''
+          if (overlay) {
+            overlay.style.transition = 'opacity 0.28s ease'
+            overlay.style.opacity = '1'
+          }
         }
       }
     }
 
+    // ── MOUSE GESTURES (Desktop DevTools mobile mode / mouse drag) ──
     const handleMouseDown = (e) => {
       if (e.button !== 0) return
       if (e.target.tagName === 'INPUT' && e.target.type === 'text') return
+      if (e.target.closest('button') || e.target.closest('a')) return
 
       startY = e.clientY
       startX = e.clientX
-      currentDragY = 0
+      currentDeltaY = 0
+
+      isHandleTouch = Boolean(
+        e.target.closest('.bbl-sheet-drag-zone') ||
+        e.target.closest('.bbl-popup-header')
+      )
 
       const isInsideBody = body && body.contains(e.target)
       startScrollTop = isInsideBody ? body.scrollTop : 0
+
+      initialHeight = sheet.getBoundingClientRect().height
       isDragging = false
+      dragMode = null
 
       const handleMouseMove = (moveEvent) => {
         const deltaY = moveEvent.clientY - startY
@@ -1484,14 +1592,47 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10 && !isDragging) return
 
-        if (deltaY > 5 && startScrollTop <= 2) {
-          moveEvent.preventDefault()
-          isDragging = true
-          currentDragY = deltaY
-          sheet.style.transition = 'none'
-          sheet.style.transform = `translateY(${deltaY}px)`
-          if (overlay) {
-            overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+        const minH = getMinHeight()
+        const maxH = getMaxHeight()
+        const isExpanded = isLocationSheetExpandedRef.current
+
+        if (deltaY < -5) {
+          if (!isExpanded && isHandleTouch) {
+            moveEvent.preventDefault()
+            isDragging = true
+            dragMode = 'expand'
+            currentDeltaY = deltaY
+            const targetH = Math.min(maxH, initialHeight - deltaY)
+            sheet.style.transition = 'none'
+            sheet.style.height = `${targetH}px`
+            sheet.style.maxHeight = `${targetH}px`
+            sheet.style.transform = ''
+          }
+        } else if (deltaY > 5) {
+          if (isExpanded) {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'collapse'
+              currentDeltaY = deltaY
+              const targetH = Math.max(minH, initialHeight - deltaY)
+              sheet.style.transition = 'none'
+              sheet.style.height = `${targetH}px`
+              sheet.style.maxHeight = `${targetH}px`
+              sheet.style.transform = ''
+            }
+          } else {
+            if (isHandleTouch || startScrollTop <= 0) {
+              moveEvent.preventDefault()
+              isDragging = true
+              dragMode = 'dismiss'
+              currentDeltaY = deltaY
+              sheet.style.transition = 'none'
+              sheet.style.transform = `translateY(${deltaY}px)`
+              if (overlay) {
+                overlay.style.opacity = Math.max(0, 1 - deltaY / 300)
+              }
+            }
           }
         }
       }
@@ -1502,17 +1643,46 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
         if (!isDragging) return
         isDragging = false
+        lastLocationDragEndTimeRef.current = Date.now()
 
-        const finalDeltaY = Math.max(currentDragY, upEvent.clientY - startY)
+        const finalDeltaY = Math.abs(currentDeltaY) > 0 ? currentDeltaY : (upEvent.clientY - startY)
 
-        if (finalDeltaY > 50) {
-          closeLocationModal()
-        } else {
-          sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
-          sheet.style.transform = ''
-          if (overlay) {
-            overlay.style.transition = 'opacity 0.28s ease'
-            overlay.style.opacity = '1'
+        if (dragMode === 'expand') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY < -30) {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsLocationSheetExpanded(true)
+            isLocationSheetExpandedRef.current = true
+          } else {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsLocationSheetExpanded(false)
+            isLocationSheetExpandedRef.current = false
+          }
+        } else if (dragMode === 'collapse') {
+          sheet.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+          if (finalDeltaY > 35) {
+            sheet.style.height = '70dvh'
+            sheet.style.maxHeight = '70dvh'
+            setIsLocationSheetExpanded(false)
+            isLocationSheetExpandedRef.current = false
+          } else {
+            sheet.style.height = '92dvh'
+            sheet.style.maxHeight = '92dvh'
+            setIsLocationSheetExpanded(true)
+            isLocationSheetExpandedRef.current = true
+          }
+        } else if (dragMode === 'dismiss') {
+          if (finalDeltaY > 55) {
+            closeLocationModal()
+          } else {
+            sheet.style.transition = 'transform 0.28s cubic-bezier(0.16, 1, 0.3, 1)'
+            sheet.style.transform = ''
+            if (overlay) {
+              overlay.style.transition = 'opacity 0.28s ease'
+              overlay.style.opacity = '1'
+            }
           }
         }
       }
@@ -1527,27 +1697,12 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
     sheet.addEventListener('touchcancel', handleTouchEnd, { passive: true })
     sheet.addEventListener('mousedown', handleMouseDown)
 
-    if (overlay) {
-      overlay.addEventListener('touchstart', handleTouchStart, { passive: true })
-      overlay.addEventListener('touchmove', handleTouchMove, { passive: false })
-      overlay.addEventListener('touchend', handleTouchEnd, { passive: true })
-      overlay.addEventListener('touchcancel', handleTouchEnd, { passive: true })
-      overlay.addEventListener('mousedown', handleMouseDown)
-    }
-
     return () => {
       sheet.removeEventListener('touchstart', handleTouchStart)
       sheet.removeEventListener('touchmove', handleTouchMove)
       sheet.removeEventListener('touchend', handleTouchEnd)
       sheet.removeEventListener('touchcancel', handleTouchEnd)
       sheet.removeEventListener('mousedown', handleMouseDown)
-      if (overlay) {
-        overlay.removeEventListener('touchstart', handleTouchStart)
-        overlay.removeEventListener('touchmove', handleTouchMove)
-        overlay.removeEventListener('touchend', handleTouchEnd)
-        overlay.removeEventListener('touchcancel', handleTouchEnd)
-        overlay.removeEventListener('mousedown', handleMouseDown)
-      }
     }
   }, [showLocationModal, closeLocationModal])
 
@@ -2286,15 +2441,23 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
         >
           <div
             ref={sheetRef}
-            className="bbl-popup-sheet"
+            className={`bbl-popup-sheet ${isLocationSheetExpanded ? 'is-expanded' : ''}`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss) */}
+            {/* Top Drag Indicator Handle Bar (Swipe down to dismiss, tap to expand/collapse) */}
             <div
               className="bbl-sheet-drag-zone"
-              onTouchStart={handleSheetTouchStart}
-              onTouchMove={handleSheetTouchMove}
-              onTouchEnd={handleSheetTouchEnd}
+              onClick={() => {
+                if (Date.now() - lastLocationDragEndTimeRef.current < 250) return
+                const next = !isLocationSheetExpandedRef.current
+                setIsLocationSheetExpanded(next)
+                isLocationSheetExpandedRef.current = next
+                if (sheetRef.current) {
+                  sheetRef.current.style.transition = 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1)'
+                  sheetRef.current.style.height = next ? '92dvh' : '70dvh'
+                  sheetRef.current.style.maxHeight = next ? '92dvh' : '70dvh'
+                }
+              }}
             >
               <div className="bbl-sheet-drag-bar" />
             </div>
@@ -2302,9 +2465,6 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
             {/* Header (Swipeable) */}
             <div
               className="bbl-popup-header"
-              onTouchStart={handleSheetTouchStart}
-              onTouchMove={handleSheetTouchMove}
-              onTouchEnd={handleSheetTouchEnd}
             >
               <div>
                 <div className="bbl-popup-title">
@@ -3806,11 +3966,20 @@ function BrowseByLocationSection({ popularDivisions = [], popularDistricts = [],
 
           .bbl-popup-sheet {
             max-width: 100% !important;
-            max-height: 85vh !important;
+            height: 70vh !important;
+            height: 70dvh !important;
+            max-height: 72dvh !important;
             border-radius: 16px 16px 0 0 !important;
-            animation: bblSheetSlideUp 0.25s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+            animation: bblSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
             overscroll-behavior: none;
             overscroll-behavior-y: none;
+            transition: height 0.32s cubic-bezier(0.16, 1, 0.3, 1), max-height 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+
+          .bbl-popup-sheet.is-expanded {
+            height: 92vh !important;
+            height: 92dvh !important;
+            max-height: 94dvh !important;
           }
 
           @keyframes bblSheetSlideUp {
