@@ -259,6 +259,8 @@ export default function ContactMessageListPage() {
   const [selectedIds, setSelectedIds] = useState([])
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [showPurgeSpamModal, setShowPurgeSpamModal] = useState(false)
+  const [purgeLoading, setPurgeLoading] = useState(false)
 
   // Clear selections when changing tabs, status, search, or pagination
   React.useEffect(() => {
@@ -416,13 +418,16 @@ export default function ContactMessageListPage() {
   }
 
   const handlePurgeSpam = async () => {
-    if (!window.confirm('আপনি কি নিশ্চিত যে সকল স্প্যাম বার্তা স্থায়ীভাবে মুছে ফেলতে চান?')) return
+    setPurgeLoading(true)
     try {
       const res = await axiosInstance.post('/admin/contact-messages/purge-spam')
       queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      setShowPurgeSpamModal(false)
       toast.success(res.data?.message || 'সকল স্প্যাম বার্তা মুছে ফেলা হয়েছে')
     } catch {
       toast.error('স্প্যাম পরিষ্কার করা সম্ভব হয়নি')
+    } finally {
+      setPurgeLoading(false)
     }
   }
 
@@ -529,12 +534,6 @@ export default function ContactMessageListPage() {
           <h2 className="admin-page-title">কন্টাক্ট পেইজ বার্তা ব্যবস্থাপনা (Public Contact Inquiries)</h2>
           <p className="admin-page-subtitle">যোগাযোগ (/contact) পেইজ থেকে প্রেরিত সকল ভিজিটর ও রোগীদের সাধারণ জিজ্ঞাসা ও বার্তা</p>
         </div>
-        <button
-          onClick={() => refetch()}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #00B875, #009E64)', color: 'white', border: 'none', borderRadius: 12, padding: '10px 18px', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,184,117,0.25)' }}
-        >
-          <IconRefresh size={17} /> রিফ্রেশ তালিকা
-        </button>
       </div>
 
       {/* ── TOP TRIAGE TABS (INBOX / VERIFIED / SPAM / ALL) ── */}
@@ -673,7 +672,7 @@ export default function ContactMessageListPage() {
         {filterTab === 'spam' && (stats.spam_count ?? 0) > 0 && (
           <button
             type="button"
-            onClick={handlePurgeSpam}
+            onClick={() => setShowPurgeSpamModal(true)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -1778,6 +1777,17 @@ export default function ContactMessageListPage() {
         onConfirm={handleBulkDelete}
         title="নির্বাচিত বার্তাগুলো মুছে ফেলার নিশ্চিতকরণ"
         message={`আপনি কি নিশ্চিত যে নির্বাচিত ${selectedIds.length} টি বার্তা ডাটাবেজ থেকে স্থায়ীভাবে মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।`}
+      />
+
+      <DeleteModal
+        show={showPurgeSpamModal}
+        onCancel={() => !purgeLoading && setShowPurgeSpamModal(false)}
+        onConfirm={handlePurgeSpam}
+        loading={purgeLoading}
+        title="সকল স্প্যাম বার্তা মুছে ফেলার নিশ্চিতকরণ"
+        message="আপনি কি নিশ্চিত যে সকল স্প্যাম বার্তা স্থায়ীভাবে মুছে ফেলতে চান? এটি ডাটাবেজ থেকে সকল স্প্যাম বার্তা চিরতরে মুছে দেবে এবং এই প্রক্রিয়াটি আর ফিরিয়ে আনা যাবে না।"
+        confirmText="হ্যাঁ, সব মুছে ফেলুন"
+        cancelText="বাতিল"
       />
 
       <style>{`

@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useRef, useEffect } from 'react'
 import { Outlet, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Sidebar from './Sidebar'
@@ -64,6 +64,24 @@ export default function AdminLayout() {
   const { theme, toggleTheme } = useTheme()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [avatarImgError, setAvatarImgError] = useState(false)
+  const userDropdownRef = useRef(null)
+
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false)
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [dropdownOpen])
 
   return (
     <div className="admin-wrapper">
@@ -138,13 +156,15 @@ export default function AdminLayout() {
               <div className="header-divider" style={{ width: 1, height: 24, background: 'var(--admin-border)' }} />
 
               {/* User Dropdown */}
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative' }} ref={userDropdownRef}>
                 <button 
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  onClick={() => setDropdownOpen(prev => !prev)}
                   style={{ 
                     display: 'flex', alignItems: 'center', gap: 10, background: 'transparent', 
                     border: 'none', cursor: 'pointer', padding: 0 
                   }}
+                  aria-expanded={dropdownOpen}
+                  aria-label="User menu"
                 >
                   <div className="header-user-details" style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-text)' }}>{user?.name || 'User'}</span>
@@ -166,36 +186,28 @@ export default function AdminLayout() {
                 </button>
 
                 {dropdownOpen && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 99 }} onClick={() => setDropdownOpen(false)} />
-                    <div style={{
-                      position: 'absolute', top: '100%', right: 0, marginTop: 12, width: 220,
-                      background: 'var(--admin-bg)', border: '1px solid var(--admin-border)',
-                      borderRadius: 12, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 100,
-                      overflow: 'hidden', display: 'flex', flexDirection: 'column'
-                    }}>
-                      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--admin-border)', background: 'var(--admin-bg-alt)' }}>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-text)' }}>{user?.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{user?.email}</div>
-                      </div>
-                      <div style={{ padding: 8 }}>
-                        <Link to={`${portalBase}/profile`} onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--admin-text)', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <User size={16} /> Update Profile
-                        </Link>
-                        <Link to={`${portalBase}/password`} onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--admin-text)', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <Lock size={16} /> Update Password
-                        </Link>
-                        <Link to={`${portalBase}/security`} onClick={() => setDropdownOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: '#00B875', textDecoration: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--admin-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <ShieldCheck size={16} color="#00B875" /> Two-Factor Security (2FA)
-                        </Link>
-                      </div>
-                      <div style={{ padding: 8, borderTop: '1px solid var(--admin-border)' }}>
-                        <button onClick={logout} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: '#EF4444', background: 'transparent', border: 'none', fontSize: 13, fontWeight: 600, borderRadius: 8, cursor: 'pointer', transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                          <LogOut size={16} /> Logout
-                        </button>
-                      </div>
+                  <div className="admin-user-dropdown-menu">
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--admin-border)', background: 'var(--admin-bg-alt)' }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-text)' }}>{user?.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--admin-text-muted)' }}>{user?.email}</div>
                     </div>
-                  </>
+                    <div style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Link to={`${portalBase}/profile`} onClick={() => setDropdownOpen(false)} className="admin-user-dropdown-item">
+                        <User size={16} /> <span>Update Profile</span>
+                      </Link>
+                      <Link to={`${portalBase}/password`} onClick={() => setDropdownOpen(false)} className="admin-user-dropdown-item">
+                        <Lock size={16} /> <span>Update Password</span>
+                      </Link>
+                      <Link to={`${portalBase}/security`} onClick={() => setDropdownOpen(false)} className="admin-user-dropdown-item item-2fa">
+                        <ShieldCheck size={16} /> <span>Two-Factor Security (2FA)</span>
+                      </Link>
+                    </div>
+                    <div style={{ padding: '6px 8px', borderTop: '1px solid var(--admin-border)' }}>
+                      <button onClick={logout} className="admin-user-dropdown-item item-logout">
+                        <LogOut size={16} /> <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
               

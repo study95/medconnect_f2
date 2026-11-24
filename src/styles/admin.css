@@ -666,8 +666,10 @@
 .admin-back-link {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 14px;
+  height: 34px;
+  padding: 0 14px;
   border-radius: 20px;
   background: rgba(0, 184, 117, 0.08);
   border: 1px solid rgba(0, 184, 117, 0.2);
@@ -675,7 +677,21 @@
   text-decoration: none;
   font-size: 12.5px;
   font-weight: 600;
+  line-height: 1;
+  box-sizing: border-box;
   transition: all 0.2s ease;
+}
+
+.admin-back-link .back-link-text {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.admin-back-link svg {
+  display: block;
+  flex-shrink: 0;
+  transform: translateY(-1px);
 }
 
 .admin-back-link:hover {
@@ -683,6 +699,92 @@
   color: #ffffff;
   border-color: var(--admin-primary);
   box-shadow: 0 4px 12px rgba(0, 184, 117, 0.2);
+}
+
+/* User Profile Dropdown Menu */
+.admin-user-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 230px;
+  background: var(--admin-card-bg);
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  z-index: 1050;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: adminDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes adminDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.admin-user-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--admin-text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  background: transparent;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.admin-user-dropdown-item svg {
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.admin-user-dropdown-item:hover {
+  background: rgba(0, 184, 117, 0.09) !important;
+  color: #00B875 !important;
+  transform: translateX(3px);
+}
+
+.admin-user-dropdown-item:hover svg {
+  color: #00B875 !important;
+  transform: scale(1.1);
+}
+
+.admin-user-dropdown-item.item-2fa {
+  color: #00B875;
+}
+
+.admin-user-dropdown-item.item-2fa:hover {
+  background: rgba(0, 184, 117, 0.12) !important;
+  color: #009E64 !important;
+}
+
+.admin-user-dropdown-item.item-logout {
+  color: #EF4444;
+}
+
+.admin-user-dropdown-item.item-logout:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #DC2626 !important;
+  transform: translateX(3px);
+}
+
+.admin-user-dropdown-item.item-logout:hover svg {
+  color: #DC2626 !important;
 }
 
 /* Admin Content */

@@ -96,9 +96,11 @@ function ExecutiveMetricCard({ title, value, subtext, icon: Icon, badge, trendPo
         </div>
         {badge && (
           <span style={{
-            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700, height: 22, padding: '0 8px', borderRadius: 6,
             background: trendPositive ? 'rgba(0, 184, 117, 0.1)' : 'rgba(245, 158, 11, 0.1)',
             color: trendPositive ? '#00B875' : '#D97706',
+            lineHeight: 1,
             fontVariantNumeric: 'tabular-nums'
           }}>
             {badge}
@@ -904,16 +906,17 @@ export default function DashboardPage() {
                 to="/admin/doctors?is_active=0"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '4px 10px', borderRadius: 8,
+                  minHeight: 28, padding: '4px 10px', borderRadius: 8,
                   background: 'rgba(245, 158, 11, 0.1)',
                   border: '1px solid rgba(245, 158, 11, 0.25)',
                   color: '#D97706', fontSize: 11.5, fontWeight: 700,
-                  textDecoration: 'none', transition: '0.15s ease'
+                  textDecoration: 'none', transition: '0.15s ease',
+                  lineHeight: 1
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706' }} />
-                <span>{stats.action_required.inactive_doctors} জন ডাক্তার যাচাই বাকি</span>
-                <ChevronRight size={12} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D97706', flexShrink: 0 }} />
+                <span style={{ lineHeight: 1 }}>{stats.action_required.inactive_doctors} জন ডাক্তার যাচাই বাকি</span>
+                <ChevronRight size={12} style={{ flexShrink: 0 }} />
               </Link>
             ) : null}
 
@@ -923,16 +926,17 @@ export default function DashboardPage() {
                 to="/admin/hospitals?is_active=0"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '4px 10px', borderRadius: 8,
+                  minHeight: 28, padding: '4px 10px', borderRadius: 8,
                   background: 'rgba(59, 130, 246, 0.1)',
                   border: '1px solid rgba(59, 130, 246, 0.25)',
                   color: '#2563EB', fontSize: 11.5, fontWeight: 700,
-                  textDecoration: 'none', transition: '0.15s ease'
+                  textDecoration: 'none', transition: '0.15s ease',
+                  lineHeight: 1
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563EB' }} />
-                <span>{stats.action_required.inactive_hospitals} টি হাসপাতাল অনবোর্ডিং বাকি</span>
-                <ChevronRight size={12} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563EB', flexShrink: 0 }} />
+                <span style={{ lineHeight: 1 }}>{stats.action_required.inactive_hospitals} টি হাসপাতাল অনবোর্ডিং বাকি</span>
+                <ChevronRight size={12} style={{ flexShrink: 0 }} />
               </Link>
             ) : null}
 
@@ -942,16 +946,17 @@ export default function DashboardPage() {
                 to="/admin/reviews/reports"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '4px 10px', borderRadius: 8,
+                  minHeight: 28, padding: '4px 10px', borderRadius: 8,
                   background: 'rgba(239, 68, 68, 0.1)',
                   border: '1px solid rgba(239, 68, 68, 0.25)',
                   color: '#EF4444', fontSize: 11.5, fontWeight: 700,
-                  textDecoration: 'none', transition: '0.15s ease'
+                  textDecoration: 'none', transition: '0.15s ease',
+                  lineHeight: 1
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444' }} />
-                <span>{stats.action_required.pending_reports} টি রিভিউ বিরোধ নিষ্পত্তি বাকি</span>
-                <ChevronRight size={12} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#EF4444', flexShrink: 0 }} />
+                <span style={{ lineHeight: 1 }}>{stats.action_required.pending_reports} টি রিভিউ বিরোধ নিষ্পত্তি বাকি</span>
+                <ChevronRight size={12} style={{ flexShrink: 0 }} />
               </Link>
             ) : null}
 
@@ -961,16 +966,17 @@ export default function DashboardPage() {
                 to="/admin/reports/commission?commission_status=pending"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '4px 10px', borderRadius: 8,
+                  minHeight: 28, padding: '4px 10px', borderRadius: 8,
                   background: 'rgba(139, 92, 246, 0.1)',
                   border: '1px solid rgba(139, 92, 246, 0.25)',
                   color: '#7C3AED', fontSize: 11.5, fontWeight: 700,
-                  textDecoration: 'none', transition: '0.15s ease'
+                  textDecoration: 'none', transition: '0.15s ease',
+                  lineHeight: 1
                 }}
               >
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED' }} />
-                <span>{stats.action_required.pending_commissions} টি কমিশন সেটেলমেন্ট বাকি</span>
-                <ChevronRight size={12} />
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7C3AED', flexShrink: 0 }} />
+                <span style={{ lineHeight: 1 }}>{stats.action_required.pending_commissions} টি কমিশন সেটেলমেন্ট বাকি</span>
+                <ChevronRight size={12} style={{ flexShrink: 0 }} />
               </Link>
             ) : null}
 
@@ -1298,15 +1304,17 @@ export default function DashboardPage() {
                   </span>
                   {inbound.counts?.total > 0 ? (
                     <span style={{
-                      fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: 10,
-                      background: '#EF4444', color: '#FFFFFF'
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 800, height: 22, padding: '0 8px', borderRadius: 10,
+                      background: '#EF4444', color: '#FFFFFF', lineHeight: 1
                     }}>
                       {inbound.counts.total}টি অপেক্ষমান
                     </span>
                   ) : (
                     <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 10,
-                      background: 'rgba(0, 184, 117, 0.1)', color: '#00B875'
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 11, fontWeight: 700, height: 22, padding: '0 8px', borderRadius: 10,
+                      background: 'rgba(0, 184, 117, 0.1)', color: '#00B875', lineHeight: 1
                     }}>
                       সব সম্পন্ন ✓
                     </span>
@@ -1342,9 +1350,11 @@ export default function DashboardPage() {
                     <span>{tab.label}</span>
                     {tab.count > 0 && (
                       <span style={{
-                        fontSize: 10, fontWeight: 800, padding: '1px 5px', borderRadius: 8,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 800, minWidth: 16, height: 16, padding: '0 4px', borderRadius: 8,
                         background: inboundTab === tab.key ? '#EF4444' : 'rgba(239, 68, 68, 0.2)',
-                        color: inboundTab === tab.key ? '#FFFFFF' : '#EF4444'
+                        color: inboundTab === tab.key ? '#FFFFFF' : '#EF4444',
+                        lineHeight: 1
                       }}>
                         {tab.count}
                       </span>
@@ -1456,7 +1466,12 @@ export default function DashboardPage() {
                 }}
               >
                 <span>চলমান বুকিং লেজার (Bookings)</span>
-                <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 8, background: 'var(--admin-border)', color: 'var(--admin-text-muted)' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 10, fontWeight: 700, height: 18, padding: '0 6px', borderRadius: 8,
+                  background: 'var(--admin-border)', color: 'var(--admin-text-muted)',
+                  lineHeight: 1
+                }}>
                   {stats?.recent_activities?.length || 0}
                 </span>
               </button>
