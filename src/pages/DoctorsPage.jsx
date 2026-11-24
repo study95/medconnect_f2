@@ -992,9 +992,9 @@ function DoctorsPage() {
     }
   }, [isMobileFilterOpen, closeMobileFilter])
 
-  // Prevent background scroll when mobile filter bottom sheet or specialties drawer is open
+  // Prevent background scroll on desktop when specialties drawer is open
   useEffect(() => {
-    if (isMobileFilterOpen || isAllSpecialtiesModalOpen) {
+    if ((isMobileFilterOpen || isAllSpecialtiesModalOpen) && window.innerWidth >= 992) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -2110,7 +2110,7 @@ function DoctorsPage() {
             background: #FFFFFF !important;
             border-bottom: 1px solid #E2E8F0 !important;
             box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06) !important;
-            transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            top: var(--mobile-search-top, 0px) !important;
           }
           .doc-chip-scroll-btn {
             display: none !important;
@@ -2351,8 +2351,7 @@ function DoctorsPage() {
         background: '#FFFFFF',
         borderBottom: '1px solid #E2E8F0',
         padding: '10px 16px',
-        boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.06)',
-        transition: 'top 0.28s cubic-bezier(0.4, 0, 0.2, 1)'
+        boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.06)'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1, margin: 0 }}>

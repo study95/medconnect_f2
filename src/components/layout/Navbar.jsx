@@ -230,7 +230,7 @@ function AppNavbar() {
           setMobileHeaderVisible(true)
         } else if (deltaY > 6 && currentScrollY > 60) {
           setMobileHeaderVisible(false)
-        } else if (deltaY < -6) {
+        } else if (deltaY < -18) {
           setMobileHeaderVisible(true)
         }
       } else {
@@ -513,7 +513,7 @@ function AppNavbar() {
           :root {
             --header-height: ${isAuthPage || isDetailPage ? '0px !important' : '58px !important'};
             --sticky-top: ${isAuthPage || isDetailPage ? '0px !important' : (mobileHeaderVisible ? '58px !important' : '0px !important')};
-            --mobile-search-top: ${isAuthPage || isDetailPage ? '0px' : (mobileHeaderVisible ? '58px' : '0px')};
+            --mobile-search-top: ${isAuthPage || isDetailPage ? '0px !important' : (mobileHeaderVisible ? '58px !important' : '0px !important')};
           }
           .page-wrapper {
             padding-top: var(--header-height) !important;

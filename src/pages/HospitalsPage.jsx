@@ -504,9 +504,9 @@ function HospitalsPage() {
     }
   }, [isMobileFilterOpen, closeMobileFilter])
 
-  // Prevent background scroll when mobile filter is open
+  // Prevent background scroll on desktop when mobile filter is open
   useEffect(() => {
-    if (isMobileFilterOpen) {
+    if (isMobileFilterOpen && window.innerWidth >= 992) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -1440,7 +1440,7 @@ function HospitalsPage() {
             background: #FFFFFF !important;
             border-bottom: 1px solid #E2E8F0 !important;
             box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06) !important;
-            transition: top 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            top: var(--mobile-search-top, 0px) !important;
           }
         }
         @media (min-width: 992px) {
@@ -1671,8 +1671,7 @@ function HospitalsPage() {
         background: '#FFFFFF',
         borderBottom: '1px solid #E2E8F0',
         padding: '10px 16px',
-        boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.06)',
-        transition: 'top 0.28s cubic-bezier(0.4, 0, 0.2, 1)'
+        boxShadow: '0 4px 16px -2px rgba(15, 23, 42, 0.06)'
       }}>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ position: 'relative', flex: 1, margin: 0 }}>
