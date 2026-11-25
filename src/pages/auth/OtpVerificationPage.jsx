@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { sendOtp, verifyOtp } from '../../api/authApi'
+import TurnstileWidget, { isTurnstileEnabled } from '../../components/common/TurnstileWidget'
 import '../../styles/auth.css'
 
 export default function OtpVerificationPage() {
@@ -13,6 +14,8 @@ export default function OtpVerificationPage() {
   const [otpError, setOtpError] = useState('')
   const [loading, setLoading] = useState(false)
   const [timer, setTimer] = useState(0)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
   const otpRefs = useRef([])
 
   // Countdown timer for resend
@@ -53,7 +56,13 @@ export default function OtpVerificationPage() {
     setLoading(true)
     try {
       // Pass 'registration' so backend knows to check for existing users
-      const res = await sendOtp({ mobile: trimmedMobile, type: 'registration' })
+      const res = await sendOtp({
+        mobile: trimmedMobile,
+        type: 'registration',
+        ...(turnstileToken ? { cf_turnstile_response: turnstileToken } : {}),
+      })
+      setTurnstileToken('')
+      setTurnstileResetKey(k => k + 1)
       setStep(2)
       setTimer(res.data?.cooldown_seconds || 60)
     } catch (err) {
@@ -217,11 +226,15 @@ export default function OtpVerificationPage() {
                 </p>
                 {mobileError && <div className="auth-field-error">{mobileError}</div>}
               </div>
+              <TurnstileWidget
+                onVerify={setTurnstileToken}
+                resetKey={turnstileResetKey}
+              />
               <button
                 type="submit"
                 className={`auth-btn-primary ${isDoctor ? 'doctor-theme' : ''}`}
                 style={{ background: !isDoctor ? getThemeColor() : undefined }}
-                disabled={loading}
+                disabled={loading || (isTurnstileEnabled() && !turnstileToken)}
               >
                 {loading ? (
                   <><span className="spinner-border spinner-border-sm" /> Sending OTP...</>

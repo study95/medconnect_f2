@@ -15,15 +15,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-    <!-- ─── Non-render-blocking font load (prevents CLS/FOUT) ─── -->
-    <!-- Using media trick: load as print then swap, avoids render-blocking -->
+    <!-- ─── Google Fonts (display=swap + preconnect, Strict-CSP compatible without inline onload) ─── -->
     <link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800;900&family=Noto+Sans+Bengali:wght@400;600;700&family=Inter:wght@400;600;700;800;900&family=Outfit:wght@600;800;900&display=swap"
-      media="print" onload="this.media='all'" />
-    <noscript>
-      <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800;900&family=Noto+Sans+Bengali:wght@400;600;700&family=Inter:wght@400;600;700;800;900&family=Outfit:wght@600;800;900&display=swap" />
-    </noscript>
+      href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800;900&family=Noto+Sans+Bengali:wght@400;600;700&family=Inter:wght@400;600;700;800;900&family=Outfit:wght@600;800;900&display=swap" />
 
     <!-- ─── Theme color (prevents white flash on mobile Chrome) ─── -->
     <meta name="theme-color" content="#00A88C" />
@@ -165,42 +159,7 @@
     <!-- MAIN ENTRY POINT -->
     <script type="module" src="/src/main.jsx"></script>
 
-    <!-- AUTOMATIC SMOOTH FADE-OUT SCRIPT -->
-    <script>
-      (function() {
-        var dismissed = false;
-        function dismissPreloader() {
-          if (dismissed) return;
-          dismissed = true;
-          var p = document.getElementById('website-preloader');
-          if (!p) return;
-          p.style.transition = 'opacity 0.5s ease, visibility 0.5s ease';
-          p.style.opacity = '0';
-          p.style.visibility = 'hidden';
-          p.style.pointerEvents = 'none';
-          setTimeout(function() {
-            if (p && p.parentNode) p.parentNode.removeChild(p);
-          }, 550);
-        }
-
-        // Wait until React has actually rendered content into #root
-        function checkReactReady() {
-          var root = document.getElementById('root');
-          if (root && root.children.length > 0) {
-            // React has mounted — give it a tiny moment to paint, then dismiss
-            setTimeout(dismissPreloader, 150);
-          } else {
-            // Not ready yet, check again in 50ms
-            setTimeout(checkReactReady, 50);
-          }
-        }
-
-        // Start checking after a brief initial delay (let scripts load)
-        setTimeout(checkReactReady, 200);
-
-        // Safety fallback: dismiss after 4 seconds no matter what
-        setTimeout(dismissPreloader, 4000);
-      })();
-    </script>
+    <!-- AUTOMATIC SMOOTH FADE-OUT SCRIPT (External file for Strict CSP without unsafe-inline) -->
+    <script src="/preloader.js" defer></script>
   </body>
 </html>

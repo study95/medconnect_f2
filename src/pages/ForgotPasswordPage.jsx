@@ -22,6 +22,7 @@ import {
   Edit2
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import TurnstileWidget, { isTurnstileEnabled } from '../components/common/TurnstileWidget'
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
@@ -42,6 +43,8 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [statusMsg, setStatusMsg] = useState({ type: '', text: '' })
   const [timer, setTimer] = useState(0)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
 
   const otpRefs = useRef([])
 
@@ -101,9 +104,14 @@ export default function ForgotPasswordPage() {
     try {
       const res = await axiosInstance.post(
         '/forgot-password/send-otp',
-        { mobile: cleanMobile },
+        {
+          mobile: cleanMobile,
+          ...(turnstileToken ? { cf_turnstile_response: turnstileToken } : {}),
+        },
         { skipGlobalToast: true }
       )
+      setTurnstileToken('')
+      setTurnstileResetKey(k => k + 1)
 
       if (res.data?.success) {
         const cooldown = Number(res.data?.cooldown_seconds || res.data?.retry_after_seconds) || 60
@@ -391,7 +399,7 @@ export default function ForgotPasswordPage() {
                   />
                   <button
                     type="submit"
-                    disabled={loading || mobile.length !== 11}
+                    disabled={loading || mobile.length !== 11 || (isTurnstileEnabled() && !turnstileToken)}
                     className="fp-inline-otp-btn"
                     title={mobile.length !== 11 ? "১১ সংখ্যার মোবাইল নম্বর দিন" : "ওটিপি পাঠান"}
                   >
@@ -405,6 +413,10 @@ export default function ForgotPasswordPage() {
                     )}
                   </button>
                 </div>
+                <TurnstileWidget
+                  onVerify={setTurnstileToken}
+                  resetKey={turnstileResetKey}
+                />
               </div>
             </form>
           )}

@@ -13,6 +13,7 @@ import { getContent, fetchContentFromBackend } from '../utils/contentService'
 import { safeHttpUrl } from '../utils/sanitizeHtml'
 import axiosInstance from '../api/axiosInstance'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
+import TurnstileWidget, { isTurnstileEnabled } from '../components/common/TurnstileWidget'
 
 export default function ContactPage() {
   const [cms, setCms] = useState(getContent())
@@ -45,9 +46,11 @@ export default function ContactPage() {
   const [copiedField, setCopiedField] = useState(null)
   const [activeFaq, setActiveFaq] = useState(null)
 
-  // Security: Cooldown countdown & Honeypot bot trap
+  // Security: Cooldown countdown, Cloudflare Turnstile & Honeypot bot trap
   const [cooldownSeconds, setCooldownSeconds] = useState(0)
   const [honeypot, setHoneypot] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
 
   // Check cooldown on mount and tick countdown
   useEffect(() => {
@@ -266,11 +269,14 @@ export default function ContactPage() {
         subject: fullSubject,
         message: form.message.trim(),
         website_url_check: honeypot || null,
+        ...(turnstileToken ? { cf_turnstile_response: turnstileToken } : {}),
       }
 
       const res = await axiosInstance.post('/contact-messages', payload, {
         skipGlobalToast: true,
       })
+      setTurnstileToken('')
+      setTurnstileResetKey(k => k + 1)
       const generatedCid = res.data?.token_id || res.data?.data?.token_id || ''
 
       setNewCidToken(generatedCid)
@@ -2153,10 +2159,14 @@ export default function ContactPage() {
 
                       {/* Submit Button & Privacy note */}
                       <Col xs={12} className="mt-2">
+                        <TurnstileWidget
+                          onVerify={setTurnstileToken}
+                          resetKey={turnstileResetKey}
+                        />
                         <button
                           id="contact-submit"
                           type="submit"
-                          disabled={loading}
+                          disabled={loading || (isTurnstileEnabled() && !turnstileToken)}
                           style={{
                             background: 'linear-gradient(135deg, #00B875 0%, #059669 100%)',
                             color: 'white',

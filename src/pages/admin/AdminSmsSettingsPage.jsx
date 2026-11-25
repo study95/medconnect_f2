@@ -364,6 +364,9 @@ export default function AdminSmsSettingsPage() {
     try {
       const res = await updateAdminSmsSettings(form)
       if (res.data?.success) {
+        if (res.data?.data) {
+          setForm(prev => ({ ...prev, ...res.data.data }))
+        }
         setStatusMsg({ type: 'success', text: 'এসএমএস গেটওয়ে সেটিংস সফলভাবে সংরক্ষিত ও কার্যকর করা হয়েছে।' })
         fetchBalance()
         setTimeout(() => setStatusMsg({ type: '', text: '' }), 5000)
@@ -1373,12 +1376,19 @@ export default function AdminSmsSettingsPage() {
                 </div>
 
                 <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>API Key *</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>API Key *</span>
+                    {form.alphasms?.api_key_configured && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#059669', background: '#ecfdf5', padding: '2px 8px', borderRadius: 999 }}>
+                        সংরক্ষিত ({form.alphasms?.api_key_masked || '****'})
+                      </span>
+                    )}
+                  </label>
                   <input
                     type="password"
                     value={form.alphasms?.api_key || ''}
                     onChange={e => setForm(prev => ({ ...prev, alphasms: { ...prev.alphasms, api_key: e.target.value } }))}
-                    placeholder="Alpha SMS API Key লিখুন"
+                    placeholder={form.alphasms?.api_key_configured ? 'অপরিবর্তিত রাখতে খালি রাখুন, বা নতুন API Key লিখুন' : 'Alpha SMS API Key লিখুন'}
                     className="form-control"
                     style={{ borderRadius: 8, fontSize: 13 }}
                   />
@@ -1419,13 +1429,13 @@ export default function AdminSmsSettingsPage() {
                 </div>
 
                 <div className="mb-2">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>API Endpoint URL</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>API Endpoint URL (নিরাপত্তার জন্য লকড)</label>
                   <input
                     type="text"
                     value={form.alphasms?.url || 'https://api.sms.net.bd/sendsms'}
-                    onChange={e => setForm(prev => ({ ...prev, alphasms: { ...prev.alphasms, url: e.target.value } }))}
+                    readOnly
                     className="form-control"
-                    style={{ borderRadius: 8, fontSize: 13 }}
+                    style={{ borderRadius: 8, fontSize: 13, background: '#f8fafc', color: '#64748b' }}
                   />
                 </div>
               </div>
@@ -1438,12 +1448,19 @@ export default function AdminSmsSettingsPage() {
                 </div>
 
                 <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>API Key *</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>API Key *</span>
+                    {form.maestrosms?.api_key_configured && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#059669', background: '#ecfdf5', padding: '2px 8px', borderRadius: 999 }}>
+                        সংরক্ষিত ({form.maestrosms?.api_key_masked || '****'})
+                      </span>
+                    )}
+                  </label>
                   <input
                     type="password"
                     value={form.maestrosms?.api_key || ''}
                     onChange={e => setForm(prev => ({ ...prev, maestrosms: { ...prev.maestrosms, api_key: e.target.value } }))}
-                    placeholder="Maestro API Key লিখুন"
+                    placeholder={form.maestrosms?.api_key_configured ? 'অপরিবর্তিত রাখতে খালি রাখুন, বা নতুন API Key লিখুন' : 'Maestro API Key লিখুন'}
                     className="form-control"
                     style={{ borderRadius: 8, fontSize: 13 }}
                   />
@@ -1484,13 +1501,13 @@ export default function AdminSmsSettingsPage() {
                 </div>
 
                 <div className="mb-2">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>API Endpoint URL</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>API Endpoint URL (নিরাপত্তার জন্য লকড)</label>
                   <input
                     type="text"
                     value={form.maestrosms?.url || 'https://api.maestrosms.com/api/v1/sms/send'}
-                    onChange={e => setForm(prev => ({ ...prev, maestrosms: { ...prev.maestrosms, url: e.target.value } }))}
+                    readOnly
                     className="form-control"
-                    style={{ borderRadius: 8, fontSize: 13 }}
+                    style={{ borderRadius: 8, fontSize: 13, background: '#f8fafc', color: '#64748b' }}
                   />
                 </div>
               </div>
@@ -1515,12 +1532,19 @@ export default function AdminSmsSettingsPage() {
                 </div>
 
                 <div className="mb-3">
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'block' }}>API Key *</label>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>API Key *</span>
+                    {form.mimsms?.api_key_configured && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: '#059669', background: '#ecfdf5', padding: '2px 8px', borderRadius: 999 }}>
+                        সংরক্ষিত ({form.mimsms?.api_key_masked || '****'})
+                      </span>
+                    )}
+                  </label>
                   <input
                     type="password"
                     value={form.mimsms?.api_key || ''}
                     onChange={e => setForm(prev => ({ ...prev, mimsms: { ...prev.mimsms, api_key: e.target.value } }))}
-                    placeholder="MiMSMS API Key লিখুন"
+                    placeholder={form.mimsms?.api_key_configured ? 'অপরিবর্তিত রাখতে খালি রাখুন, বা নতুন API Key লিখুন' : 'MiMSMS API Key লিখুন'}
                     className="form-control"
                     style={{ borderRadius: 8, fontSize: 13 }}
                   />

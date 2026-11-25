@@ -47,12 +47,11 @@ export const getEcho = () => {
     wssPort: reverbPort,
     forceTLS: isTls,
     enabledTransports: isTls ? ['wss'] : ['ws', 'wss'],
-    // Custom authorizer using axiosInstance for automatic Sanctum Bearer token resolution
+    // Custom authorizer using axiosInstance with HttpOnly Sanctum cookie + XSRF-TOKEN
     authorizer: (channel) => {
       return {
         authorize: (socketId, callback) => {
-          const token = localStorage.getItem('token')
-          if (!token) {
+          if (!localStorage.getItem('user')) {
             callback(new Error('Unauthenticated WebSocket channel subscription'), null)
             return
           }
@@ -64,9 +63,6 @@ export const getEcho = () => {
                 channel_name: channel.name,
               },
               {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
                 skipGlobalToast: true,
               }
             )

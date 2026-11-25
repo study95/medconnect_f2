@@ -11,6 +11,7 @@ import {
   Layers, Calendar, CreditCard, UserCheck, Stethoscope
 } from 'lucide-react'
 import BreadcrumbHUD from '../../components/common/BreadcrumbHUD'
+import TurnstileWidget, { isTurnstileEnabled } from '../../components/common/TurnstileWidget'
 
 export default function SupportPage() {
   const navigate = useNavigate()
@@ -50,6 +51,8 @@ export default function SupportPage() {
   const [contactIsUnregistered, setContactIsUnregistered] = useState(false)
   const [contactSuccess, setContactSuccess] = useState('')
   const [contactChecking, setContactChecking] = useState(false)
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
 
   // Ticket Status Search State
   const [statusSearchId, setStatusSearchId] = useState('')
@@ -266,11 +269,14 @@ export default function SupportPage() {
         priority: ticketForm.priority,
         subject,
         message,
+        ...(turnstileToken ? { cf_turnstile_response: turnstileToken } : {}),
       }
       
       const res = await axiosInstance.post('/services', payload, {
         skipGlobalToast: true,
       })
+      setTurnstileToken('')
+      setTurnstileResetKey(k => k + 1)
       const ticketId = res.data?.ticket_number || ('TID-' + Math.floor(100000 + Math.random() * 900000))
       
       const newTicket = {
@@ -1450,9 +1456,13 @@ export default function SupportPage() {
                     )}
 
                     <Col md={12} className="mt-3">
+                      <TurnstileWidget
+                        onVerify={setTurnstileToken}
+                        resetKey={turnstileResetKey}
+                      />
                       <button
                         type="submit"
-                        disabled={ticketSubmitting}
+                        disabled={ticketSubmitting || (isTurnstileEnabled() && !turnstileToken)}
                         style={{
                           background: 'linear-gradient(135deg, #064E3B, #00B875)',
                           color: 'white',

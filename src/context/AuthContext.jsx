@@ -102,22 +102,21 @@ export function AuthProvider({ children }) {
     }
   })
   const [loading, setLoading] = useState(() => {
-    const savedToken = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
-    return !(savedToken && savedUser)
+    return !savedUser
   })
   const [userType, setUserType] = useState(() => {
     return localStorage.getItem('userType') || null
   })
 
-  // On app start: restore and verify session from localStorage
+  // On app start: purge any legacy localStorage bearer token and verify HttpOnly session cookie via /me
   useEffect(() => {
-    const savedToken = localStorage.getItem('token')
+    localStorage.removeItem('token')
     const savedUser = localStorage.getItem('user')
     const savedUserType = localStorage.getItem('userType')
     
     const init = async () => {
-      if (savedToken && savedUser) {
+      if (savedUser) {
         try {
           const parsed = JSON.parse(savedUser)
           setUser(parsed)
@@ -187,15 +186,14 @@ export function AuthProvider({ children }) {
       authChannel.addEventListener('message', handleChannelMessage)
     }
 
-    // Fallback multi-tab sync via localStorage 'storage' event
+    // Fallback multi-tab sync via localStorage 'storage' event (watches non-sensitive 'user' hydration key)
     const handleStorageChange = (e) => {
-      if (e.key === 'token') {
+      if (e.key === 'user') {
         if (!e.newValue) {
           clearLocalSession()
         } else {
           try {
-            const rawUser = localStorage.getItem('user')
-            const parsedUser = rawUser ? JSON.parse(rawUser) : null
+            const parsedUser = JSON.parse(e.newValue)
             const storedType = localStorage.getItem('userType') || null
             syncSessionFromBroadcast(parsedUser, storedType)
           } catch {}
@@ -205,7 +203,7 @@ export function AuthProvider({ children }) {
 
     // Guard against browser back-forward cache (bfcache) showing stale authenticated UI after logout
     const handlePageShow = (e) => {
-      if (e.persisted && !localStorage.getItem('token')) {
+      if (e.persisted && !localStorage.getItem('user')) {
         clearLocalSession()
       }
     }
@@ -377,7 +375,7 @@ export function AuthProvider({ children }) {
     }
   }, [user?.id])
 
-  const storeAuth = (token, userData, type = null) => {
+  const storeAuth = (_token, userData, type = null) => {
     // If switching between different user accounts in the same browser tab,
     // immediately purge the previous account's TanStack Query cache & WebSocket channels.
     try {
@@ -389,7 +387,8 @@ export function AuthProvider({ children }) {
       }
     } catch {}
 
-    localStorage.setItem('token', token)
+    // HttpOnly Cookie Auth: NEVER persist raw bearer tokens in localStorage
+    localStorage.removeItem('token')
     localStorage.setItem('user', JSON.stringify(userData))
     const rolesList = Array.isArray(userData?.roles) 
       ? userData.roles.map(r => typeof r === 'object' ? (r.name || '') : String(r)).map(s => s.toLowerCase())
@@ -496,7 +495,7 @@ export function AuthProvider({ children }) {
   const register = async (name, email, password) => {
     try {
       const response = await registerApi({ name, email, password, role: 'patient' })
-      if (response.data?.token) {
+      if (response.data?.user || response.data?.token) {
         const { token, user: userData } = response.data
         storeAuth(token, userData)
       }
@@ -518,7 +517,7 @@ export function AuthProvider({ children }) {
       }
       
       const response = await patientRegisterApi(formData)
-      if (response.data?.token) {
+      if (response.data?.user || response.data?.token) {
         const { token, user: userData } = response.data
         storeAuth(token, userData, 'patient')
       }
@@ -547,7 +546,7 @@ export function AuthProvider({ children }) {
       }
  
       const response = await doctorRegisterApi(formData)
-      if (response.data?.token) {
+      if (response.data?.user || response.data?.token) {
         const { token, user: userData } = response.data
         storeAuth(token, userData, 'user')
       }
@@ -576,7 +575,7 @@ export function AuthProvider({ children }) {
       }
  
       const response = await hospitalRegisterApi(formData)
-      if (response.data?.token) {
+      if (response.data?.user || response.data?.token) {
         const { token, user: userData } = response.data
         storeAuth(token, userData, 'user')
       }
@@ -595,15 +594,15 @@ export function AuthProvider({ children }) {
   }
 
   const performLogout = async (apiCall = logoutApi) => {
-    const activeToken = localStorage.getItem('token')
+    const hadSession = Boolean(localStorage.getItem('user') || user)
     purgeClientSessionState()
     setUser(null)
     setUserType(null)
     postAuthSync({ type: 'LOGOUT' })
 
-    if (activeToken) {
+    if (hadSession) {
       try {
-        await apiCall(activeToken)
+        await apiCall()
       } catch {
         // Ignore network errors so client logout always succeeds immediately
       }

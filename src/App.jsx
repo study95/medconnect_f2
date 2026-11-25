@@ -43,6 +43,8 @@ const JoinPartnerLandingPage = lazy(() => import('./pages/JoinPartnerLandingPage
 const ServicesPage          = lazy(() => import('./pages/ServicesPage'))
 const ServiceDetailPage      = lazy(() => import('./pages/ServiceDetailPage'))
 const ContactPage           = lazy(() => import('./pages/ContactPage'))
+const BloodDonorsPage       = lazy(() => import('./pages/BloodDonorsPage'))
+const BloodDonorRegisterPage = lazy(() => import('./pages/BloodDonorRegisterPage'))
 
 // Auth pages (NEW — dual patient/doctor system)
 const RegistrationChoicePage = lazy(() => import('./pages/auth/RegistrationChoicePage'))
@@ -715,6 +717,8 @@ function App() {
                   <Route path="/services"        element={<ServicesPage />} />
                   <Route path="/services/:id"    element={<ServiceDetailPage />} />
                   <Route path="/contact"         element={<ContactPage />} />
+                  <Route path="/blood-donors"    element={<BloodDonorsPage />} />
+                  <Route path="/blood-donors/register" element={<ProtectedRoute><BloodDonorRegisterPage /></ProtectedRoute>} />
                   
                   {/* Info Routes */}
                   <Route path="/about"           element={<AboutPage />} />

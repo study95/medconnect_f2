@@ -1397,7 +1397,7 @@ export default function BookAppointmentPage() {
       const resData = res?.data || {}
 
       if (resData.success || resData.token) {
-        if (!isLoggedIn && resData.token) {
+        if (!isLoggedIn && (resData.token || resData.user)) {
           storeAuth(resData.token, resData.user || { mobile: cleanMobile, name: authUserName }, 'patient')
 
           if (resData.is_new_account && resData.credentials) {

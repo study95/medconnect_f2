@@ -338,7 +338,7 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
                         <h4 className="qls-doc-name">{item.doctor_name}</h4>
                         <div className="qls-chamber-name">
                           <IconBuildingHospital size={14} />
-                          <span>{item.chamber_name} {item.hospital_name ? `(${item.hospital_name})` : ''}</span>
+                          <span>{[item.chamber_name, item.hospital_name ? (item.chamber_name ? `(${item.hospital_name})` : item.hospital_name) : ''].filter(Boolean).join(' ') || 'চেম্বার'}</span>
                         </div>
                       </div>
 
@@ -410,17 +410,23 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
                             </button>
                           ) : null}
 
-                          <button
-                            type="button"
-                            className="qls-ticket-btn"
-                            onClick={() => {
-                              onClose()
-                              navigate(`/appointment-ticket/${item.id}`)
-                            }}
-                          >
-                            <IconReportMedical size={15} />
-                            <span>ফুল টিকিট</span>
-                          </button>
+                          {(item.public_id || item.id) ? (
+                            <button
+                              type="button"
+                              className="qls-ticket-btn"
+                              onClick={() => {
+                                onClose()
+                                navigate(`/appointment-ticket/${item.public_id || item.id}`)
+                              }}
+                            >
+                              <IconReportMedical size={15} />
+                              <span>ফুল টিকিট</span>
+                            </button>
+                          ) : (
+                            <div style={{ fontSize: 11.5, color: '#64748B', width: '100%', textAlign: 'center', padding: '4px 0' }}>
+                              পূর্ণাঙ্গ টিকিট ও চেম্বার বিস্তারিত দেখতে লগইন করুন অথবা বুকিং আইডি (যেমন: AP-XXXXXX) ব্যবহার করুন।
+                            </div>
+                          )}
                         </div>
                       </>
                     ) : (
@@ -469,18 +475,24 @@ export default function QuickLiveSerialModal({ isOpen, onClose }) {
                         </div>
 
                         <div className="qls-card-actions">
-                          <button
-                            type="button"
-                            className="qls-details-primary-btn"
-                            onClick={() => {
-                              onClose()
-                              navigate(`/appointment-ticket/${item.id}`)
-                            }}
-                          >
-                            <IconReportMedical size={16} />
-                            <span>বিস্তারিত অ্যাপয়েন্টমেন্ট দেখুন</span>
-                            <IconArrowRight size={15} />
-                          </button>
+                          {(item.public_id || item.id) ? (
+                            <button
+                              type="button"
+                              className="qls-details-primary-btn"
+                              onClick={() => {
+                                onClose()
+                                navigate(`/appointment-ticket/${item.public_id || item.id}`)
+                              }}
+                            >
+                              <IconReportMedical size={16} />
+                              <span>বিস্তারিত অ্যাপয়েন্টমেন্ট দেখুন</span>
+                              <IconArrowRight size={15} />
+                            </button>
+                          ) : (
+                            <div style={{ fontSize: 11.5, color: '#64748B', width: '100%', textAlign: 'center', padding: '4px 0' }}>
+                              পূর্ণাঙ্গ টিকিট ও চেম্বার বিস্তারিত দেখতে লগইন করুন অথবা বুকিং আইডি (যেমন: AP-XXXXXX) ব্যবহার করুন।
+                            </div>
+                          )}
                         </div>
                       </>
                     )}

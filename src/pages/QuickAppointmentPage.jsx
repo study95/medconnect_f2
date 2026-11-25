@@ -1527,7 +1527,7 @@ export default function QuickAppointmentPage() {
       // 2. Safely perform session storage in try-catch so it NEVER blocks transition to Step 4
       try {
         if (!isLoggedIn) {
-          if (resData.token && typeof storeAuth === 'function') {
+          if ((resData.token || resData.user) && typeof storeAuth === 'function') {
             storeAuth(resData.token, resData.user || { mobile: cleanMobile, name: targetPatientName }, 'patient')
           }
 

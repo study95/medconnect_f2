@@ -9,7 +9,14 @@ import {
 } from '../../../api/adminApi'
 import { queryKeys } from '../../../lib/queryKeys'
 import DeleteModal from '../../../components/admin/DeleteModal'
-import debounce from 'lodash/debounce'
+
+const debounce = (fn, delay) => {
+  let timerId
+  return (...args) => {
+    clearTimeout(timerId)
+    timerId = setTimeout(() => fn(...args), delay)
+  }
+}
 
 const TABS = {
   DOCTORS: 'doctors',

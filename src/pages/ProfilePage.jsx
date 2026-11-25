@@ -789,6 +789,20 @@ function ProfilePage() {
                       </button>
 
                       <button
+                        onClick={() => navigate('/blood-donors/register')}
+                        style={{
+                          width: '100%', padding: '13px', borderRadius: 12,
+                          background: '#FFF1F2', border: '1.5px solid #FECDD3', color: '#E11D48',
+                          fontWeight: 800, fontSize: 14.5, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          transition: '0.2s', marginTop: 6
+                        }}
+                      >
+                        <IconDroplet size={18} color="#E11D48" />
+                        রক্তদাতা প্রোফাইল ও রক্তদান
+                      </button>
+
+                      <button
                         onClick={handleLogout}
                         style={{
                           width: '100%', padding: '13px', borderRadius: 12,
@@ -1535,6 +1549,37 @@ function ProfilePage() {
                     <span>আমার অ্যাপয়েন্টমেন্টসমূহ ({toBnNum(appointments.length)})</span>
                   </div>
                   <div style={{ width: 28, height: 28, borderRadius: 5, background: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconArrowRight size={16} />
+                  </div>
+                </button>
+
+                {/* Item 2.5: Blood Donor Profile & Action */}
+                <button
+                  onClick={() => navigate('/blood-donors/register')}
+                  style={{
+                    width: '100%',
+                    padding: '16px 18px',
+                    borderRadius: 5,
+                    border: '1.5px solid #FECDD3',
+                    background: '#FFF1F2',
+                    color: '#9F1239',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontWeight: 800,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(225,29,72,0.06)',
+                    transition: 'all 0.25s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 5, background: '#FFE4E6', color: '#E11D48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconDroplet size={20} />
+                    </div>
+                    <span>রক্তদাতা প্রোফাইল ও রক্তদান</span>
+                  </div>
+                  <div style={{ width: 28, height: 28, borderRadius: 5, background: '#FFE4E6', color: '#E11D48', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <IconArrowRight size={16} />
                   </div>
                 </button>

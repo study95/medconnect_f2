@@ -17,6 +17,7 @@ import { translateToBangla, getErrorMessage } from '../utils/errorHelper'
 import { validateStrongPassword } from '../utils/passwordValidator'
 import LegalDocumentModal from '../components/common/LegalDocumentModal'
 import CustomCheckbox from '../components/common/CustomCheckbox'
+import TurnstileWidget, { isTurnstileEnabled } from '../components/common/TurnstileWidget'
 import { useSiteSettings } from '../utils/contentService'
 import { getMediaUrl } from '../utils/mediaUtils'
 import '../styles/auth-premium.css'
@@ -120,6 +121,8 @@ const RegisterPage = () => {
     hospital_type: '', license_number: '', address: '', hotline: '', official_email: '',
     password: '', confirm: ''
   })
+  const [turnstileToken, setTurnstileToken] = useState('')
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
 
   // Doctor Specialty Searchable & Creatable Combobox State
   const [specialtySearch, setSpecialtySearch] = useState('')
@@ -480,7 +483,13 @@ const RegisterPage = () => {
     setIsAlreadyRegistered(false)
 
     try {
-      const res = await sendOtp({ mobile: mobileNum, type: 'registration' })
+      const res = await sendOtp({
+        mobile: mobileNum,
+        type: 'registration',
+        ...(turnstileToken ? { cf_turnstile_response: turnstileToken } : {}),
+      })
+      setTurnstileToken('')
+      setTurnstileResetKey(k => k + 1)
 
       if (res.data && res.data.already_registered) {
         setLoading(false)
@@ -691,7 +700,13 @@ const RegisterPage = () => {
     setRenewOtpSending(true)
     const mobileToUse = (form.mobile || sessionStorage.getItem('reg_verified_mobile') || '').trim()
     try {
-      const res = await sendOtp({ mobile: mobileToUse, type: 'registration' })
+      const res = await sendOtp({
+        mobile: mobileToUse,
+        type: 'registration',
+        ...(turnstileToken ? { cf_turnstile_response: turnstileToken } : {}),
+      })
+      setTurnstileToken('')
+      setTurnstileResetKey(k => k + 1)
       if (res.data?.success === false) {
         setRenewOtpError(translateToBangla(res.data?.message || 'ওটিপি পাঠাতে সমস্যা হয়েছে।'))
       } else {
@@ -924,10 +939,16 @@ const RegisterPage = () => {
       formData.append('ref', referralCode)
     }
 
+    if (turnstileToken) {
+      formData.append('cf_turnstile_response', turnstileToken)
+    }
+
     let result
     if (role === 'patient') result = await registerPatient(formData)
     else if (role === 'doctor') result = await registerDoctor(formData)
     else result = await registerHospital(formData)
+    setTurnstileToken('')
+    setTurnstileResetKey(k => k + 1)
 
     setLoading(false)
     if (result.success) {
@@ -2472,9 +2493,14 @@ const RegisterPage = () => {
                     </div>
                   )}
 
+                  <TurnstileWidget
+                    onVerify={setTurnstileToken}
+                    resetKey={turnstileResetKey}
+                  />
+
                   <Button
                     type="submit" 
-                    disabled={loading || !agreedToTerms}
+                    disabled={loading || !agreedToTerms || (isTurnstileEnabled() && !turnstileToken)}
                     className={`w-100 auth-btn-premium ${cfg.btnClass}`}
                     style={{ 
                       display: 'flex', 

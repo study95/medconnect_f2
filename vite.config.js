@@ -13,7 +13,7 @@ export default defineConfig({
       'swiper/react',
       'swiper/modules',
       '@tanstack/react-query',
-      'react-quill'
+      'react-quill-new'
     ]
   },
 
@@ -63,7 +63,7 @@ export default defineConfig({
 
           // Rich text editor (admin content & messages only)
           if (id.includes('node_modules/quill/') ||
-              id.includes('node_modules/react-quill/')) {
+              id.includes('node_modules/react-quill-new/')) {
             return 'vendor-quill'
           }
 

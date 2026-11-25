@@ -7,7 +7,7 @@ import {
   LayoutGrid, User, LogOut, Calendar, Phone, Mail, ChevronDown, ChevronUp, 
   CalendarCheck, LogIn, UserPlus, Stethoscope, Building2, 
   ShieldCheck, FileText, HelpCircle, Home, Menu, X,
-  Bell, Search, ChevronRight, Activity, Headphones, Hourglass
+  Bell, Search, ChevronRight, Activity, Headphones, Hourglass, Droplet
 } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 import { getContent, useSiteSettings } from '../../utils/contentService'
@@ -487,6 +487,7 @@ function AppNavbar() {
     { label: 'হোম', path: '/', isHome: true },
     { label: 'ডাক্তার', path: '/doctors' },
     { label: 'হাসপাতাল', path: '/hospitals' },
+    { label: 'রক্তদাতা', path: '/blood-donors' },
     { label: 'সেবা সমূহ', path: '/services' },
     { label: 'যোগাযোগ', path: '/contact' },
   ]
@@ -495,6 +496,7 @@ function AppNavbar() {
     { label: 'হোম', path: '/', icon: <Home size={17} /> },
     { label: 'ডাক্তার', path: '/doctors', icon: <Stethoscope size={17} /> },
     { label: 'হাসপাতাল', path: '/hospitals', icon: <Building2 size={17} /> },
+    { label: 'রক্তদাতা', path: '/blood-donors', icon: <Droplet size={17} /> },
     { label: 'সেবা সমূহ', path: '/services', icon: <Activity size={17} /> },
     { label: 'যোগাযোগ', path: '/contact', icon: <Headphones size={17} /> },
   ]

@@ -34,8 +34,8 @@ import {
   Sparkles,
   Layers
 } from 'lucide-react'
-import ReactQuill from 'react-quill'
-import 'react-quill/dist/quill.snow.css'
+import ReactQuill from 'react-quill-new'
+import 'react-quill-new/dist/quill.snow.css'
 
 const quillModules = {
   toolbar: [
@@ -51,7 +51,7 @@ const quillFormats = [
   'header',
   'bold', 'italic', 'underline', 'strike',
   'color', 'background',
-  'list', 'bullet',
+  'list',
   'link'
 ]
 

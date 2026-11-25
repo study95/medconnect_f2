@@ -32,21 +32,52 @@ export const getDeviceFingerprint = () => {
   }
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'
+const API_ORIGIN = API_BASE_URL.replace(/\/api(\/v\d+)?\/?$/i, '')
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api', // ← from .env
+  baseURL: API_BASE_URL,
+  withCredentials: true,
+  withXSRFToken: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    'X-Auth-Mode': 'cookie',
   },
 })
 
-// REQUEST INTERCEPTOR
+let csrfCookiePromise = null
+const hasXsrfCookie = () =>
+  typeof document !== 'undefined' && document.cookie.split('; ').some((c) => c.startsWith('XSRF-TOKEN='))
+
+export const ensureCsrfCookie = async (force = false) => {
+  if (typeof window === 'undefined') return
+  if (!force && hasXsrfCookie()) return
+  if (!csrfCookiePromise) {
+    csrfCookiePromise = axios
+      .get(`${API_ORIGIN}/sanctum/csrf-cookie`, {
+        withCredentials: true,
+        headers: { Accept: 'application/json' },
+      })
+      .catch(() => {})
+      .finally(() => {
+        csrfCookiePromise = null
+      })
+  }
+  await csrfCookiePromise
+}
+
+// REQUEST INTERCEPTOR (HttpOnly Cookie + XSRF-TOKEN + Device Fingerprint — never reads Bearer tokens from localStorage)
 axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+  async (config) => {
+    const method = (config.method || 'get').toLowerCase()
+    if (['post', 'put', 'patch', 'delete'].includes(method)) {
+      await ensureCsrfCookie(false)
     }
+    config.withCredentials = true
+    config.headers['X-Auth-Mode'] = 'cookie'
     config.headers['X-Device-Fingerprint'] = getDeviceFingerprint()
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type']
@@ -106,6 +137,17 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const method = (error.config?.method || '').toLowerCase()
     const url = error.config?.url || ''
+
+    // Transparent single-retry on 419 CSRF token mismatch (refreshes XSRF-TOKEN cookie automatically)
+    if (error.response?.status === 419 && error.config && !error.config._csrfRetried) {
+      try {
+        await ensureCsrfCookie(true)
+        error.config._csrfRetried = true
+        return axiosInstance(error.config)
+      } catch {
+        return Promise.reject(error)
+      }
+    }
 
     // Seamless Step-Up (Sudo Mode) prompt & automatic retry for critical operations
     if (
