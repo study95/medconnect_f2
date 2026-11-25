@@ -1,5 +1,5 @@
 // MedicineFormPage.jsx — Add/Edit medicine form with smart creatable suggestions & modern UI
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../../context/AuthContext'
@@ -7,6 +7,8 @@ import { getMedicine, createMedicine, updateMedicine, getMedicineSuggestions } f
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { FormSkeleton } from '../../../components/common/Skeletons'
 import { queryClient } from '../../../lib/queryClient'
+import { useActiveDosageTypes } from '../../../features/pharma/useAdminDosageTypes'
+import { useActiveCompanies } from '../../../features/pharma/useAdminCompanies'
 
 const DOSAGE_TYPES = [
   'Tablet',
@@ -538,6 +540,22 @@ export default function MedicineFormPage() {
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState({})
 
+  const { dosageTypes = [] } = useActiveDosageTypes()
+  const dynamicDosageNames = useMemo(() => {
+    if (dosageTypes && dosageTypes.length > 0) {
+      return dosageTypes.map((d) => d.name)
+    }
+    return DOSAGE_TYPES
+  }, [dosageTypes])
+
+  const { companies: activeCompaniesList = [] } = useActiveCompanies()
+  const dynamicCompanyNames = useMemo(() => {
+    if (activeCompaniesList && activeCompaniesList.length > 0) {
+      return activeCompaniesList.map((c) => c.name)
+    }
+    return []
+  }, [activeCompaniesList])
+
   useEffect(() => {
     if (isEdit) loadMedicine()
   }, [id])
@@ -609,7 +627,14 @@ export default function MedicineFormPage() {
     )
   }
 
-  const typeColor = dosageColors[form.dosage_type] || { bg: '#F1F5F9', color: '#475569', border: '#E2E8F0' }
+  const matchedType = dosageTypes.find(
+    (d) =>
+      d.name?.toLowerCase() === form.dosage_type?.toLowerCase() ||
+      d.short_name?.toLowerCase() === form.dosage_type?.toLowerCase()
+  )
+  const typeColor = matchedType
+    ? { bg: matchedType.color_bg, color: matchedType.color_text, border: matchedType.color_border }
+    : (dosageColors[form.dosage_type] || { bg: '#F1F5F9', color: '#475569', border: '#E2E8F0' })
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto', paddingBottom: 60 }}>
@@ -801,7 +826,7 @@ export default function MedicineFormPage() {
                 placeholder="e.g., Tablet, Syrup, Capsule, Injection"
                 error={errors.dosage_type}
                 required
-                staticSuggestions={DOSAGE_TYPES}
+                staticSuggestions={dynamicDosageNames}
                 tooltip="Tablet, syrup, capsule etc."
               />
 
@@ -826,6 +851,7 @@ export default function MedicineFormPage() {
               value={form.company_name}
               onChange={handleFieldChange}
               placeholder="e.g., Beximco, Square, Incepta, Renata"
+              staticSuggestions={dynamicCompanyNames}
               tooltip="Manufacturer / pharma brand"
             />
 

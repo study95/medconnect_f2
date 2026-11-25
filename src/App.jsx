@@ -99,6 +99,13 @@ const PrescriptionVerifyPage = lazy(() => import('./pages/PrescriptionVerifyPage
 const DoctorNotesPage      = lazy(() => import('./pages/admin/prescriptions/DoctorNotesPage'))
 const MedicineListPage    = lazy(() => import('./pages/admin/medicines/MedicineListPage'))
 const MedicineFormPage    = lazy(() => import('./pages/admin/medicines/MedicineFormPage'))
+const InvestigationListPage = lazy(() => import('./pages/admin/investigations/InvestigationListPage'))
+const ClinicalAdviceListPage = lazy(() => import('./pages/admin/advices/ClinicalAdviceListPage'))
+const ChiefComplaintListPage = lazy(() => import('./pages/admin/clinical/ChiefComplaintListPage'))
+const DosagePresetListPage = lazy(() => import('./pages/admin/clinical/DosagePresetListPage'))
+const DoctorCredentialListPage = lazy(() => import('./pages/admin/credentials/DoctorCredentialListPage'))
+const CompanyListPage = lazy(() => import('./pages/admin/pharma/CompanyListPage'))
+const DosageTypeListPage = lazy(() => import('./pages/admin/pharma/DosageTypeListPage'))
 const UserListPage        = lazy(() => import('./pages/admin/users/UserListPage'))
 const PatientProfilePage  = lazy(() => import('./pages/admin/users/PatientProfilePage'))
 const PaymentListPage     = lazy(() => import('./pages/admin/payments/PaymentListPage'))
@@ -372,6 +379,15 @@ function App() {
             <Route path="medicines/create" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
             <Route path="medicines/edit/:id" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
 
+            {/* Clinical & Pharma Masters */}
+            <Route path="investigations" element={<InvestigationListPage />} />
+            <Route path="clinical-advices" element={<ClinicalAdviceListPage />} />
+            <Route path="chief-complaints" element={<ChiefComplaintListPage />} />
+            <Route path="dosage-presets" element={<DosagePresetListPage />} />
+            <Route path="doctor-credentials" element={<DoctorCredentialListPage />} />
+            <Route path="companies" element={<CompanyListPage />} />
+            <Route path="dosage-types" element={<DosageTypeListPage />} />
+
             {/* Payments */}
             <Route path="payments" element={<PaymentListPage />} />
 
@@ -507,6 +523,15 @@ function App() {
             <Route path="medicines" element={<SubscriptionGate moduleName="Medicines"><MedicineListPage /></SubscriptionGate>} />
             <Route path="medicines/create" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
             <Route path="medicines/edit/:id" element={<SubscriptionGate moduleName="Medicines"><MedicineFormPage /></SubscriptionGate>} />
+
+            {/* Clinical & Pharma Masters */}
+            <Route path="investigations" element={<InvestigationListPage />} />
+            <Route path="clinical-advices" element={<ClinicalAdviceListPage />} />
+            <Route path="chief-complaints" element={<ChiefComplaintListPage />} />
+            <Route path="dosage-presets" element={<DosagePresetListPage />} />
+            <Route path="doctor-credentials" element={<DoctorCredentialListPage />} />
+            <Route path="companies" element={<CompanyListPage />} />
+            <Route path="dosage-types" element={<DosageTypeListPage />} />
 
             {/* Payments */}
             <Route path="payments" element={<PaymentListPage />} />

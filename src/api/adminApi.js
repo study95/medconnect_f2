@@ -148,6 +148,98 @@ export const importMedicinesCsv = (formData) => axiosInstance.post('/medicines/i
 export const approveMedicine = (id, data) => axiosInstance.put(`/medicines/${id}/approve`, data)
 export const rejectMedicine = (id) => axiosInstance.put(`/medicines/${id}/reject`)
 
+// ===== CLINICAL MASTERS (Investigations & Categories) =====
+export const getInvestigations = (params) => axiosInstance.get('/investigations', { params })
+export const getInvestigation = (id) => axiosInstance.get(`/investigations/${id}`)
+export const createInvestigation = (data) => axiosInstance.post('/investigations', data)
+export const updateInvestigation = (id, data) => axiosInstance.put(`/investigations/${id}`, data)
+export const deleteInvestigation = (id) => axiosInstance.delete(`/investigations/${id}`)
+export const bulkDeleteInvestigations = (ids) => axiosInstance.post('/investigations/bulk-delete', { ids })
+export const toggleInvestigationActive = (id) => axiosInstance.patch(`/investigations/${id}/toggle-active`)
+export const getInvestigationCategories = () => axiosInstance.get('/investigations/categories')
+export const createInvestigationCategory = (data) => axiosInstance.post('/investigations/categories', data)
+export const updateInvestigationCategory = (id, data) => axiosInstance.put(`/investigations/categories/${id}`, data)
+export const deleteInvestigationCategory = (id) => axiosInstance.delete(`/investigations/categories/${id}`)
+export const getGroupedInvestigations = () => axiosInstance.get('/investigations/grouped')
+export const getInvestigationSuggestions = (params) => axiosInstance.get('/investigations/suggestions', { params })
+
+// ===== CLINICAL MASTERS (Clinical Advice & Categories) =====
+export const getClinicalAdvices = (params) => axiosInstance.get('/clinical-advices', { params })
+export const getClinicalAdvice = (id) => axiosInstance.get(`/clinical-advices/${id}`)
+export const createClinicalAdvice = (data) => axiosInstance.post('/clinical-advices', data)
+export const updateClinicalAdvice = (id, data) => axiosInstance.put(`/clinical-advices/${id}`, data)
+export const deleteClinicalAdvice = (id) => axiosInstance.delete(`/clinical-advices/${id}`)
+export const bulkDeleteClinicalAdvices = (ids) => axiosInstance.post('/clinical-advices/bulk-delete', { ids })
+export const toggleClinicalAdviceActive = (id) => axiosInstance.patch(`/clinical-advices/${id}/toggle-active`)
+export const getAdviceCategories = () => axiosInstance.get('/clinical-advices/categories')
+export const createAdviceCategory = (data) => axiosInstance.post('/clinical-advices/categories', data)
+export const updateAdviceCategory = (id, data) => axiosInstance.put(`/clinical-advices/categories/${id}`, data)
+export const deleteAdviceCategory = (id) => axiosInstance.delete(`/clinical-advices/categories/${id}`)
+export const getGroupedClinicalAdvices = () => axiosInstance.get('/clinical-advices/grouped')
+export const getClinicalAdviceSuggestions = (params) => axiosInstance.get('/clinical-advices/suggestions', { params })
+
+// ===== PHARMACEUTICAL MASTERS (Companies & Dosage Types) =====
+export const getCompanies = (params) => axiosInstance.get('/companies', { params })
+export const getActiveCompanies = () => axiosInstance.get('/companies/active')
+export const getCompany = (id) => axiosInstance.get(`/companies/${id}`)
+export const createCompany = (data) => axiosInstance.post('/companies', data)
+export const updateCompany = (id, data) => axiosInstance.put(`/companies/${id}`, data)
+export const deleteCompany = (id) => axiosInstance.delete(`/companies/${id}`)
+export const bulkDeleteCompanies = (ids) => axiosInstance.post('/companies/bulk-delete', { ids })
+export const toggleCompanyActive = (id) => axiosInstance.patch(`/companies/${id}/toggle-active`)
+
+export const getDosageTypes = (params) => axiosInstance.get('/dosage-types', { params })
+export const getActiveDosageTypes = () => axiosInstance.get('/dosage-types/active')
+export const getDosageType = (id) => axiosInstance.get(`/dosage-types/${id}`)
+export const createDosageType = (data) => axiosInstance.post('/dosage-types', data)
+export const updateDosageType = (id, data) => axiosInstance.put(`/dosage-types/${id}`, data)
+export const deleteDosageType = (id) => axiosInstance.delete(`/dosage-types/${id}`)
+export const bulkDeleteDosageTypes = (ids) => axiosInstance.post('/dosage-types/bulk-delete', { ids })
+export const toggleDosageTypeActive = (id) => axiosInstance.patch(`/dosage-types/${id}/toggle-active`)
+
+// ===== PACKAGE C: CLINICAL PRESETS & CREDENTIALS =====
+// Chief Complaints
+export const getChiefComplaints = (params) => axiosInstance.get('/chief-complaints', { params })
+export const getActiveChiefComplaints = () => axiosInstance.get('/chief-complaints/active')
+export const getChiefComplaintCategories = () => axiosInstance.get('/chief-complaints/categories')
+export const createChiefComplaint = (data) => axiosInstance.post('/chief-complaints', data)
+export const updateChiefComplaint = (id, data) => axiosInstance.put(`/chief-complaints/${id}`, data)
+export const deleteChiefComplaint = (id) => axiosInstance.delete(`/chief-complaints/${id}`)
+export const toggleChiefComplaintActive = (id) => axiosInstance.patch(`/chief-complaints/${id}/toggle-active`)
+export const bulkDeleteChiefComplaints = (ids) => axiosInstance.post('/chief-complaints/bulk-delete', { ids })
+
+// Dosage Frequencies
+export const getDosageFrequencies = (params) => axiosInstance.get('/dosage-frequencies', { params })
+export const getActiveDosageFrequencies = () => axiosInstance.get('/dosage-frequencies/active')
+export const createDosageFrequency = (data) => axiosInstance.post('/dosage-frequencies', data)
+export const updateDosageFrequency = (id, data) => axiosInstance.put(`/dosage-frequencies/${id}`, data)
+export const deleteDosageFrequency = (id) => axiosInstance.delete(`/dosage-frequencies/${id}`)
+export const toggleDosageFrequencyActive = (id) => axiosInstance.patch(`/dosage-frequencies/${id}/toggle-active`)
+
+// Dosage Timings
+export const getDosageTimings = (params) => axiosInstance.get('/dosage-timings', { params })
+export const getActiveDosageTimings = (type = 'meal') => axiosInstance.get('/dosage-timings/active', { params: { type } })
+export const createDosageTiming = (data) => axiosInstance.post('/dosage-timings', data)
+export const updateDosageTiming = (id, data) => axiosInstance.put(`/dosage-timings/${id}`, data)
+export const deleteDosageTiming = (id) => axiosInstance.delete(`/dosage-timings/${id}`)
+export const toggleDosageTimingActive = (id) => axiosInstance.patch(`/dosage-timings/${id}/toggle-active`)
+
+// Medical Degrees
+export const getMedicalDegrees = (params) => axiosInstance.get('/medical-degrees', { params })
+export const getActiveMedicalDegrees = () => axiosInstance.get('/medical-degrees/active')
+export const createMedicalDegree = (data) => axiosInstance.post('/medical-degrees', data)
+export const updateMedicalDegree = (id, data) => axiosInstance.put(`/medical-degrees/${id}`, data)
+export const deleteMedicalDegree = (id) => axiosInstance.delete(`/medical-degrees/${id}`)
+export const toggleMedicalDegreeActive = (id) => axiosInstance.patch(`/medical-degrees/${id}/toggle-active`)
+
+// Doctor Designations
+export const getDoctorDesignations = (params) => axiosInstance.get('/doctor-designations', { params })
+export const getActiveDoctorDesignations = () => axiosInstance.get('/doctor-designations/active')
+export const createDoctorDesignation = (data) => axiosInstance.post('/doctor-designations', data)
+export const updateDoctorDesignation = (id, data) => axiosInstance.put(`/doctor-designations/${id}`, data)
+export const deleteDoctorDesignation = (id) => axiosInstance.delete(`/doctor-designations/${id}`)
+export const toggleDoctorDesignationActive = (id) => axiosInstance.patch(`/doctor-designations/${id}/toggle-active`)
+
 // ===== PAYMENTS (filtered appointments view) =====
 export const getPayments = (params) => axiosInstance.get('/appointments', { params: { ...params, per_page: 50 } })
 export const updatePayment = (id, data) => axiosInstance.put(`/appointments/${id}`, data)

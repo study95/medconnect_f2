@@ -146,6 +146,81 @@ export const queryKeys = {
     pendingCount: () => [...queryKeys.medicines.all, 'pending-count', getActorCacheScope()],
   },
 
+  // ===== INVESTIGATIONS =====
+  investigations: {
+    all: ['investigations'],
+    lists: () => [...queryKeys.investigations.all, 'list'],
+    list: (filters = {}) => [...queryKeys.investigations.lists(), filters],
+    adminList: (filters = {}) => [...queryKeys.investigations.all, 'admin-list', filters],
+    categories: () => [...queryKeys.investigations.all, 'categories'],
+    grouped: () => [...queryKeys.investigations.all, 'grouped'],
+  },
+
+  // ===== CLINICAL ADVICE =====
+  clinicalAdvices: {
+    all: ['clinical-advices'],
+    lists: () => [...queryKeys.clinicalAdvices.all, 'list'],
+    list: (filters = {}) => [...queryKeys.clinicalAdvices.lists(), filters],
+    adminList: (filters = {}) => [...queryKeys.clinicalAdvices.all, 'admin-list', filters],
+    categories: () => [...queryKeys.clinicalAdvices.all, 'categories'],
+    grouped: () => [...queryKeys.clinicalAdvices.all, 'grouped'],
+  },
+
+  // ===== PHARMA COMPANIES =====
+  companies: {
+    all: ['companies'],
+    lists: () => [...queryKeys.companies.all, 'list'],
+    list: (filters = {}) => [...queryKeys.companies.lists(), filters],
+    adminList: (filters = {}) => [...queryKeys.companies.all, 'admin-list', filters],
+    active: () => [...queryKeys.companies.all, 'active'],
+  },
+
+  // ===== DOSAGE TYPES =====
+  dosageTypes: {
+    all: ['dosage-types'],
+    lists: () => [...queryKeys.dosageTypes.all, 'list'],
+    list: (filters = {}) => [...queryKeys.dosageTypes.lists(), filters],
+    adminList: (filters = {}) => [...queryKeys.dosageTypes.all, 'admin-list', filters],
+    active: () => [...queryKeys.dosageTypes.all, 'active'],
+  },
+
+  // ===== CHIEF COMPLAINTS =====
+  chiefComplaints: {
+    all: ['chief-complaints'],
+    lists: () => [...queryKeys.chiefComplaints.all, 'list'],
+    list: (filters = {}) => [...queryKeys.chiefComplaints.lists(), filters],
+    adminList: (filters = {}) => [...queryKeys.chiefComplaints.all, 'admin-list', filters],
+    active: () => [...queryKeys.chiefComplaints.all, 'active'],
+  },
+
+  // ===== DOSAGE FREQUENCIES =====
+  dosageFrequencies: {
+    all: ['dosage-frequencies'],
+    adminList: (filters = {}) => [...queryKeys.dosageFrequencies.all, 'admin-list', filters],
+    active: () => [...queryKeys.dosageFrequencies.all, 'active'],
+  },
+
+  // ===== DOSAGE TIMINGS =====
+  dosageTimings: {
+    all: ['dosage-timings'],
+    adminList: (filters = {}) => [...queryKeys.dosageTimings.all, 'admin-list', filters],
+    active: (type = 'meal') => [...queryKeys.dosageTimings.all, 'active', type],
+  },
+
+  // ===== MEDICAL DEGREES =====
+  medicalDegrees: {
+    all: ['medical-degrees'],
+    adminList: (filters = {}) => [...queryKeys.medicalDegrees.all, 'admin-list', filters],
+    active: () => [...queryKeys.medicalDegrees.all, 'active'],
+  },
+
+  // ===== DOCTOR DESIGNATIONS =====
+  doctorDesignations: {
+    all: ['doctor-designations'],
+    adminList: (filters = {}) => [...queryKeys.doctorDesignations.all, 'admin-list', filters],
+    active: () => [...queryKeys.doctorDesignations.all, 'active'],
+  },
+
   // ===== REVIEWS =====
   reviews: {
     all: ['reviews'],

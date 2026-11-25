@@ -19,6 +19,7 @@ import EmptyState from '../../../components/common/EmptyState'
 import TableFooter from '../../../components/admin/TableFooter'
 import { useAuth } from '../../../context/AuthContext'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { useActiveDosageTypes } from '../../../features/pharma/useAdminDosageTypes'
 
 const DOSAGE_TYPES = [
   'ALL',
@@ -893,6 +894,15 @@ export default function MedicineListPage() {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
 
+  // Dynamic Dosage Types from database master
+  const { dosageTypes: activeDosageTypesList = [] } = useActiveDosageTypes()
+  const dynamicDosageFilterOptions = useMemo(() => {
+    if (activeDosageTypesList && activeDosageTypesList.length > 0) {
+      return ['ALL', ...activeDosageTypesList.map((d) => d.name)]
+    }
+    return DOSAGE_TYPES
+  }, [activeDosageTypesList])
+
   // Filters State synchronized with URL Query Parameters & SessionStorage
   const {
     filters,
@@ -1133,7 +1143,7 @@ export default function MedicineListPage() {
         <div style={{ minWidth: 140, flex: '1 1 140px' }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--admin-text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Dosage Type</label>
           <select className="status-select" value={dosageFilter} onChange={e => { setDosageFilter(e.target.value); setCurrentPage(1); }} style={{ width: '100%', height: 38, background: 'var(--admin-card-bg)', border: '1px solid var(--admin-border)', color: 'var(--admin-text)', borderRadius: 8 }}>
-            {DOSAGE_TYPES.map(t => <option key={t} value={t}>{t === 'ALL' ? 'All Types' : t}</option>)}
+            {dynamicDosageFilterOptions.map(t => <option key={t} value={t}>{t === 'ALL' ? 'All Types' : t}</option>)}
           </select>
         </div>
 

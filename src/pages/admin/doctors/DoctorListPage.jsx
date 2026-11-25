@@ -13,6 +13,8 @@ import { TableSkeleton, DetailSkeleton } from '../../../components/common/Skelet
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
+import { useSeenTracker } from '../../../utils/seenTracker'
 import toast from 'react-hot-toast'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { getDoctorSeatInvitations, acceptDoctorSeatInvitation, rejectDoctorSeatInvitation } from '../../../api/subscriptionApi'
@@ -187,6 +189,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 
 export default function DoctorListPage() {
   const { user, isAdmin, isManager, isDoctor } = useAuth()
+  const { isSeen, markSeen } = useSeenTracker('doctors')
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
@@ -370,6 +373,7 @@ export default function DoctorListPage() {
   const handleToggleStatus = async (doctor) => {
     try {
       await toggleStatus({ id: doctor.id, is_active: !doctor.is_active })
+      window.dispatchEvent(new Event('unread-count-sync'))
     } catch (err) {
       console.error('Failed to toggle doctor status', err)
     }
@@ -2079,8 +2083,13 @@ export default function DoctorListPage() {
                           </span>
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {doctor.name}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {(!doctor.is_active || doctor.verification_status === 'submitted' || doctor.verification_status === 'in_review') && !isSeen(doctor.id) && (
+                              <PulseLight size={6.5} title="নতুন আবেদন (দেখা হয়নি)" />
+                            )}
+                            <span style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {doctor.name}
+                            </span>
                           </div>
                           <div style={{ fontSize: 11, color: '#00A88C', fontWeight: 700, marginTop: 2 }}>
                             BMDC: {doctor.bmdc || 'N/A'}
@@ -2297,7 +2306,10 @@ export default function DoctorListPage() {
                         <button 
                           className="admin-action-btn admin-action-btn-view" 
                           title="View Profile" 
-                          onClick={() => navigate(`/admin/doctors/view/${doctor.id}`)}
+                          onClick={() => {
+                            markSeen(doctor.id)
+                            navigate(`/admin/doctors/view/${doctor.id}`)
+                          }}
                         >
                           <img src="/icons/view.png" alt="View" />
                         </button>
@@ -2306,7 +2318,10 @@ export default function DoctorListPage() {
                             <button 
                               className="admin-action-btn admin-action-btn-edit" 
                               title="Edit Doctor" 
-                              onClick={() => navigate(`/admin/doctors/edit/${doctor.id}`)}
+                              onClick={() => {
+                                markSeen(doctor.id)
+                                navigate(`/admin/doctors/edit/${doctor.id}`)
+                              }}
                             >
                               <img src="/icons/edit.png" alt="Edit" />
                             </button>

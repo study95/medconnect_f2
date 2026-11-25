@@ -43,6 +43,7 @@ import useDebounce from '../../../hooks/useDebounce'
 import { useAuth } from '../../../context/AuthContext'
 import '../../../styles/admin-billing.css'
 import AdminBillingTabs from '../../../components/admin/AdminBillingTabs'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
 
 export default function AdminSubscribersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -236,6 +237,7 @@ export default function AdminSubscribersPage() {
         queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'subscribers'] })
         queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'dashboard'] })
         queryClient.invalidateQueries({ queryKey: ['admin', 'billing', 'transactions'] })
+        window.dispatchEvent(new Event('unread-count-sync'))
       }, 1200)
     } catch (err) {
       if (err.response?.status === 409) {
@@ -513,8 +515,11 @@ export default function AdminSubscribersPage() {
                             {isDoctor ? <Stethoscope size={16} /> : <Building2 size={16} />}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: 'var(--ab-text)', fontSize: '13.5px' }}>
-                              {sub.subscriber_name || 'নামবিহীন অ্যাকাউন্ট'}
+                            <div style={{ fontWeight: 700, color: 'var(--ab-text)', fontSize: '13.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {(sub.payment_evidence?.status === 'pending' || sub.status === 'pending') && (
+                                <PulseLight size={8} title="নতুন সাবস্ক্রিপশন / যাচাই অপেক্ষমাণ" />
+                              )}
+                              <span>{sub.subscriber_name || 'নামবিহীন অ্যাকাউন্ট'}</span>
                             </div>
                             <div style={{ fontSize: '11.5px', color: 'var(--ab-text-dim)' }}>
                               {sub.subscriber_email || sub.subscriber_phone || `আইডি #${sub.id}`}

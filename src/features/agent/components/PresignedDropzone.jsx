@@ -34,6 +34,14 @@ export default function PresignedDropzone({
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
+  const ALLOWED_MIME_MAP = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    pdf: 'application/pdf',
+  }
+
   const processUpload = async (file) => {
     if (!file) return
 
@@ -42,21 +50,33 @@ export default function PresignedDropzone({
       return
     }
 
+    const ext = (file.name.split('.').pop() || '').toLowerCase()
+    const normalizedMime = (file.type || '').toLowerCase()
+    const allowedMimes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'])
+
+    if (!ALLOWED_MIME_MAP[ext] || (normalizedMime && !allowedMimes.has(normalizedMime))) {
+      setError('শুধুমাত্র JPG, PNG, WEBP অথবা PDF ফাইল আপলোড করা যাবে।')
+      return
+    }
+
+    const effectiveType = allowedMimes.has(normalizedMime) ? normalizedMime : ALLOWED_MIME_MAP[ext]
+
     setError(null)
     setUploading(true)
 
     try {
-      // 1. Get presigned or local upload instructions
-      const effectiveType = file.type || 'application/octet-stream'
+      // 1. Get presigned or local upload instructions (server enforces MIME & ContentLength)
       const urlConfig = await agentApi.getPresignedUrl({
         file_name: file.name,
         file_type: effectiveType,
+        file_size: file.size,
         category,
       })
 
       const { driver, file_key, upload_url } = urlConfig.data
+      let finalFileKey = file_key
 
-      // 2. Upload according to driver with transparent fallback
+      // 2. Upload according to driver with transparent fallback to server-side private upload
       if (driver === 's3' || driver === 'r2') {
         try {
           await agentApi.uploadToPresignedUrl(upload_url, file, effectiveType)
@@ -64,23 +84,25 @@ export default function PresignedDropzone({
           console.warn('Direct presigned upload failed, falling back to server upload:', cloudErr)
           const formData = new FormData()
           formData.append('file', file)
-          formData.append('file_key', file_key)
-          await agentApi.directUploadFile(formData)
+          formData.append('category', category)
+          const directRes = await agentApi.directUploadFile(formData)
+          finalFileKey = directRes?.data?.file_key || finalFileKey
         }
       } else {
         const formData = new FormData()
         formData.append('file', file)
-        formData.append('file_key', file_key)
-        await agentApi.directUploadFile(formData)
+        formData.append('category', category)
+        const directRes = await agentApi.directUploadFile(formData)
+        finalFileKey = directRes?.data?.file_key || finalFileKey
       }
 
       const sizeStr = formatFileSize(file.size)
-      setUploadedKey(file_key)
+      setUploadedKey(finalFileKey)
       setFileName(file.name)
       setFileSizeText(sizeStr)
 
       if (onUploadSuccess) {
-        onUploadSuccess(file_key, file.name, sizeStr)
+        onUploadSuccess(finalFileKey, file.name, sizeStr)
       }
     } catch (err) {
       console.error('File upload error:', err)

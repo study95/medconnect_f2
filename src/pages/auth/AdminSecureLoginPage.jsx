@@ -8,6 +8,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../context/AuthContext';
 import CustomCheckbox from '../../components/common/CustomCheckbox';
+import { safeRelativeRedirect } from '../../utils/sanitizeHtml';
 
 export default function AdminSecureLoginPage() {
   const [step, setStep] = useState('credentials'); // 'credentials' | '2fa'
@@ -45,8 +46,8 @@ export default function AdminSecureLoginPage() {
       }
     } catch {}
     const queryUrl = new URLSearchParams(location.search).get('returnUrl');
-    const target = statePath || savedPath || queryUrl;
-    return target && !target.includes('/admin-secure-access') ? target : '/admin/dashboard';
+    const safeTarget = safeRelativeRedirect(statePath || savedPath || queryUrl, '/admin/dashboard');
+    return !safeTarget.includes('/admin-secure-access') ? safeTarget : '/admin/dashboard';
   };
 
   // Step 1: Submit Credentials

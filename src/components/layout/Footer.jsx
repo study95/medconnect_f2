@@ -3,6 +3,7 @@ import { Container, Row, Col } from 'react-bootstrap'
 import { Link, useLocation } from 'react-router-dom'
 import { getContent } from '../../utils/contentService'
 import { getMediaUrl } from '../../utils/mediaUtils'
+import { safeHttpUrl } from '../../utils/sanitizeHtml'
 import { 
   IconPhone, IconMail, IconMapPin, 
   IconBrandFacebook, IconBrandTwitter, IconBrandInstagram, IconBrandLinkedin,
@@ -245,10 +246,15 @@ function Footer() {
               {site.tagline || 'আমরা আধুনিক প্রযুক্তির মাধ্যমে স্বাস্থ্যসেবাকে আপনার দোরগোড়ায় পৌঁছে দিতে প্রতিশ্রুতিবদ্ধ। বিশ্বস্ত ডাক্তার ও উন্নত হাসপাতালের সাথে যুক্ত থাকুন Doctor Booklet-এর মাধ্যমে।'}
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
-              {SOCIAL_LINKS.map((link, i) => (
+              {SOCIAL_LINKS.map((link, i) => {
+                const safeUrl = safeHttpUrl(link.url, '#')
+                const isExternal = safeUrl !== '#'
+                return (
                 <a 
                   key={i} 
-                  href={link.url} 
+                  href={safeUrl}
+                  target={isExternal ? '_blank' : undefined}
+                  rel={isExternal ? 'noopener noreferrer' : undefined}
                   style={{ 
                     width: 38, 
                     height: 38, 
@@ -279,7 +285,8 @@ function Footer() {
                 >
                   {link.icon}
                 </a>
-              ))}
+                )
+              })}
             </div>
           </Col>
 

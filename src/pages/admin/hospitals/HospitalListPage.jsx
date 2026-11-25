@@ -1,6 +1,7 @@
 // HospitalListPage.jsx — Premium Hospital Management
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { safeHttpUrl } from '../../../utils/sanitizeHtml'
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Filter, ChevronDown, ChevronUp, FileText, ExternalLink, Building2 } from 'lucide-react'
@@ -15,6 +16,8 @@ import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
 import HospitalManagerProfileView from './HospitalManagerProfileView'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
+import { useSeenTracker } from '../../../utils/seenTracker'
 import toast from 'react-hot-toast'
 
 function TableCheckbox({ checked, indeterminate, onChange, title }) {
@@ -191,6 +194,7 @@ function SearchableSelect({ label, options, value, onChange, placeholder, disabl
 
 export default function HospitalListPage() {
   const { isAdmin, isManager } = useAuth()
+  const { isSeen, markSeen } = useSeenTracker('hospitals')
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedIds, setSelectedIds] = useState([])
@@ -356,6 +360,7 @@ export default function HospitalListPage() {
   const handleToggleStatus = async (hospital) => {
     try {
       await toggleStatus({ id: hospital.id, is_active: !hospital.is_active })
+      window.dispatchEvent(new Event('unread-count-sync'))
     } catch (err) {
       console.error('Failed to toggle hospital status', err)
     }
@@ -728,14 +733,20 @@ export default function HospitalListPage() {
                           </div>
                         </Link>
                         <div>
-                          <Link 
-                            to={`/admin/hospitals/view/${h.id}`} 
-                            style={{ textDecoration: 'none', fontWeight: 700, color: 'var(--admin-text)', display: 'inline-block' }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--admin-primary, #00A88C)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--admin-text)'}
-                          >
-                            {h.name}
-                          </Link>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {(!h.is_active || h.verification_status === 'submitted' || h.verification_status === 'in_review') && !isSeen(h.id) && (
+                              <PulseLight size={6.5} title="নতুন হাসপাতাল আবেদন (দেখা হয়নি)" />
+                            )}
+                            <Link 
+                              to={`/admin/hospitals/view/${h.id}`} 
+                              onClick={() => markSeen(h.id)}
+                              style={{ textDecoration: 'none', fontWeight: 700, color: 'var(--admin-text)', display: 'inline-block' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = 'var(--admin-primary, #00A88C)'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--admin-text)'}
+                            >
+                              {h.name}
+                            </Link>
+                          </div>
                           <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 2 }}>
                             <CompactUlid value={h.public_id || h.id} />
                           </div>
@@ -921,15 +932,15 @@ export default function HospitalListPage() {
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                        <button className="admin-action-btn admin-action-btn-view" onClick={() => navigate(`/admin/hospitals/view/${h.id}`)} title="View Detail">
+                        <button className="admin-action-btn admin-action-btn-view" onClick={() => { markSeen(h.id); navigate(`/admin/hospitals/view/${h.id}`); }} title="View Detail">
                           <img src="/icons/view.png" alt="View" />
                         </button>
-                        {h.url && (
-                          <a href={h.url} target="_blank" rel="noreferrer" className="admin-btn admin-btn-outline admin-btn-sm" style={{ padding: '6px 10px', fontSize: 12 }}>
+                        {safeHttpUrl(h.url) && (
+                          <a href={safeHttpUrl(h.url)} target="_blank" rel="noopener noreferrer" className="admin-btn admin-btn-outline admin-btn-sm" style={{ padding: '6px 10px', fontSize: 12 }}>
                             🌐 Site
                           </a>
                         )}
-                        <button className="admin-action-btn admin-action-btn-edit" onClick={() => navigate(`/admin/hospitals/edit/${h.id}`)} title="Edit Hospital">
+                        <button className="admin-action-btn admin-action-btn-edit" onClick={() => { markSeen(h.id); navigate(`/admin/hospitals/edit/${h.id}`); }} title="Edit Hospital">
                           <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         {isAdmin && (

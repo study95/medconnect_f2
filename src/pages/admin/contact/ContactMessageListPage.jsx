@@ -15,6 +15,7 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
 
 const STATUS_CONFIG = {
   unread:   { label: 'অপঠিত (Unread)',       color: '#F59E0B', bg: '#FEF3C7', border: '#FDE68A', icon: <IconMail size={13} /> },
@@ -352,6 +353,7 @@ export default function ContactMessageListPage() {
         })
         setViewMsg(prev => prev && prev.id === msg.id ? { ...prev, status: 'read' } : prev)
         queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+        window.dispatchEvent(new Event('unread-count-sync'))
       } catch {
         // Ignore silent auto-read failure
       }
@@ -367,6 +369,7 @@ export default function ContactMessageListPage() {
         admin_note: adminNote
       })
       queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      window.dispatchEvent(new Event('unread-count-sync'))
       setViewMsg(prev => ({ ...prev, status: newStatus, admin_note: adminNote }))
       setPendingStatus(null)
       toast.success(`স্ট্যাটাস পরিবর্তন হয়ে "${STATUS_CONFIG[newStatus]?.label || newStatus}" হয়েছে!`, {
@@ -472,6 +475,7 @@ export default function ContactMessageListPage() {
         status: newStatus
       })
       queryClient.invalidateQueries({ queryKey: ['admin-contact-messages'] })
+      window.dispatchEvent(new Event('unread-count-sync'))
       toast.success(res.data?.message || 'নির্বাচিত বার্তাগুলোর স্ট্যাটাস আপডেট হয়েছে')
       setSelectedIds([])
     } catch {
@@ -1120,6 +1124,7 @@ export default function ContactMessageListPage() {
                     </td>
                     <td style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        {isUnread && <PulseLight size={6.5} title="নতুন / অপঠিত বার্তা" />}
                         <span style={{ fontWeight: isUnread ? 800 : 700, fontSize: 13.5, color: '#0F172A', lineHeight: 1.3 }}>
                           {msg.name}
                         </span>

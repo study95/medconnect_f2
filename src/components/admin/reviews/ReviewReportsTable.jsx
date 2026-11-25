@@ -2,6 +2,7 @@ import React, { memo } from 'react'
 import { formatReviewDate } from '../../../features/reviews/mappers'
 import { REPORT_REASONS } from '../../../features/reviews/constants'
 import { ShieldAlert, ChevronLeft, ChevronRight, CheckCircle2, AlertCircle } from 'lucide-react'
+import { PulseLight } from '../../common/NewItemPulseLight'
 
 /**
  * Enterprise Admin Dispute Reports Queue Table Component
@@ -92,7 +93,10 @@ const ReviewReportsTable = memo(function ReviewReportsTable({
               reports.map((rep) => (
                 <tr key={rep.public_id || rep.id}>
                   <td>
-                    <div className="fw-bold text-dark">{rep.reporter?.name || 'Anonymous User'}</div>
+                    <div className="d-flex align-items-center gap-2">
+                      {rep.status === 'pending' && <PulseLight size={8} title="নতুন / অমীমাংসিত রিপোর্ট" />}
+                      <span className="fw-bold text-dark">{rep.reporter?.name || 'Anonymous User'}</span>
+                    </div>
                   </td>
                   <td>
                     <span className="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill extra-small">

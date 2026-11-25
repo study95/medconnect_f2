@@ -48,6 +48,10 @@ import PrescriptionPaper from '../../../components/common/PrescriptionPaper'
 import { queryClient } from '../../../lib/queryClient'
 import { queryKeys } from '../../../lib/queryKeys'
 import { FormSkeleton } from '../../../components/common/Skeletons'
+import { useGroupedInvestigations } from '../../../features/clinical/useAdminInvestigations'
+import { useGroupedClinicalAdvices } from '../../../features/clinical/useAdminClinicalAdvices'
+import { useActiveChiefComplaints } from '../../../features/clinical/useAdminChiefComplaints'
+import { useActiveDosageFrequencies, useActiveDosageTimings } from '../../../features/clinical/useDosagePresets'
 import '../../../styles/prescription.css'
 import {
   STRENGTH_OPTIONS,
@@ -122,6 +126,88 @@ export default function PrescriptionFormPage() {
   const [prescriptionDoctorId, setPrescriptionDoctorId] = useState(null)
   const [prescriptionDoctorName, setPrescriptionDoctorName] = useState('')
   const [canViewNotes, setCanViewNotes] = useState(true)
+
+  // Dynamic Investigation & Clinical Advice Categories from Database
+  const { grouped: dynamicInvestigationCats = [] } = useGroupedInvestigations()
+  const { grouped: dynamicAdviceCats = [] } = useGroupedClinicalAdvices()
+
+  const investigationCategoryMap = useMemo(() => {
+    const map = {}
+    if (Array.isArray(dynamicInvestigationCats) && dynamicInvestigationCats.length > 0) {
+      dynamicInvestigationCats.forEach(cat => {
+        const tests = (cat.investigations || []).map(inv => inv.name)
+        if (tests.length > 0) {
+          map[cat.name] = tests
+        }
+      })
+    } else if (INVESTIGATION_CATEGORIES && typeof INVESTIGATION_CATEGORIES === 'object') {
+      Object.assign(map, INVESTIGATION_CATEGORIES)
+    }
+    return map
+  }, [dynamicInvestigationCats])
+
+  const adviceCategoryMap = useMemo(() => {
+    const map = {}
+    if (Array.isArray(dynamicAdviceCats) && dynamicAdviceCats.length > 0) {
+      dynamicAdviceCats.forEach(cat => {
+        const advices = (cat.advices || []).map(adv => adv.advice_en || adv.advice_bn)
+        if (advices.length > 0) {
+          map[cat.name] = advices
+        }
+      })
+    } else if (ADVICE_CATEGORIES && typeof ADVICE_CATEGORIES === 'object') {
+      Object.assign(map, ADVICE_CATEGORIES)
+    }
+    return map
+  }, [dynamicAdviceCats])
+
+  // Package C: Dynamic Chief Complaints, Frequencies & Timings from Database
+  const { complaints: masterComplaints = [] } = useActiveChiefComplaints()
+  const { frequencies: dynamicFrequencies = [] } = useActiveDosageFrequencies()
+  const { timings: dynamicMealTimings = [] } = useActiveDosageTimings('meal')
+  const { timings: dynamicDurationTimings = [] } = useActiveDosageTimings('duration')
+
+  const activeFrequencyListBN = useMemo(() => {
+    if (dynamicFrequencies.length > 0) {
+      return dynamicFrequencies.map(f => f.frequency_bn)
+    }
+    return FREQUENCY_OPTIONS_BN
+  }, [dynamicFrequencies])
+
+  const activeFrequencyListEN = useMemo(() => {
+    if (dynamicFrequencies.length > 0) {
+      return dynamicFrequencies.map(f => f.frequency_en)
+    }
+    return FREQUENCY_OPTIONS_EN
+  }, [dynamicFrequencies])
+
+  const activeMealListBN = useMemo(() => {
+    if (dynamicMealTimings.length > 0) {
+      return dynamicMealTimings.map(m => m.timing_bn)
+    }
+    return MEAL_OPTIONS_BN
+  }, [dynamicMealTimings])
+
+  const activeMealListEN = useMemo(() => {
+    if (dynamicMealTimings.length > 0) {
+      return dynamicMealTimings.map(m => m.timing_en)
+    }
+    return MEAL_OPTIONS_EN
+  }, [dynamicMealTimings])
+
+  const activeDurationListBN = useMemo(() => {
+    if (dynamicDurationTimings.length > 0) {
+      return dynamicDurationTimings.map(d => d.timing_bn)
+    }
+    return DURATION_OPTIONS_BN
+  }, [dynamicDurationTimings])
+
+  const activeDurationListEN = useMemo(() => {
+    if (dynamicDurationTimings.length > 0) {
+      return dynamicDurationTimings.map(d => d.timing_en)
+    }
+    return DURATION_OPTIONS_EN
+  }, [dynamicDurationTimings])
 
   const [activeTab, setActiveTab] = useState('prescription')
   const [loading, setLoading] = useState(false)
@@ -5133,7 +5219,7 @@ export default function PrescriptionFormPage() {
                                       {FREQUENCY_TRANSLATION_EN_TO_BN[med.dosage] || toBanglaDigits(med.dosage) || med.dosage}
                                     </option>
                                   )}
-                                  {FREQUENCY_OPTIONS_BN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                  {activeFrequencyListBN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </>
                               ) : (
                                 <>
@@ -5142,7 +5228,7 @@ export default function PrescriptionFormPage() {
                                       {FREQUENCY_TRANSLATION_BN_TO_EN[med.dosage] || toEnglishDigits(med.dosage) || med.dosage}
                                     </option>
                                   )}
-                                  {FREQUENCY_OPTIONS_EN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                  {activeFrequencyListEN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </>
                               )}
                             </select>
@@ -5166,14 +5252,14 @@ export default function PrescriptionFormPage() {
                                   {DURATION_OPTIONS_EN.includes(med.duration) && (
                                     <option value={med.duration}>{DURATION_TRANSLATION_EN_TO_BN[med.duration] || med.duration}</option>
                                   )}
-                                  {DURATION_OPTIONS_BN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                  {activeDurationListBN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </>
                               ) : (
                                 <>
                                   {DURATION_OPTIONS_BN.includes(med.duration) && (
                                     <option value={med.duration}>{DURATION_TRANSLATION_BN_TO_EN[med.duration] || med.duration}</option>
                                   )}
-                                  {DURATION_OPTIONS_EN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                  {activeDurationListEN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </>
                               )}
                             </select>
@@ -5197,14 +5283,14 @@ export default function PrescriptionFormPage() {
                                   {MEAL_OPTIONS_EN.includes(med.meal) && (
                                     <option value={med.meal}>{MEAL_TRANSLATION_EN_TO_BN[med.meal] || med.meal}</option>
                                   )}
-                                  {MEAL_OPTIONS_BN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                  {activeMealListBN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </>
                               ) : (
                                 <>
                                   {MEAL_OPTIONS_BN.includes(med.meal) && (
                                     <option value={med.meal}>{MEAL_TRANSLATION_BN_TO_EN[med.meal] || med.meal}</option>
                                   )}
-                                  {MEAL_OPTIONS_EN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                  {activeMealListEN.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </>
                               )}
                             </select>
@@ -5465,6 +5551,32 @@ export default function PrescriptionFormPage() {
 
                 {/* CC Chips */}
                 <div className="dr-chips-wrap">
+                  {/* Master Chief Complaints from Database */}
+                  {masterComplaints.map((mc) => {
+                    const label = mc.name_bn ? `${mc.name} (${mc.name_bn})` : mc.name
+                    const isSelected = (form.cc || '').toLowerCase().includes(mc.name.toLowerCase())
+                    return (
+                      <button
+                        key={`mc_${mc.id}`}
+                        type="button"
+                        className="dr-chip-btn"
+                        style={{
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? '#1d4ed8' : '#334155',
+                          background: isSelected ? '#eff6ff' : '#f8fafc',
+                          border: `1px solid ${isSelected ? '#93c5fd' : '#e2e8f0'}`,
+                          borderRadius: 20,
+                          padding: '3px 10px',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleAppendClinicalTag('cc', mc.name_bn ? `${mc.name} (${mc.name_bn})` : mc.name)}
+                      >
+                        {isSelected ? '✓ ' : '+ '} {label}
+                      </button>
+                    )
+                  })}
+
                   {ccPresets.map((preset) => {
                     const isSelected = (form.cc || '').toLowerCase().includes(preset.content.toLowerCase())
                     return (
@@ -5485,7 +5597,7 @@ export default function PrescriptionFormPage() {
                       </span>
                     )
                   })}
-                  {ccPresets.length === 0 && !showChipInput.cc && (
+                  {ccPresets.length === 0 && masterComplaints.length === 0 && !showChipInput.cc && (
                     <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic', padding: '3px 0' }}>No saved complaints presets. Click "+ Add Preset" to create your own.</span>
                   )}
                   {showChipInput.cc ? (
@@ -5911,7 +6023,7 @@ export default function PrescriptionFormPage() {
                     </div>
                   )}
 
-                  {Object.entries(INVESTIGATION_CATEGORIES).map(([catName, tests]) => {
+                  {Object.entries(investigationCategoryMap).map(([catName, tests]) => {
                     const filteredTests = tests.filter(t => 
                       !investigationSearchQuery || t.toLowerCase().includes(investigationSearchQuery.toLowerCase())
                     )
@@ -6194,13 +6306,13 @@ export default function PrescriptionFormPage() {
                 )}
               </div>
 
-              {Object.keys(ADVICE_CATEGORIES).length > 0 && (
+              {Object.keys(adviceCategoryMap).length > 0 && (
                 <div className="dr-card">
                   <h3 className="dr-section-title">
                     <Sparkles size={15} color="#f59e0b" /> Standard Clinical Advice Packs
                   </h3>
                   <div className="dr-advice-category-grid">
-                    {Object.entries(ADVICE_CATEGORIES).map(([catTitle, items]) => (
+                    {Object.entries(adviceCategoryMap).map(([catTitle, items]) => (
                       <div key={catTitle} className="dr-advice-pack-card">
                         <h4 className="dr-pack-title">{catTitle}</h4>
                         <div className="dr-pack-items">

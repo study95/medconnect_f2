@@ -9,6 +9,7 @@ import { calculateAge, BLOOD_GROUPS, GENDERS } from '../../utils/dateUtils'
 import PasswordInput from '../../components/common/PasswordInput'
 import LegalDocumentModal from '../../components/common/LegalDocumentModal'
 import CustomCheckbox from '../../components/common/CustomCheckbox'
+import { useActiveMedicalDegrees, useActiveDoctorDesignations } from '../../features/credentials/useDoctorCredentials'
 import toast from 'react-hot-toast'
 import '../../styles/auth.css'
 
@@ -42,6 +43,8 @@ export default function DoctorRegisterPage() {
   const [legalModal, setLegalModal] = useState({ open: false, type: 'terms' })
   const [errors, setErrors] = useState({})
   const [specialties, setSpecialties] = useState([])
+  const { degrees: masterDegrees } = useActiveMedicalDegrees()
+  const { designations: masterDesignations } = useActiveDoctorDesignations()
 
   useEffect(() => {
     getSpecialties().then(res => {
@@ -216,7 +219,22 @@ export default function DoctorRegisterPage() {
               </div>
               <div className="auth-input-group">
                 <label>Degree *</label>
-                <input className={`auth-input ${errors.degree ? 'error' : ''}`} name="degree" value={form.degree} onChange={handleChange} placeholder="e.g. MBBS, BDS, MD" />
+                <input
+                  className={`auth-input ${errors.degree ? 'error' : ''}`}
+                  name="degree"
+                  list="reg-degrees-datalist"
+                  value={form.degree}
+                  onChange={handleChange}
+                  placeholder="e.g. MBBS, FCPS, MD"
+                  autoComplete="off"
+                />
+                <datalist id="reg-degrees-datalist">
+                  {masterDegrees.map((d) => (
+                    <option key={d.id} value={d.title}>
+                      {d.title_bn ? `${d.title} (${d.title_bn})` : d.title}
+                    </option>
+                  ))}
+                </datalist>
                 {errors.degree && <div className="auth-field-error">{errors.degree}</div>}
               </div>
             </div>
@@ -261,8 +279,23 @@ export default function DoctorRegisterPage() {
                 <span style={{ fontSize: 11, color: '#4F46E5', fontWeight: 600 }}>✓ Verified</span>
               </div>
               <div className="auth-input-group">
-                <label>Occupation</label>
-                <input className="auth-input" name="occupation" value={form.occupation} onChange={handleChange} placeholder="e.g. Cardiologist, Surgeon" />
+                <label>Designation / Occupation</label>
+                <input
+                  className="auth-input"
+                  name="occupation"
+                  list="reg-designations-datalist"
+                  value={form.occupation}
+                  onChange={handleChange}
+                  placeholder="e.g. Professor, Consultant, Medical Officer"
+                  autoComplete="off"
+                />
+                <datalist id="reg-designations-datalist">
+                  {masterDesignations.map((desig) => (
+                    <option key={desig.id} value={desig.title}>
+                      {desig.title_bn ? `${desig.title} (${desig.title_bn})` : desig.title}
+                    </option>
+                  ))}
+                </datalist>
               </div>
             </div>
 

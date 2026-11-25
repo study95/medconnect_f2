@@ -12,6 +12,7 @@ import TableFooter from '../../../components/admin/TableFooter'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import { getErrorMessage } from '../../../utils/errorHelper'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
 import '../../../styles/admin.css'
 import '../../../styles/dialog.css'
 
@@ -66,6 +67,7 @@ export default function AdminDoctorLeavePage() {
     if (!deleteTarget) return
     try {
       const res = await deleteLeave(deleteTarget.id, deleteTarget.doctor_id || deleteTarget.doctor?.id)
+      window.dispatchEvent(new Event('unread-count-sync'))
       toast.success(res?.data?.message || 'ছুটি সফলভাবে মুছে ফেলা হয়েছে')
       setDeleteTarget(null)
     } catch (err) {
@@ -315,8 +317,11 @@ export default function AdminDoctorLeavePage() {
                             <Stethoscope size={18} />
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)' }}>
-                              {item.doctor?.name || 'ডাক্তার'}
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text, #0f172a)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {(status.isActive || status.isUpcoming) && (
+                                <PulseLight size={8} title="সক্রিয় বা আসন্ন ছুটি" />
+                              )}
+                              <span>{item.doctor?.name || 'ডাক্তার'}</span>
                             </div>
                             <div style={{ fontSize: 12, color: 'var(--admin-text-muted, #64748b)' }}>
                               {item.doctor?.specialty?.name || item.doctor?.specialty || item.doctor?.degree || 'বিশেষজ্ঞ'}

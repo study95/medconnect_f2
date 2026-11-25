@@ -19,17 +19,29 @@ import SudoVerifyModal from '../components/auth/SudoVerifyModal'
  * Prevents cross-tenant data leakage when switching between Admin, Doctor,
  * Hospital, and Patient accounts in the same browser.
  */
-function purgeClientSessionState() {
+function purgeClientSessionState({ preserveIdleReturn = false } = {}) {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
   localStorage.removeItem('userType')
   localStorage.removeItem('medconnect_last_active_at')
+  localStorage.removeItem('provider_trusted_device_token')
+  localStorage.removeItem('doctor_trusted_device_token')
+  localStorage.removeItem('hospital_trusted_device_token')
+  localStorage.removeItem('admin_trusted_device_token')
 
   try {
     const keysToRemove = []
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
-      if (key && (key.startsWith('dr_rx_draft_') || key.startsWith('dr_notes_'))) {
+      if (
+        key &&
+        (key.startsWith('dr_rx_draft_') ||
+          key.startsWith('dr_notes_') ||
+          key.startsWith('doctor_advice_notes_') ||
+          key.startsWith('doctor_onboard_draft_') ||
+          key.startsWith('hospital_onboard_draft_') ||
+          key.startsWith('agent_onboard_draft_'))
+      ) {
         keysToRemove.push(key)
       }
     }
@@ -37,7 +49,11 @@ function purgeClientSessionState() {
   } catch {}
 
   try {
+    const savedReturn = preserveIdleReturn ? sessionStorage.getItem('post_idle_return_url') : null
     sessionStorage.clear()
+    if (savedReturn) {
+      sessionStorage.setItem('post_idle_return_url', savedReturn)
+    }
   } catch {}
 
   try {
@@ -152,7 +168,9 @@ export function AuthProvider({ children }) {
     }
 
     const handleAuthExpired = () => {
-      clearLocalSession()
+      purgeClientSessionState({ preserveIdleReturn: true })
+      setUser(null)
+      setUserType(null)
       postAuthSync({ type: 'LOGOUT' })
     }
 
@@ -708,8 +726,8 @@ export function AuthProvider({ children }) {
     enabled: !!user?.id,
     timeoutMs: idleTimeoutMs,
     onTimeout: () => {
-      // Passive idle handling: Do not force auto-redirect or show disruptive toast while user is away.
-      // Mark session as expired; the next user interaction will smoothly trigger re-authentication.
+      const wasAdmin = isAdmin
+      let savedReturnPath = null
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname + window.location.search + window.location.hash
         if (
@@ -718,10 +736,30 @@ export function AuthProvider({ children }) {
           !currentPath.includes('/admin-secure-access') &&
           !currentPath.includes('/register')
         ) {
-          sessionStorage.setItem('post_idle_return_url', currentPath)
+          savedReturnPath = currentPath
         }
         window.__sessionIdleExpired = true
       }
+
+      // Active session termination: immediately clear tokens, drafts, IndexedDB, and React state
+      // so unattended clinic/hospital/admin terminals never expose PHI or privileged dashboards.
+      performLogout(logoutApi).finally(() => {
+        if (typeof window !== 'undefined') {
+          if (savedReturnPath) {
+            try {
+              sessionStorage.setItem('post_idle_return_url', savedReturnPath)
+            } catch {}
+          }
+          toast('নিরাপত্তার স্বার্থে নিষ্ক্রিয়তার কারণে আপনার সেশন লগআউট করা হয়েছে।', {
+            id: 'idle-timeout-logout',
+            icon: '🔒',
+          })
+          const targetLogin = wasAdmin ? '/admin-secure-access' : '/login'
+          if (window.location.pathname !== targetLogin) {
+            window.location.assign(targetLogin)
+          }
+        }
+      })
     },
     onKeepAlive: () => {
       // Non-poll request so backend resets last_activity_at
@@ -732,6 +770,12 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={value}>
       {children}
+      <IdleWarningModal
+        show={showWarning}
+        remainingSeconds={remainingSeconds}
+        onStayLoggedIn={stayLoggedIn}
+        onLogoutNow={logout}
+      />
       <SudoVerifyModal />
     </AuthContext.Provider>
   )

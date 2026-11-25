@@ -1,6 +1,6 @@
 import { DetailSkeleton } from '../../../components/common/Skeletons'
 // HospitalDetailPage.jsx — Premium Hospital Profile View for Admin
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminHospitalDetail } from '../../../features/hospitals/useAdminHospitals'
@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { invalidateHospitals } from '../../../lib/cacheInvalidation'
 import { verifyHospital } from '../../../api/hospitalApi'
 import { useDialog } from '../../../hooks/useDialog'
+import { markItemSeen } from '../../../utils/seenTracker'
 import { toast } from 'react-hot-toast'
 import {
   CheckCircle2, AlertCircle, FileText, Check, X, Send, Loader2
@@ -26,6 +27,12 @@ export default function HospitalDetailPage() {
   const [revisionNotes, setRevisionNotes] = useState('')
 
   const { hospital, doctors, chambers, isLoading: loading, refetch } = useAdminHospitalDetail(id)
+
+  useEffect(() => {
+    if (id) {
+      markItemSeen('hospitals', id)
+    }
+  }, [id])
 
   const handleApprove = async () => {
     const ok = await showDialog({

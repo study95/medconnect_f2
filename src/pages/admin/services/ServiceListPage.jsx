@@ -16,6 +16,7 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
 
 const STATUS_CONFIG = {
   pending:    { label: 'অপেক্ষমাণ',      color: '#F59E0B', bg: '#FEF3C7', icon: <IconClock size={13} /> },
@@ -315,6 +316,7 @@ export default function ServiceListPage() {
         admin_note: adminNote
       })
       queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
+      window.dispatchEvent(new Event('unread-count-sync'))
       setViewTicket(prev => ({ ...prev, status: newStatus, admin_note: adminNote }))
       setPendingStatus(null)
       toast.success(`স্ট্যাটাস পরিবর্তন হয়ে "${STATUS_CONFIG[newStatus]?.label || newStatus}" হয়েছে!`, {
@@ -387,6 +389,7 @@ export default function ServiceListPage() {
         status: newStatus
       })
       queryClient.invalidateQueries({ queryKey: queryKeys.services.all })
+      window.dispatchEvent(new Event('unread-count-sync'))
       toast.success(res.data?.message || 'নির্বাচিত টিকিটের স্ট্যাটাস আপডেট হয়েছে')
       setSelectedIds([])
     } catch {
@@ -809,7 +812,10 @@ export default function ServiceListPage() {
                       <CompactUlid value={ticketNum} />
                     </td>
                     <td style={{ verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 800, fontSize: 13.5, color: '#1E293B', lineHeight: 1.3 }}>{ticket.name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {ticket.status === 'pending' && <PulseLight size={8} title="নতুন / অপেক্ষমাণ অভিযোগ" />}
+                        <span style={{ fontWeight: 800, fontSize: 13.5, color: '#1E293B', lineHeight: 1.3 }}>{ticket.name}</span>
+                      </div>
                       <div style={{ fontSize: 12, color: '#059669', fontWeight: 600, marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <IconPhone size={12} stroke={2} style={{ opacity: 0.85 }} />
                         <span>{ticket.contact}</span>

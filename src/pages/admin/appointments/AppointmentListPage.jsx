@@ -10,6 +10,8 @@ import { TableSkeleton } from '../../../components/common/Skeletons'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
+import { useSeenTracker } from '../../../utils/seenTracker'
 import SearchableSelect from '../../../components/common/SearchableSelect'
 import useDebounce from '../../../hooks/useDebounce'
 import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
@@ -95,6 +97,7 @@ function TableCheckbox({ checked, indeterminate, onChange, title }) {
 
 export default function AppointmentListPage() {
   const { user, isAdmin, isDoctor, isManager } = useAuth()
+  const { isSeen, markSeen } = useSeenTracker('appointments')
   const navigate = useNavigate()
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [changingStatus, setChangingStatus] = useState(null)
@@ -353,6 +356,7 @@ export default function AppointmentListPage() {
     setChangingStatus(id)
     try {
       await updateAppointmentStatus({ id, status: newStatus })
+      window.dispatchEvent(new Event('unread-count-sync'))
     } catch (err) {
       console.error('Failed to update status', err)
     } finally {
@@ -364,6 +368,7 @@ export default function AppointmentListPage() {
     setChangingStatus(payload.id)
     try {
       await updateAppointmentStatus(payload)
+      window.dispatchEvent(new Event('unread-count-sync'))
       toast.success(
         payload.status === 'cancelled'
           ? 'অ্যাপয়েন্টমেন্ট বাতিল করা হয়েছে'
@@ -881,7 +886,12 @@ export default function AppointmentListPage() {
                             {(appt.patient?.name || appt.user_name || 'P').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: 'var(--admin-text)' }}>{appt.patient?.name || appt.patient_name || appt.user_name || 'Unknown Patient'}</div>
+                            <div style={{ fontWeight: 700, color: 'var(--admin-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              {appt.status === 'pending' && !isSeen(appt.id) && (
+                                <PulseLight size={6.5} title="নতুন / অপেক্ষমাণ অ্যাপয়েন্টমেন্ট (দেখা হয়নি)" />
+                              )}
+                              <span>{appt.patient?.name || appt.patient_name || appt.user_name || 'Unknown Patient'}</span>
+                            </div>
                             {(appt.booking_for && appt.booking_for !== 'myself') ? (
                               <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 <span style={{
@@ -1093,7 +1103,7 @@ export default function AppointmentListPage() {
                       </td>
                       <td style={{ textAlign: 'right', paddingRight: 24 }}>
                         <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                          <Link to={`/admin/appointments/view/${appt.id}`} className="admin-action-btn admin-action-btn-view" title="View Details">
+                          <Link to={`/admin/appointments/view/${appt.id}`} onClick={() => markSeen(appt.id)} className="admin-action-btn admin-action-btn-view" title="View Details">
                             <img src="/icons/view.png" alt="View" />
                           </Link>
                           {isAdmin && (

@@ -2,6 +2,7 @@ import React, { memo } from 'react'
 import StarRating from '../../reviews/StarRating'
 import { formatReviewerName, formatReviewDate } from '../../../features/reviews/mappers'
 import { CheckCircle2, XCircle, Flag, EyeOff, ShieldCheck, ChevronLeft, ChevronRight, MessageSquareOff } from 'lucide-react'
+import { PulseLight } from '../../common/NewItemPulseLight'
 
 /**
  * Enterprise Admin Review Moderation Queue Table Component
@@ -119,7 +120,10 @@ const ReviewModerationTable = memo(function ReviewModerationTable({
                 return (
                   <tr key={rev.public_id || rev.id}>
                     <td>
-                      <div className="fw-bold text-dark">{reviewerName}</div>
+                      <div className="d-flex align-items-center gap-2">
+                        {rev.status === 'pending' && <PulseLight size={8} title="নতুন / অপেক্ষমাণ রিভিউ" />}
+                        <span className="fw-bold text-dark">{reviewerName}</span>
+                      </div>
                       {isAnonymous && (
                         <span className="badge bg-secondary-subtle text-secondary rounded-pill extra-small d-inline-flex align-items-center gap-1">
                           <ShieldCheck size={11} />

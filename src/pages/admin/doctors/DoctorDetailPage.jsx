@@ -1,6 +1,6 @@
 import { DetailSkeleton } from '../../../components/common/Skeletons'
 // DoctorDetailPage.jsx — Premium Detailed View for Admin
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminDoctorDetail } from '../../../features/doctors/useAdminDoctors'
@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { invalidateDoctors } from '../../../lib/cacheInvalidation'
 import { verifyDoctor } from '../../../api/doctorApi'
 import { useDialog } from '../../../hooks/useDialog'
+import { markItemSeen } from '../../../utils/seenTracker'
 import { toast } from 'react-hot-toast'
 import {
   CheckCircle2, AlertCircle, FileText, Check, X, Send, Loader2, Clock, RotateCcw
@@ -27,6 +28,12 @@ export default function DoctorDetailPage() {
   const [revisionNotes, setRevisionNotes] = useState('')
 
   const { doctor, chambers, isLoading: loading, refetch } = useAdminDoctorDetail(id)
+
+  useEffect(() => {
+    if (id) {
+      markItemSeen('doctors', id)
+    }
+  }, [id])
 
   const handleApprove = async () => {
     const ok = await showDialog({

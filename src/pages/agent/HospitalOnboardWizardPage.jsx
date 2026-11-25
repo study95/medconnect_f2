@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
+import { safeHttpUrl } from '../../utils/sanitizeHtml'
 import { 
   Building2, 
   MapPin, 
@@ -2219,8 +2220,8 @@ export default function HospitalOnboardWizardPage() {
                       <div style={{ fontSize: 11, color: '#047857', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                         <Navigation size={12} color="#059669" />
                         <span>GPS: {formData.latitude}, {formData.longitude}</span>
-                        {formData.google_map_url && (
-                          <a href={formData.google_map_url} target="_blank" rel="noopener noreferrer" style={{ color: '#0284C7', textDecoration: 'none', marginLeft: 6, fontSize: 11.5 }}>
+                        {safeHttpUrl(formData.google_map_url) && (
+                          <a href={safeHttpUrl(formData.google_map_url)} target="_blank" rel="noopener noreferrer" style={{ color: '#0284C7', textDecoration: 'none', marginLeft: 6, fontSize: 11.5 }}>
                             (গুগল ম্যাপে দেখুন ↗)
                           </a>
                         )}

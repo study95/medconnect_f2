@@ -28,6 +28,7 @@ import EmptyState from '../../../components/common/EmptyState'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import CompactUlid from '../../../components/common/CompactUlid'
 import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
 
 export default function OnboardingVerificationDeskPage() {
   const [queue, setQueue] = useState([])
@@ -563,8 +564,11 @@ export default function OnboardingVerificationDeskPage() {
                               {getInitials(payload.name)}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 14 }}>
-                                {payload.name || 'Unnamed Candidate'}
+                              <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {(req.status === 'submitted' || req.status === 'under_review') && (
+                                  <PulseLight size={8} title="নতুন / ভেরিফিকেশন অপেক্ষমাণ" />
+                                )}
+                                <span>{payload.name || 'Unnamed Candidate'}</span>
                               </div>
                               <div style={{ fontSize: 11.5, color: 'var(--admin-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span>{payload.degree || 'MBBS'}</span>
@@ -708,6 +712,7 @@ export default function OnboardingVerificationDeskPage() {
           onDecisionComplete={() => {
             setSelectedRequest(null)
             fetchQueue(true)
+            window.dispatchEvent(new Event('unread-count-sync'))
           }}
         />
       )}

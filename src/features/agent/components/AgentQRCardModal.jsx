@@ -22,6 +22,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react'
 import { toast } from 'react-hot-toast'
 import axiosInstance from '../../../api/axiosInstance'
+import { escapeHtml } from '../../../utils/sanitizeHtml'
 
 export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName, agentPhone, agentPhoto }) {
   const [activeTab, setActiveTab] = useState('badge') // 'badge' | 'share'
@@ -114,7 +115,7 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
   const handleWhatsAppShare = () => {
     const text = `আসসালামু আলাইকুম। আমি ডক্টরবুকলেট (DoctorBooklet)-এর অনুমোদিত ফিল্ড পার্টনার। আমাদের ডিজিটাল প্ল্যাটফর্মে আপনার চেম্বার বা হাসপাতাল যুক্ত করতে এই কিউআর লিংকটি ব্যবহার করুন:\n\n${smartHubUrl}\n\nফিল্ড পার্টনার কোড: ${agentCode}`
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`
-    window.open(waUrl, '_blank')
+    window.open(waUrl, '_blank', 'noopener,noreferrer')
   }
 
   const handlePrint = () => {
@@ -147,7 +148,7 @@ export default function AgentQRCardModal({ isOpen, onClose, agentCode, agentName
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Agent ID Badge - ${agentCode || 'Official'}</title>
+    <title>Agent ID Badge - ${escapeHtml(agentCode || 'Official')}</title>
     <style>
       @page {
         size: A4 portrait;

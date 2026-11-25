@@ -151,22 +151,30 @@ export default function AppointmentPrintModal({
       'Payment Status'
     ]
 
+    const csvCell = (raw) => {
+      let s = String(raw ?? '').replace(/\0/g, '').replace(/[\r\n]+/g, ' ')
+      if (/^[=+\-@]/.test(s.replace(/^[\s\u0000-\u001F]+/, '')) || /^[\t\r]/.test(s)) {
+        s = `'${s}`
+      }
+      return `"${s.replace(/"/g, '""')}"`
+    }
+
     const rows = dataToPrint.map((appt, idx) => [
       idx + 1,
-      `"Serial-${appt.serial_number || (idx + 1)}"`,
-      `"${(appt.public_id || appt.id || '').toString().replace(/"/g, '""')}"`,
-      `"${(appt.patient_name || appt.patient?.name || appt.user_name || 'N/A').replace(/"/g, '""')}"`,
-      `"${(appt.booking_for && appt.booking_for !== 'myself' ? (appt.patient_relation || 'Relative') : 'Self').replace(/"/g, '""')}"`,
-      `"${(appt.patient_phone || appt.patient?.phone || appt.user?.phone || appt.created_by_phone || '').replace(/"/g, '""')}"`,
-      `"${appt.patient_age || appt.patient?.age || '—'}"`,
-      `"${(appt.doctor?.name || appt.doctor_name || '—').replace(/"/g, '""')}"`,
-      `"${(appt.doctor?.specialty?.name || '—').replace(/"/g, '""')}"`,
-      `"${(appt.hospital?.name || appt.chamber?.name || appt.hospital_name || appt.chamber_name || '—').replace(/"/g, '""')}"`,
-      `"${appt.date || appt.appointment_date || '—'}"`,
-      `"${appt.time || appt.appointment_time || '—'}"`,
-      `"${(appt.created_by_name || appt.user_name || appt.booker?.name || 'Unknown').replace(/"/g, '""')}"`,
-      `"${appt.status || 'pending'}"`,
-      `"${appt.payment_status || 'unpaid'}"`
+      csvCell(`Serial-${appt.serial_number || (idx + 1)}`),
+      csvCell(appt.public_id || appt.id || ''),
+      csvCell(appt.patient_name || appt.patient?.name || appt.user_name || 'N/A'),
+      csvCell(appt.booking_for && appt.booking_for !== 'myself' ? (appt.patient_relation || 'Relative') : 'Self'),
+      csvCell(appt.patient_phone || appt.patient?.phone || appt.user?.phone || appt.created_by_phone || ''),
+      csvCell(appt.patient_age || appt.patient?.age || '—'),
+      csvCell(appt.doctor?.name || appt.doctor_name || '—'),
+      csvCell(appt.doctor?.specialty?.name || '—'),
+      csvCell(appt.hospital?.name || appt.chamber?.name || appt.hospital_name || appt.chamber_name || '—'),
+      csvCell(appt.date || appt.appointment_date || '—'),
+      csvCell(appt.time || appt.appointment_time || '—'),
+      csvCell(appt.created_by_name || appt.user_name || appt.booker?.name || 'Unknown'),
+      csvCell(appt.status || 'pending'),
+      csvCell(appt.payment_status || 'unpaid')
     ])
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n')

@@ -82,7 +82,7 @@ export function initQueryPersistence() {
       queryClient,
       persister: idbPersister,
       maxAge: 24 * 60 * 60 * 1000, // 24 hours persistent lifetime
-      buster: 'v2.2.0-cache',       // Cache invalidation buster: bump on schema changes
+      buster: 'v2.3.0-sec-cache',   // Cache invalidation buster: purges legacy persisted caches
       dehydrateOptions: {
         shouldDehydrateQuery: (query) => {
           // 1. Only persist successfully completed queries that are NOT invalidated
@@ -95,15 +95,23 @@ export function initQueryPersistence() {
             return false
           }
 
-          // 3. User Identity Guard: Never persist queries with user-scoped or auth-scoped identifiers
-          const isUserScoped = query.queryKey.some(
-            k => typeof k === 'string' && (
-              k.startsWith('user_') ||
-              k.startsWith('patient_') ||
-              k.startsWith('admin_') ||
-              k.includes('token')
+          // 3. User/Actor Identity Guard: Never persist queries with any actor/auth-scoped identifiers
+          const isUserScoped = query.queryKey.some((k) => {
+            if (typeof k !== 'string') return false
+            const lower = k.toLowerCase()
+            return (
+              lower.startsWith('actor:') ||
+              lower.includes('actor:') ||
+              lower.startsWith('user_') ||
+              lower.startsWith('patient_') ||
+              lower.startsWith('doctor_') ||
+              lower.startsWith('hospital_') ||
+              lower.startsWith('agent_') ||
+              lower.startsWith('admin_') ||
+              lower === 'admin' ||
+              lower.includes('token')
             )
-          )
+          })
           if (isUserScoped) {
             return false
           }

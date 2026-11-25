@@ -503,7 +503,7 @@ function AppNavbar() {
     <>
       <style>{`
         :root {
-          --header-height: ${isAuthPage ? '0px' : '102px'};
+          --header-height: ${isAuthPage ? '0px' : (scrolled ? '102px' : '104px')};
           --sticky-top: ${topbarVisible ? '134px' : '98px'};
         }
         .page-wrapper {

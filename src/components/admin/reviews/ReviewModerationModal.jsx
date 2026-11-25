@@ -69,6 +69,7 @@ export default function ReviewModerationModal({
           : `রিভিউটি সফলভাবে ${action} করা হয়েছে।`,
       })
       if (onSuccess) onSuccess()
+      window.dispatchEvent(new Event('unread-count-sync'))
       onHide()
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to update review moderation status.'

@@ -36,6 +36,16 @@ export default function useIdleTimeout({
   const lastThrottleRef = useRef(0)
   const timedOutRef = useRef(false)
   const channelRef = useRef(null)
+  const onTimeoutRef = useRef(onTimeout)
+  const onKeepAliveRef = useRef(onKeepAlive)
+
+  useEffect(() => {
+    onTimeoutRef.current = onTimeout
+  }, [onTimeout])
+
+  useEffect(() => {
+    onKeepAliveRef.current = onKeepAlive
+  }, [onKeepAlive])
 
   const recordActivity = useCallback((broadcast = true) => {
     const now = Date.now()
@@ -52,10 +62,10 @@ export default function useIdleTimeout({
 
   const stayLoggedIn = useCallback(() => {
     recordActivity(true)
-    if (typeof onKeepAlive === 'function') {
-      onKeepAlive()
+    if (typeof onKeepAliveRef.current === 'function') {
+      onKeepAliveRef.current()
     }
-  }, [recordActivity, onKeepAlive])
+  }, [recordActivity])
 
   useEffect(() => {
     if (!enabled) {
@@ -106,8 +116,8 @@ export default function useIdleTimeout({
       if (remaining <= 0) {
         timedOutRef.current = true
         setShowWarning(false)
-        if (typeof onTimeout === 'function') {
-          onTimeout()
+        if (typeof onTimeoutRef.current === 'function') {
+          onTimeoutRef.current()
         }
       } else if (remaining <= WARNING_WINDOW_MS) {
         setShowWarning(true)
@@ -125,7 +135,7 @@ export default function useIdleTimeout({
         channelRef.current = null
       } catch {}
     }
-  }, [enabled, timeoutMs, onTimeout, recordActivity])
+  }, [enabled, timeoutMs, recordActivity])
 
   return {
     showWarning,

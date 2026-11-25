@@ -141,6 +141,8 @@ function DoctorServiceTab() {
   
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || '') // '', 'package', 'commission', 'disabled'
   const [enableTarget, setEnableTarget] = useState(null)
+  const [targetCommissionRate, setTargetCommissionRate] = useState('')
+  const [isCustomRate, setIsCustomRate] = useState(false)
   const [disableTarget, setDisableTarget] = useState(null)
   const [packageInfoTarget, setPackageInfoTarget] = useState(null)
   const [disableReason, setDisableReason] = useState('Payment / Subscription Overdue')
@@ -212,6 +214,31 @@ function DoctorServiceTab() {
     staleTime: 60 * 1000,
   })
 
+  const { data: globalSettings = null } = useQuery({
+    queryKey: queryKeys.commissions.patientBookingCommission(),
+    queryFn: async () => {
+      const res = await getPatientBookingCommission()
+      return res.data?.data || {}
+    },
+    staleTime: 60 * 1000,
+  })
+
+  const defaultCommissionRate = globalSettings?.commission_percent !== undefined
+    ? parseFloat(globalSettings.commission_percent)
+    : 8.00
+
+  const openEnableModal = (doc) => {
+    const custom = doc.enablement?.commission_percentage
+    if (custom !== null && custom !== undefined && Number(custom) > 0) {
+      setTargetCommissionRate(String(custom))
+      setIsCustomRate(true)
+    } else {
+      setTargetCommissionRate(String(defaultCommissionRate))
+      setIsCustomRate(false)
+    }
+    setEnableTarget(doc)
+  }
+
   useEffect(() => { 
     loadOptions()
     loadInitialLocations()
@@ -263,7 +290,7 @@ function DoctorServiceTab() {
 
   useEffect(() => { loadOptions() }, [divisionId, districtId, upazilaId, unionId])
 
-  const handleUpdate = async (doctorId, field, value, customNotes = null) => {
+  const handleUpdate = async (doctorId, field, value, customNotes = null, extraPayload = {}) => {
     const doctor = (Array.isArray(doctorsData) ? doctorsData : []).find(d => d.id === doctorId)
     if (doctor?.has_active_access && field !== 'is_enabled') {
       return
@@ -272,10 +299,11 @@ function DoctorServiceTab() {
     const current = doctor?.enablement || {}
     const payload = {
       service_type: 'percentage',
-      commission_percentage: current.commission_percentage || 0,
+      commission_percentage: current.commission_percentage !== undefined ? current.commission_percentage : null,
       is_enabled: current.is_enabled || false,
       notes: customNotes !== null ? customNotes : (current.notes || ''),
-      ...{ [field]: value }
+      ...{ [field]: value },
+      ...extraPayload
     }
 
     setSaving(doctorId)
@@ -537,8 +565,9 @@ function DoctorServiceTab() {
                 {filtered.map(doc => {
                   const en = doc.enablement || {}
                   const isSaving = saving === doc.id
-                  const currentRate = editingRates[doc.id] !== undefined ? editingRates[doc.id] : (en.commission_percentage || '')
-                  const isRateChanged = editingRates[doc.id] !== undefined && parseFloat(editingRates[doc.id]) !== (en.commission_percentage || 0)
+                  const hasCustomRate = en.commission_percentage !== null && en.commission_percentage !== undefined && Number(en.commission_percentage) > 0
+                  const currentRate = editingRates[doc.id] !== undefined ? editingRates[doc.id] : (hasCustomRate ? en.commission_percentage : '')
+                  const isRateChanged = editingRates[doc.id] !== undefined && parseFloat(editingRates[doc.id]) !== (hasCustomRate ? parseFloat(en.commission_percentage) : defaultCommissionRate)
 
                   return (
                     <tr key={doc.id} style={{ opacity: isSaving ? 0.6 : 1 }}>
@@ -629,11 +658,20 @@ function DoctorServiceTab() {
                                 if (e.key === 'Enter') saveRate(doc.id)
                               }}
                               disabled={isSaving}
-                              placeholder="0"
+                              placeholder={String(defaultCommissionRate)}
                               className="admin-form-input"
                               style={{ width: 68, padding: '5px 8px', fontWeight: 800, textAlign: 'center', fontSize: 13 }}
+                              title={hasCustomRate ? `Custom Doctor Rate: ${en.commission_percentage}%` : `Using Default Rate: ${defaultCommissionRate}%`}
                             />
                             <span style={{ fontWeight: 700, color: 'var(--admin-text-muted)', fontSize: 13 }}>%</span>
+                            {!hasCustomRate && editingRates[doc.id] === undefined && (
+                              <span 
+                                style={{ fontSize: 10, color: 'var(--admin-primary)', fontWeight: 700, background: 'rgba(0, 168, 140, 0.08)', padding: '2px 5px', borderRadius: 4, whiteSpace: 'nowrap' }} 
+                                title={`Default platform rate (${defaultCommissionRate}%) is applied`}
+                              >
+                                Default
+                              </span>
+                            )}
                             {isRateChanged && (
                               <button
                                 onClick={() => saveRate(doc.id)}
@@ -676,7 +714,7 @@ function DoctorServiceTab() {
                                   setDisableReason('Payment / Subscription Overdue')
                                   setCustomReason('')
                                 } else {
-                                  setEnableTarget(doc)
+                                  openEnableModal(doc)
                                 }
                               }}
                               title={en.is_enabled ? 'সার্ভিস বন্ধ করতে ক্লিক করুন' : 'সার্ভিস চালু করতে ক্লিক করুন'}
@@ -709,7 +747,7 @@ function DoctorServiceTab() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
         }}>
           <div style={{
-            background: 'var(--admin-card-bg)', borderRadius: 20, width: '100%', maxWidth: 480,
+            background: 'var(--admin-card-bg)', borderRadius: 20, width: '100%', maxWidth: 490,
             border: '1px solid var(--admin-border)', boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
             overflow: 'hidden', animation: 'fadeIn 0.2s ease-out'
           }}>
@@ -738,11 +776,61 @@ function DoctorServiceTab() {
                 <div style={{ fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--admin-text)' }}>
                   <span>🩺</span> <strong>অনলাইন বুকিং:</strong> রোগীরা ওয়েবসাইটে ডাক্তারের শিডিউলে সিরিয়াল দিতে পারবে।
                 </div>
-                <div style={{ fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--admin-text)' }}>
+                <div style={{ fontSize: 13, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--admin-text)' }}>
                   <span>📋</span> <strong>চেম্বার ওয়াক-ইন:</strong> চেম্বার থেকে সরাসরি রোগী এন্ট্রি নেওয়া যাবে।
                 </div>
-                <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--admin-primary)', fontWeight: 700 }}>
-                  <span>💰</span> <strong>কমিশন হার:</strong> {enableTarget.enablement?.commission_percentage || 0}% (প্রতি বুকিংয়ে প্রযোজ্য)
+
+                <div style={{ borderTop: '1px dashed var(--admin-border)', paddingTop: 10, marginTop: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--admin-primary)', fontWeight: 700 }}>
+                      <span>💰</span> <strong>প্রযোজ্য কমিশন হার:</strong>
+                    </div>
+                    <span style={{
+                      fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                      background: !isCustomRate ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                      color: !isCustomRate ? '#2563EB' : '#059669',
+                      border: !isCustomRate ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)'
+                    }}>
+                      {!isCustomRate ? `সিস্টেম ডিফল্ট (${defaultCommissionRate}%)` : 'কাস্টম রেট'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.5"
+                      value={targetCommissionRate}
+                      onChange={e => {
+                        setTargetCommissionRate(e.target.value)
+                        setIsCustomRate(true)
+                      }}
+                      className="admin-form-input"
+                      style={{ width: 80, padding: '6px 10px', fontWeight: 800, textAlign: 'center', fontSize: 13 }}
+                    />
+                    <span style={{ fontWeight: 700, color: 'var(--admin-text-muted)', fontSize: 13 }}>%</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTargetCommissionRate(String(defaultCommissionRate))
+                        setIsCustomRate(false)
+                      }}
+                      style={{
+                        border: '1px solid var(--admin-border)', background: 'var(--admin-card-bg)',
+                        color: 'var(--admin-text-muted)', borderRadius: 6, padding: '5px 10px',
+                        fontSize: 11, fontWeight: 700, cursor: 'pointer'
+                      }}
+                      title={`Reset to platform default ${defaultCommissionRate}%`}
+                    >
+                      ডিফল্ট {defaultCommissionRate}%
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--admin-text-muted)', marginTop: 6, lineHeight: 1.4 }}>
+                    {!isCustomRate 
+                      ? `* ডাক্তারের আলাদা রেট না থাকায় প্ল্যাটফর্মের গ্লোবাল ডিফল্ট (${defaultCommissionRate}%) রেট প্রযোজ্য হবে।` 
+                      : `* এই ডাক্তারের জন্য নির্দিষ্ট ${targetCommissionRate}% কমিশন রেট কার্যকর হবে।`}
+                  </div>
                 </div>
               </div>
             </div>
@@ -764,7 +852,11 @@ function DoctorServiceTab() {
                   border: 'none', padding: '8px 22px', borderRadius: 10, fontWeight: 700
                 }}
                 onClick={async () => {
-                  await handleUpdate(enableTarget.id, 'is_enabled', true, 'Service enabled by admin')
+                  const val = parseFloat(targetCommissionRate)
+                  const rateToSave = isNaN(val) ? defaultCommissionRate : val
+                  await handleUpdate(enableTarget.id, 'is_enabled', true, 'Service enabled by admin', {
+                    commission_percentage: rateToSave
+                  })
                   setEnableTarget(null)
                 }}
               >

@@ -18,6 +18,7 @@ import SeoHead from '../components/common/SeoHead'
 import NotFoundEntityState from '../components/common/NotFoundEntityState'
 import { buildHospitalSchema } from '../utils/schemaBuilder'
 import { getMediaUrl, DEFAULT_HOSPITAL_IMAGE } from '../utils/mediaUtils'
+import { safeHttpUrl } from '../utils/sanitizeHtml'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from '../context/ThemeContext'
 import { useFavorites } from '../context/FavoritesContext'
@@ -600,8 +601,8 @@ function HospitalDetailPage() {
 
       const isMobile = window.innerWidth < 992;
       // Mobile: sticky app header (~94px) + breathing room = 104px
-      // Desktop: fixed top header (116px) + comfortable breathing room (24px) = 140px
-      const offset = isMobile ? 104 : 140;
+      // Desktop: fixed top header (104px) + sticky tab bar (~56px) + comfortable breathing room (15px) = 175px
+      const offset = isMobile ? 104 : 175;
       const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
       const offsetPosition = elementPosition - offset;
 
@@ -633,8 +634,8 @@ function HospitalDetailPage() {
 
         const sections = ['summary', 'department', 'facilities', 'doctors', 'gallery', 'reviews'];
         const isMobile = window.innerWidth < 992;
-        // 48px fixed app header + 44px tab bar + buffer = 115px
-        const offset = isMobile ? 115 : 150;
+        // Desktop: 104px fixed header + 56px tab bar + buffer = 175px
+        const offset = isMobile ? 115 : 175;
 
         let currentActive = 'summary';
 
@@ -911,7 +912,7 @@ function HospitalDetailPage() {
       </div>
 
       {/* 2. Desktop Hero Banner (Desktop Only — Untouched Original Layout) */}
-      <section className="hospital-hero-banner d-none d-lg-block" style={{ position: 'relative', marginBottom: 28, overflow: 'hidden' }}>
+      <section className="hospital-hero-banner d-none d-lg-block" style={{ position: 'relative', marginBottom: 0, overflow: 'hidden' }}>
 
         {/* Cover Photo Container */}
         <div
@@ -1891,19 +1892,19 @@ function HospitalDetailPage() {
               display: 'flex',
               alignItems: 'center',
               width: '100%',
-              gap: 8,
-              padding: '10px 0',
+              gap: 14,
+              padding: '12px 0',
               scrollbarWidth: 'none',
               msOverflowStyle: 'none'
             }}
           >
             {[
-              { key: 'summary',    label: 'ওভারভিউ',     icon: <IconLayoutGrid size={16} /> },
-              { key: 'department', label: 'বিভাগ সমূহ',  icon: <IconStethoscope size={16} /> },
-              { key: 'facilities', label: 'সুবিধা সমূহ', icon: <IconStar size={16} /> },
-              { key: 'doctors',    label: 'ডাক্তার',      icon: <IconUsers size={16} /> },
-              { key: 'gallery',    label: 'গ্যালারি',     icon: <IconPhoto size={16} /> },
-              { key: 'reviews',    label: 'রিভিউ',        icon: <IconStar size={16} /> }
+              { key: 'summary',    label: 'ওভারভিউ',     icon: <IconLayoutGrid size={17} /> },
+              { key: 'department', label: 'বিভাগ সমূহ',  icon: <IconStethoscope size={17} /> },
+              { key: 'facilities', label: 'সুবিধা সমূহ', icon: <IconStar size={17} /> },
+              { key: 'doctors',    label: 'ডাক্তার',      icon: <IconUsers size={17} /> },
+              { key: 'gallery',    label: 'গ্যালারি',     icon: <IconPhoto size={17} /> },
+              { key: 'reviews',    label: 'রিভিউ',        icon: <IconStar size={17} /> }
             ].map(tab => {
               const isActive = activeTab === tab.key;
               return (
@@ -1911,21 +1912,22 @@ function HospitalDetailPage() {
                   <Nav.Link
                     eventKey={tab.key}
                     style={{
-                      padding: '8px 18px',
-                      fontSize: 13.5,
-                      fontWeight: 700,
+                      padding: '9px 22px',
+                      fontSize: 14,
+                      fontWeight: isActive ? 800 : 600,
                       color: isActive ? '#FFFFFF' : '#475569',
-                      background: isActive ? '#00B875' : '#F1F5F9',
-                      border: `1px solid ${isActive ? '#00B875' : '#E2E8F0'}`,
-                      borderRadius: 9999,
-                      boxShadow: isActive ? '0 2px 8px rgba(0, 184, 117, 0.28)' : 'none',
-                      transition: 'background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+                      background: isActive ? '#00B875' : '#F8FAFC',
+                      border: `1.5px solid ${isActive ? '#00B875' : '#E2E8F0'}`,
+                      borderRadius: 12,
+                      boxShadow: isActive ? '0 3px 12px rgba(0, 184, 117, 0.3)' : 'none',
+                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 6,
+                      gap: 8,
                       whiteSpace: 'nowrap',
-                      lineHeight: 1.2
+                      lineHeight: 1.25,
+                      fontFamily: "'Hind Siliguri', sans-serif"
                     }}
                   >
                     {tab.icon} {tab.label}
@@ -2822,11 +2824,13 @@ function HospitalDetailPage() {
                   
                   <div className="d-flex align-items-center justify-content-start gap-3 flex-wrap">
                     {socialLinks.map((item, idx) => {
+                      const safeUrl = safeHttpUrl(item.url)
+                      if (!safeUrl) return null
                       const style = getSocialStyle(item.platform)
                       return (
                         <a 
                           key={item.platform || idx}
-                          href={item.url}
+                          href={safeUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           aria-label={item.platform}
@@ -2937,24 +2941,26 @@ function HospitalDetailPage() {
         .sticky-tab-bar {
           position: -webkit-sticky;
           position: sticky;
-          top: 70px;
+          top: 104px;
           z-index: 1020;
           background: #FFFFFF;
           border-bottom: 1px solid #E2E8F0;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-          contain: layout paint;
         }
 
         .sticky-tab-bar .nav-link {
-          border-radius: 9999px !important;
-          border-bottom: none !important;
+          border-radius: 12px !important;
+          border-bottom: 1.5px solid #E2E8F0 !important;
           text-decoration: none !important;
-          transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
 
         .sticky-tab-bar .nav-link:hover {
-          background: #E2E8F0 !important;
-          color: #1E293B !important;
+          background: #FFFFFF !important;
+          color: #00B875 !important;
+          border-color: #00B875 !important;
+          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.15) !important;
+          transform: translateY(-1px);
         }
 
         .sticky-tab-bar .nav-link.active,
@@ -2962,11 +2968,20 @@ function HospitalDetailPage() {
           background: #00B875 !important;
           color: #FFFFFF !important;
           border-color: #00B875 !important;
-          box-shadow: 0 2px 8px rgba(0, 184, 117, 0.28) !important;
+          box-shadow: 0 3px 12px rgba(0, 184, 117, 0.3) !important;
+          transform: none !important;
         }
 
         /* Hero Responsive Row */
         @media (min-width: 992px) {
+          .sticky-tab-bar .nav {
+            gap: 14px !important;
+            padding: 12px 0 !important;
+          }
+          .sticky-tab-bar .nav-link {
+            padding: 9px 22px !important;
+            font-size: 14px !important;
+          }
           .hero-bottom-row {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -2982,6 +2997,9 @@ function HospitalDetailPage() {
             flex-shrink: 0 !important;
             flex-wrap: nowrap !important;
             margin-left: auto !important;
+          }
+          .sticky-tab-bar {
+            top: 104px !important;
           }
         }
 

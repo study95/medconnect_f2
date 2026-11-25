@@ -46,10 +46,10 @@ export default function ShareModal({ show, onHide, shareData }) {
     if (isMobile) {
       window.location.href = messengerUrl
       setTimeout(() => {
-        window.open(webFallbackUrl, '_blank')
+        window.open(webFallbackUrl, '_blank', 'noopener,noreferrer')
       }, 1000)
     } else {
-      window.open(webFallbackUrl, '_blank')
+      window.open(webFallbackUrl, '_blank', 'noopener,noreferrer')
     }
     if (onHide) onHide()
   }

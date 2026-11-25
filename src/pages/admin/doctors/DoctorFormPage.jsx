@@ -9,6 +9,7 @@ import { getDoctor } from '../../../api/adminApi'
 import { useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
 import { FormSkeleton } from '../../../components/common/Skeletons'
 import { Award, Plus, Trash2 } from 'lucide-react'
+import { useActiveMedicalDegrees, useActiveDoctorDesignations } from '../../../features/credentials/useDoctorCredentials'
 
 // Premium Searchable Select Component
 function SearchableSelect({ id, label, options, value, onChange, placeholder, disabled = false, error = '' }) {
@@ -207,6 +208,9 @@ export default function DoctorFormPage() {
   // Dynamic Additional Degrees State
   const [additionalDegrees, setAdditionalDegrees] = useState([])
 
+  const { degrees: activeDegrees = [] } = useActiveMedicalDegrees()
+  const { designations: activeDesignations = [] } = useActiveDoctorDesignations()
+
   const handleAddDegree = () => {
     setAdditionalDegrees(prev => [
       ...prev,
@@ -215,7 +219,15 @@ export default function DoctorFormPage() {
   }
 
   const handleUpdateDegree = (id, field, value) => {
-    setAdditionalDegrees(prev => prev.map(deg => deg.id === id ? { ...deg, [field]: value } : deg))
+    setAdditionalDegrees(prev => prev.map(deg => {
+      if (deg.id !== id) return deg
+      const updated = { ...deg, [field]: value }
+      if (field === 'en' && !deg.bn) {
+        const matched = activeDegrees.find(d => d.title.toLowerCase() === (value || '').trim().toLowerCase())
+        if (matched?.title_bn) updated.bn = matched.title_bn
+      }
+      return updated
+    }))
   }
 
   const handleRemoveDegree = (id) => {
@@ -1112,8 +1124,9 @@ export default function DoctorFormPage() {
                         Additional Degree {index + 1} (English)
                       </label>
                       <input
+                        list="medical-degrees-datalist"
                         className="admin-form-input"
-                        placeholder="e.g. BCS (Health), MD (Cardiology)"
+                        placeholder="e.g. MBBS, FCPS, MD (Cardiology)"
                         value={item.en}
                         onChange={(e) => handleUpdateDegree(item.id, 'en', e.target.value)}
                       />
@@ -1295,6 +1308,7 @@ export default function DoctorFormPage() {
                   <div className="admin-form-group">
                     <label className="admin-form-label">Designation</label>
                     <input 
+                      list="doctor-designations-datalist"
                       className="admin-form-input" 
                       value={exp.designation || ''} 
                       onChange={e => updateExperience(idx, 'designation', e.target.value)} 
@@ -1488,6 +1502,19 @@ export default function DoctorFormPage() {
         </div>
 
       </form>
+
+      {/* Dynamic DataLists for Medical Degrees and Designations */}
+      <datalist id="medical-degrees-datalist">
+        {activeDegrees.map(d => (
+          <option key={d.id} value={d.title}>{d.full_name || d.title_bn ? `${d.title} — ${d.title_bn || d.full_name}` : d.title}</option>
+        ))}
+      </datalist>
+
+      <datalist id="doctor-designations-datalist">
+        {activeDesignations.map(d => (
+          <option key={d.id} value={d.title}>{d.title_bn ? `${d.title} (${d.title_bn})` : d.title}</option>
+        ))}
+      </datalist>
 
       <style dangerouslySetInnerHTML={{ __html: `
         .admin-container { animation: fadeIn 0.4s ease-out; }

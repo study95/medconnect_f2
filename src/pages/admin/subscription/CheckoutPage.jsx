@@ -24,6 +24,7 @@ import {
   CreditCard, Smartphone, ChevronDown, ChevronUp, Printer, ExternalLink, Edit2
 } from 'lucide-react'
 import { getContent } from '../../../utils/contentService'
+import { safeHttpUrl } from '../../../utils/sanitizeHtml'
 import '../../../styles/checkout.css'
 
 export const ONLINE_GATEWAY_METHODS = [
@@ -507,7 +508,12 @@ export default function CheckoutPage() {
       if (res?.success && res?.data) {
         const redirectUrl = res.data.redirect_url || res.data.bkashURL || res.data.gateway_result?.bkashURL || res.data.gateway_result?.redirect_url
         if (redirectUrl) {
-          window.location.href = redirectUrl
+          const safeRedirect = safeHttpUrl(redirectUrl)
+          if (!safeRedirect) {
+            toast.error('অবৈধ পেমেন্ট রিডাইরেক্ট লিংক পাওয়া গেছে।')
+            return
+          }
+          window.location.href = safeRedirect
           return
         }
 

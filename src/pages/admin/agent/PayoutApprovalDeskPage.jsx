@@ -27,6 +27,7 @@ import EmptyState from '../../../components/common/EmptyState'
 import { TableSkeleton } from '../../../components/common/Skeletons'
 import CompactUlid from '../../../components/common/CompactUlid'
 import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
 
 export default function PayoutApprovalDeskPage() {
   const [payouts, setPayouts] = useState([])
@@ -161,6 +162,7 @@ export default function PayoutApprovalDeskPage() {
         admin_notes: adminNotes,
       })
       toast.success(`Payout ${settlingPayout.payout_no} settled and 3-leg ledger posted successfully!`)
+      window.dispatchEvent(new Event('unread-count-sync'))
       setSettlingPayout(null)
       setTrxRef('')
       setAdminNotes('')
@@ -540,8 +542,9 @@ export default function PayoutApprovalDeskPage() {
                               {getInitials(p.agent?.user?.name)}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5 }}>
-                                {p.agent?.user?.name || `Agent #${p.agent_id}`}
+                              <div style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                {isPending && <PulseLight size={8} title="অপেক্ষমাণ পে-আউট রিকোয়েস্ট" />}
+                                <span>{p.agent?.user?.name || `Agent #${p.agent_id}`}</span>
                               </div>
                               <div style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--admin-text-muted)', marginTop: 1 }}>
                                 {p.agent?.agent_code || 'AGT-N/A'}

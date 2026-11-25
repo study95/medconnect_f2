@@ -24,11 +24,20 @@ export const getEcho = () => {
     return echoInstance
   }
 
-  const reverbKey = import.meta.env.VITE_REVERB_APP_KEY || 'di3ir9ilwnjbcg6ddqp3'
-  const reverbHost = import.meta.env.VITE_REVERB_HOST || window.location.hostname || 'localhost'
-  const reverbPort = Number(import.meta.env.VITE_REVERB_PORT || 8080)
-  const reverbScheme = (import.meta.env.VITE_REVERB_SCHEME || 'http').toLowerCase()
+  const reverbKey = import.meta.env.VITE_REVERB_APP_KEY
+  if (!reverbKey) {
+    if (import.meta.env.DEV) {
+      console.warn('[EchoService] VITE_REVERB_APP_KEY is not configured; WebSocket real-time updates disabled.')
+    }
+    return null
+  }
+
+  const isPageHttps = typeof window !== 'undefined' && window.location?.protocol === 'https:'
+  const reverbHost = import.meta.env.VITE_REVERB_HOST || (typeof window !== 'undefined' ? window.location.hostname : 'localhost')
+  const reverbScheme = (import.meta.env.VITE_REVERB_SCHEME || (isPageHttps ? 'https' : 'http')).toLowerCase()
   const isTls = reverbScheme === 'https'
+  const defaultPort = isTls ? 443 : 8080
+  const reverbPort = Number(import.meta.env.VITE_REVERB_PORT || defaultPort)
 
   echoInstance = new Echo({
     broadcaster: 'reverb',
@@ -37,7 +46,7 @@ export const getEcho = () => {
     wsPort: reverbPort,
     wssPort: reverbPort,
     forceTLS: isTls,
-    enabledTransports: ['ws', 'wss'],
+    enabledTransports: isTls ? ['wss'] : ['ws', 'wss'],
     // Custom authorizer using axiosInstance for automatic Sanctum Bearer token resolution
     authorizer: (channel) => {
       return {
@@ -129,6 +138,9 @@ export const isWebSocketConnected = () => connectionState === 'connected'
  */
 const subscribeInternal = (channelType, channelName, onUpdate) => {
   const echo = getEcho()
+  if (!echo) {
+    return () => {}
+  }
   const channelKey = `${channelType}:${channelName}`
 
   if (!channelRegistry.has(channelKey)) {
@@ -273,6 +285,7 @@ export const disconnectEcho = () => {
 export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate, onForceLogout) => {
   if (!userId) return () => {}
   const echo = getEcho()
+  if (!echo) return () => {}
   const channel = echo.private(`user.${userId}`)
 
   if (onDoctorUpdate) {
@@ -306,6 +319,7 @@ export const subscribeToUserChannel = (userId, onDoctorUpdate, onHospitalUpdate,
  */
 export const subscribeToPublicDirectory = (onDoctorUpdate, onHospitalUpdate) => {
   const echo = getEcho()
+  if (!echo) return () => {}
   const channel = echo.channel('public-directory')
 
   if (onDoctorUpdate) {

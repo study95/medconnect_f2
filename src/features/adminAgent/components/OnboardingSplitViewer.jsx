@@ -23,6 +23,7 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { safeHttpUrl } from '../../../utils/sanitizeHtml'
 import adminAgentApi from '../../../api/adminAgentApi'
 import { getMediaUrl } from '../../../utils/mediaUtils'
 import CustomCheckbox from '../../../components/common/CustomCheckbox'
@@ -419,7 +420,7 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
                           📍 GPS: {payload.latitude}, {payload.longitude}
                         </span>
                         <a
-                          href={payload.google_map_url || `https://www.google.com/maps?q=${payload.latitude},${payload.longitude}`}
+                          href={safeHttpUrl(payload.google_map_url) || `https://www.google.com/maps?q=${encodeURIComponent(payload.latitude ?? '')},${encodeURIComponent(payload.longitude ?? '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           style={{ fontSize: 11.5, color: '#0284C7', fontWeight: 700, textDecoration: 'underline' }}
@@ -1150,13 +1151,13 @@ export default function OnboardingSplitViewer({ request, onClose, onDecisionComp
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {documents.map((docKey, idx) => {
-                    const docUrl = request.document_urls?.[idx] || getMediaUrl(docKey) || `/storage/${docKey}`
+                    const docUrl = safeHttpUrl(request.document_urls?.[idx]) || safeHttpUrl(getMediaUrl(docKey))
                     const isSelected = previewDoc === docKey
 
                     return (
                       <div
                         key={idx}
-                        onClick={() => window.open(docUrl, '_blank')}
+                        onClick={() => { if (docUrl) window.open(docUrl, '_blank', 'noopener,noreferrer') }}
                         style={{
                           background: isSelected ? 'rgba(0, 184, 117, 0.08)' : 'var(--admin-card-bg, #FFFFFF)',
                           border: isSelected ? '1.5px solid #00B875' : '1px solid var(--admin-border, #E2E8F0)',

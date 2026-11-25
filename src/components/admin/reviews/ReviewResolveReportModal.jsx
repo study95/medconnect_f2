@@ -54,6 +54,7 @@ export default function ReviewResolveReportModal({
         message: DIALOG_MESSAGES.REVIEW_RESOLVED.message,
       })
       if (onSuccess) onSuccess()
+      window.dispatchEvent(new Event('unread-count-sync'))
       onHide()
     } catch (err) {
       const msg = err?.response?.data?.message || 'Failed to resolve dispute report.'

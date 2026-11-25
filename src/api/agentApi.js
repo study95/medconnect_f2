@@ -9,11 +9,12 @@ const generateIdempotencyKey = () => {
 
 export const agentApi = {
   // Storage & Uploads
-  getPresignedUrl: async ({ file_name, file_type, category }) => {
+  getPresignedUrl: async ({ file_name, file_type, category, file_size }) => {
     const response = await axiosInstance.post('/v1/agent/storage/presigned-url', {
       file_name,
       file_type,
       category,
+      ...(file_size ? { file_size } : {}),
     })
     return response.data
   },

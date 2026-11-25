@@ -28,6 +28,7 @@ import {
   Flag
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { safeHttpUrl } from '../../utils/sanitizeHtml'
 
 export default function SystemHealthPage() {
   const [telemetry, setTelemetry] = useState(null)
@@ -88,9 +89,12 @@ export default function SystemHealthPage() {
     setOpeningPulse(true)
     try {
       const res = await getMonitoringSsoTicket('pulse')
-      if (res.data?.sso_url) {
-        window.open(res.data.sso_url, '_blank', 'noopener,noreferrer')
+      const safeSsoUrl = safeHttpUrl(res.data?.sso_url)
+      if (safeSsoUrl) {
+        window.open(safeSsoUrl, '_blank', 'noopener,noreferrer')
         toast.success('Opening Advanced Pulse Observability...')
+      } else if (res.data?.sso_url) {
+        toast.error('Invalid Pulse SSO URL received.')
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Access restricted to super administrators.')
@@ -105,9 +109,12 @@ export default function SystemHealthPage() {
     setOpeningHorizon(true)
     try {
       const res = await getMonitoringSsoTicket('horizon')
-      if (res.data?.sso_url) {
-        window.open(res.data.sso_url, '_blank', 'noopener,noreferrer')
+      const safeSsoUrl = safeHttpUrl(res.data?.sso_url)
+      if (safeSsoUrl) {
+        window.open(safeSsoUrl, '_blank', 'noopener,noreferrer')
         toast.success('Opening Laravel Horizon Queues...')
+      } else if (res.data?.sso_url) {
+        toast.error('Invalid Horizon SSO URL received.')
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Access restricted to super administrators.')

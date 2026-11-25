@@ -20,9 +20,12 @@ export const DEFAULT_HOSPITAL_IMAGE = '/images/default-hospital.png';
 export const getMediaUrl = (path, fallback = '') => {
   if (!path) return fallback;
   
-  // Data URLs or Blob URLs
-  if (/^(data|blob):/i.test(path)) {
+  // Data image URLs or Blob URLs only (reject data:text/html or javascript: schemes)
+  if (/^(blob:|data:image\/(png|jpe?g|webp|gif|avif|bmp);)/i.test(path)) {
     return path;
+  }
+  if (/^(data|javascript|vbscript):/i.test(path.trim())) {
+    return fallback;
   }
   
   // If it's already an absolute HTTP/HTTPS URL
@@ -30,15 +33,29 @@ export const getMediaUrl = (path, fallback = '') => {
     // If it points to an unintended /storage/favicon.png or /storage/doctorBookletLogo.png, restore to static
     if (path.includes('/storage/favicon.png')) return '/favicon.png';
     if (path.includes('/storage/doctorBookletLogo.png')) return '/doctorBookletLogo.png';
-    // If it points to Cloudflare R2 raw private API endpoint, convert to public R2 CDN URL
+
+    // Preserve SigV4 presigned private R2/S3 URLs and signed private local document stream URLs untouched
+    if (path.includes('X-Amz-Signature=') || path.includes('/documents/private-stream')) {
+      return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, BASE_DOMAIN);
+    }
+
+    // Legacy unsigned raw R2 URL: only map non-KYC public media to public R2 CDN
     if (path.includes('.r2.cloudflarestorage.com/')) {
       const parts = path.split('.r2.cloudflarestorage.com/');
       let sub = parts[1] ? parts[1].split('?')[0] : '';
       sub = sub.replace(/^[^/]+\//, ''); // strip bucket name prefix
+      if (sub.startsWith('verification_docs/') || sub.startsWith('onboarding/') || sub.startsWith('backups/')) {
+        return fallback;
+      }
       return `${R2_BASE}/${sub}`;
     }
     // Normalize localhost / 127.0.0.1 hostnames to match current BASE_DOMAIN
     return path.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, BASE_DOMAIN);
+  }
+
+  // Reject protocol-relative URLs like //evil.com
+  if (path.startsWith('//')) {
+    return fallback;
   }
 
   // If it's a static frontend asset (starts with '/' and not '/storage/')
@@ -48,15 +65,14 @@ export const getMediaUrl = (path, fallback = '') => {
   
   // Clean up leading slashes
   let cleanPath = path.replace(/^\/+/, '');
-  
-  // Specific compatibility alias
-  if (cleanPath === '3ce2457a9880b2ad120ada30e06a725c.jpg') {
-    return `${R2_BASE}/onboarding/hospital_trade_license/2026/11/7937b2de-2030-42b9-996b-dfaf1d168ba1.jpg`;
-  }
 
-  // Cloudflare R2 files (onboarding documents, credentials)
-  if (cleanPath.startsWith('onboarding/')) {
-    return `${R2_BASE}/${cleanPath}`;
+  // Never route private KYC / onboarding / backup relative keys to public CDN
+  if (
+    cleanPath.startsWith('verification_docs/') ||
+    cleanPath.startsWith('onboarding/') ||
+    cleanPath.startsWith('backups/')
+  ) {
+    return fallback;
   }
 
   // Prepend 'storage/' if it's missing from relative path

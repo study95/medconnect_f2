@@ -2,12 +2,15 @@ import { useState, useEffect, useCallback } from 'react'
 import { NavLink, Link, useLocation } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { getMediaUrl } from '../../utils/mediaUtils'
+import { safeHttpUrl } from '../../utils/sanitizeHtml'
 import { useAuth } from '../../context/AuthContext'
 import { useTheme } from '../../context/ThemeContext'
 import { useSubscription } from '../../context/SubscriptionContext'
 import { getPrescriptions, getMonitoringSsoTicket, getDashboardStats } from '../../api/adminApi'
 import { queryClient } from '../../lib/queryClient'
 import { queryKeys } from '../../lib/queryKeys'
+import { SidebarGreenDot } from '../common/NewItemPulseLight'
+import useUnreadIndicators from '../../hooks/useUnreadIndicators'
 
 import {
   Sun, Moon, LogOut, ChevronLeft, ChevronRight, ChevronDown, ChevronUp,
@@ -15,11 +18,12 @@ import {
   CalendarCheck, CreditCard, FileText, ClipboardPlus, Pill, Sparkles, Receipt,
   ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket,
   Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings,
-  Tag, Clock, Megaphone, Mail, Activity, Gauge
+  Tag, Clock, Megaphone, Mail, Activity, Gauge, FlaskConical, HeartHandshake,
+  GraduationCap
 } from 'lucide-react'
 
 // ─── Collapsible Section Component ────────────────────────────────────────────
-function SidebarSection({ id, label, routes = [], isCollapsed: sidebarCollapsed, openSections, onToggle, children }) {
+function SidebarSection({ id, label, routes = [], isCollapsed: sidebarCollapsed, openSections, onToggle, hasUnread, children }) {
   const location = useLocation()
 
   // Force open if the current page belongs to this section
@@ -30,6 +34,7 @@ function SidebarSection({ id, label, routes = [], isCollapsed: sidebarCollapsed,
   )
 
   const isOpen = isActiveSection || openSections[id] !== false // default open
+  const hasUnreadInSection = routes.some(r => hasUnread && hasUnread(r))
 
   // When sidebar is icon-only, always show children (can't show section headers)
   if (sidebarCollapsed) {
@@ -43,7 +48,22 @@ function SidebarSection({ id, label, routes = [], isCollapsed: sidebarCollapsed,
         onClick={() => onToggle(id)}
         title={label}
       >
-        <span className="sidebar-section-label">{label}</span>
+        <span className="sidebar-section-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span>{label}</span>
+          {!isOpen && hasUnreadInSection && (
+            <span
+              title="নতুন আইটেম রয়েছে"
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#00B875',
+                boxShadow: '0 0 6px rgba(0, 184, 117, 0.8)',
+                display: 'inline-block'
+              }}
+            />
+          )}
+        </span>
         <span className="sidebar-section-chevron">
           {isOpen
             ? <ChevronUp size={12} />
@@ -87,6 +107,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   }
 
   const { unreadCount } = useSubscription()
+  const { hasUnread } = useUnreadIndicators()
 
   const handleHoverPrefetch = useCallback((targetPath) => {
     try {
@@ -123,8 +144,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     setOpeningPulse(true)
     try {
       const res = await getMonitoringSsoTicket('pulse')
-      if (res.data?.sso_url) {
-        window.open(res.data.sso_url, '_blank', 'noopener,noreferrer')
+      const safeSsoUrl = safeHttpUrl(res.data?.sso_url)
+      if (safeSsoUrl) {
+        window.open(safeSsoUrl, '_blank', 'noopener,noreferrer')
+      } else if (res.data?.sso_url) {
+        toast.error('Invalid Pulse SSO URL received.')
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Monitoring access is restricted to super admins.')
@@ -139,8 +163,11 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     setOpeningHorizon(true)
     try {
       const res = await getMonitoringSsoTicket('horizon')
-      if (res.data?.sso_url) {
-        window.open(res.data.sso_url, '_blank', 'noopener,noreferrer')
+      const safeSsoUrl = safeHttpUrl(res.data?.sso_url)
+      if (safeSsoUrl) {
+        window.open(safeSsoUrl, '_blank', 'noopener,noreferrer')
+      } else if (res.data?.sso_url) {
+        toast.error('Invalid Horizon SSO URL received.')
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Horizon access is restricted to super admins.')
@@ -289,7 +316,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   }, [updateRxDraftCount, location.pathname])
 
   // ─── Shared props for SidebarSection ──────────────────────────────────────
-  const sectionProps = { isCollapsed, openSections, onToggle: handleToggleSection }
+  const sectionProps = { isCollapsed, openSections, onToggle: handleToggleSection, hasUnread }
 
   return (
     <>
@@ -391,7 +418,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {/* ── CONFIGURATION ── Admin only */}
           {(isAdmin || hasPermission('specialty.view') || hasPermission('medicine.view')) && (
-            <SidebarSection id="configuration" label="Configuration" routes={['/admin/specialties', '/admin/medicines', '/doctor/medicines', '/hospital/medicines']} {...sectionProps}>
+            <SidebarSection id="configuration" label="Configuration" routes={['/admin/specialties', '/admin/medicines', '/admin/investigations', '/admin/clinical-advices', '/admin/chief-complaints', '/admin/dosage-presets', '/admin/doctor-credentials', '/admin/companies', '/admin/dosage-types', '/doctor/medicines', '/hospital/medicines']} {...sectionProps}>
               {(isAdmin || hasPermission('specialty.view')) && (
                 <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
                   to="/admin/specialties"
@@ -415,6 +442,80 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   <span className="nav-text">Medicines</span>
                 </PrefetchNavLink>
               )}
+
+              {isAdmin && (
+                <>
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to="/admin/investigations"
+                    className={`sidebar-nav-item ${isActive('/admin/investigations') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Investigations' : undefined}
+                  >
+                    <span className="nav-icon"><FlaskConical size={18} /></span>
+                    <span className="nav-text">Investigations</span>
+                  </PrefetchNavLink>
+
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to="/admin/clinical-advices"
+                    className={`sidebar-nav-item ${isActive('/admin/clinical-advices') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Clinical Advice' : undefined}
+                  >
+                    <span className="nav-icon"><HeartHandshake size={18} /></span>
+                    <span className="nav-text">Clinical Advice</span>
+                  </PrefetchNavLink>
+
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to="/admin/chief-complaints"
+                    className={`sidebar-nav-item ${isActive('/admin/chief-complaints') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Chief Complaints' : undefined}
+                  >
+                    <span className="nav-icon"><ClipboardPlus size={18} /></span>
+                    <span className="nav-text">Chief Complaints</span>
+                  </PrefetchNavLink>
+
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to="/admin/dosage-presets"
+                    className={`sidebar-nav-item ${isActive('/admin/dosage-presets') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Dosage Presets' : undefined}
+                  >
+                    <span className="nav-icon"><Clock size={18} /></span>
+                    <span className="nav-text">Dosage Presets</span>
+                  </PrefetchNavLink>
+
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to="/admin/doctor-credentials"
+                    className={`sidebar-nav-item ${isActive('/admin/doctor-credentials') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Doctor Credentials' : undefined}
+                  >
+                    <span className="nav-icon"><GraduationCap size={18} /></span>
+                    <span className="nav-text">Doctor Credentials</span>
+                  </PrefetchNavLink>
+
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to="/admin/companies"
+                    className={`sidebar-nav-item ${isActive('/admin/companies') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Pharma Companies' : undefined}
+                  >
+                    <span className="nav-icon"><Building2 size={18} /></span>
+                    <span className="nav-text">Companies</span>
+                  </PrefetchNavLink>
+
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to="/admin/dosage-types"
+                    className={`sidebar-nav-item ${isActive('/admin/dosage-types') ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? 'Dosage Types' : undefined}
+                  >
+                    <span className="nav-icon"><Layers size={18} /></span>
+                    <span className="nav-text">Dosage Types</span>
+                  </PrefetchNavLink>
+                </>
+              )}
             </SidebarSection>
           )}
 
@@ -431,30 +532,44 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               {...sectionProps}
             >
               {/* Doctors */}
-              {(isAdmin || isManager || isDoctor || hasPermission('doctor.view')) && (
-                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
-                  to={isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')}
-                  className={`sidebar-nav-item ${isActive(isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')) ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={isCollapsed ? (isDoctor ? 'My Profile' : 'Doctors') : undefined}
-                >
-                  <span className="nav-icon"><Stethoscope size={18} /></span>
-                  <span className="nav-text">{isDoctor ? 'My Profile' : 'Doctors'}</span>
-                </PrefetchNavLink>
-              )}
+              {(isAdmin || isManager || isDoctor || hasPermission('doctor.view')) && (() => {
+                const docTarget = isDoctor ? pLink('/my-profile') : (isManager ? pLink('/doctors') : '/admin/doctors')
+                const isDocActive = isActive(docTarget)
+                return (
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to={docTarget}
+                    className={`sidebar-nav-item ${isDocActive ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? (isDoctor ? 'My Profile' : 'Doctors') : undefined}
+                  >
+                    <span className="nav-icon"><Stethoscope size={18} /></span>
+                    <span className="nav-text">{isDoctor ? 'My Profile' : 'Doctors'}</span>
+                    {hasUnread('/admin/doctors') && (
+                      <SidebarGreenDot isCollapsed={isCollapsed} isActive={isDocActive} title="নতুন ডাক্তার আবেদন বাকি" />
+                    )}
+                  </PrefetchNavLink>
+                )
+              })()}
 
               {/* Hospitals */}
-              {(isAdmin || isManager || hasPermission('hospital.view')) && (
-                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
-                  to={isManager ? pLink('/my-hospital') : '/admin/hospitals'}
-                  className={`sidebar-nav-item ${isActive(isManager ? pLink('/my-hospital') : '/admin/hospitals') ? 'active' : ''}`}
-                  onClick={onClose}
-                  title={isCollapsed ? (isManager ? 'My Hospital' : 'Hospitals') : undefined}
-                >
-                  <span className="nav-icon"><Building2 size={18} /></span>
-                  <span className="nav-text">{isManager ? 'My Hospital' : 'Hospitals'}</span>
-                </PrefetchNavLink>
-              )}
+              {(isAdmin || isManager || hasPermission('hospital.view')) && (() => {
+                const hospTarget = isManager ? pLink('/my-hospital') : '/admin/hospitals'
+                const isHospActive = isActive(hospTarget)
+                return (
+                  <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                    to={hospTarget}
+                    className={`sidebar-nav-item ${isHospActive ? 'active' : ''}`}
+                    onClick={onClose}
+                    title={isCollapsed ? (isManager ? 'My Hospital' : 'Hospitals') : undefined}
+                  >
+                    <span className="nav-icon"><Building2 size={18} /></span>
+                    <span className="nav-text">{isManager ? 'My Hospital' : 'Hospitals'}</span>
+                    {hasUnread('/admin/hospitals') && (
+                      <SidebarGreenDot isCollapsed={isCollapsed} isActive={isHospActive} title="নতুন হাসপাতাল আবেদন বাকি" />
+                    )}
+                  </PrefetchNavLink>
+                )
+              })()}
 
               {/* Chambers */}
               {(isAdmin || isManager || isDoctor || hasPermission('doctor_chamber.view')) && (
@@ -479,6 +594,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><CalendarOff size={18} /></span>
                   <span className="nav-text">My Leaves</span>
+                  {hasUnread('/admin/doctor-leaves') && (
+                    <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive(pLink('/my-leaves'))} title="ছুটির আবেদন বাকি" />
+                  )}
                 </PrefetchNavLink>
               )}
 
@@ -491,6 +609,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><CalendarOff size={18} /></span>
                   <span className="nav-text">Doctor Leaves</span>
+                  {hasUnread('/admin/doctor-leaves') && (
+                    <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/doctor-leaves')} title="ছুটির আবেদন বাকি" />
+                  )}
                 </PrefetchNavLink>
               )}
 
@@ -556,10 +677,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 title={isCollapsed ? 'Onboarding Desk' : undefined}
               >
                 <span className="nav-icon"><ClipboardPlus size={18} /></span>
-                <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <span>Onboarding Desk</span>
-                  <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>Review</span>
-                </span>
+                <span className="nav-text">Onboarding Desk</span>
               </PrefetchNavLink>
 
               <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
@@ -570,6 +688,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><CreditCard size={18} /></span>
                 <span className="nav-text">Payout Approvals</span>
+                {hasUnread('/admin/agent-payouts') && (
+                  <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/agent-payouts')} title="এজেন্ট পে-আউট রিকোয়েস্ট বাকি" />
+                )}
               </PrefetchNavLink>
 
               <Link
@@ -581,10 +702,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 title={isCollapsed ? 'Agent Dashboard' : undefined}
               >
                 <span className="nav-icon"><Gauge size={18} color="#00B875" /></span>
-                <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <span>Agent Dashboard</span>
-                  <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>Portal ↗</span>
-                </span>
+                <span className="nav-text">Agent Dashboard</span>
               </Link>
             </SidebarSection>
           )}
@@ -625,6 +743,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><CalendarCheck size={18} /></span>
                     <span className="nav-text">Appointments</span>
+                    {hasUnread('/admin/appointments') && (
+                      <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive(pLink('/appointments'))} title="নতুন অ্যাপয়েন্টমেন্ট রিকোয়েস্ট" />
+                    )}
                   </PrefetchNavLink>
 
                   <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
@@ -762,6 +883,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                     >
                       <span className="nav-icon"><FileText size={18} /></span>
                       <span className="nav-text">Commission Report</span>
+                      {hasUnread('/admin/reports/commission') && (
+                        <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/reports/commission')} title="কমিশন সেটেলমেন্ট বাকি" />
+                      )}
                     </PrefetchNavLink>
                   )}
 
@@ -802,6 +926,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Users size={18} /></span>
                     <span className="nav-text">Subscriber Management</span>
+                    {hasUnread('/admin/billing/subscribers') && (
+                      <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/billing/subscribers')} title="নতুন প্যাকেজ ক্রয় বা গ্রাহক" />
+                    )}
                   </PrefetchNavLink>
 
                   <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
@@ -844,6 +971,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><MessageSquare size={18} /></span>
                 <span className="nav-text">Review Moderation</span>
+                {hasUnread('/admin/reviews') && (
+                  <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/reviews/moderation')} title="নতুন রিভিউ বাকি" />
+                )}
               </PrefetchNavLink>
 
               <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
@@ -854,6 +984,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               >
                 <span className="nav-icon"><Shield size={18} /></span>
                 <span className="nav-text">Dispute Reports</span>
+                {hasUnread('/admin/reviews/reports') && (
+                  <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/reviews/reports')} title="নতুন রিভিউ বিরোধ বাকি" />
+                )}
               </PrefetchNavLink>
             </SidebarSection>
           )}
@@ -895,6 +1028,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Ticket size={18} /></span>
                     <span className="nav-text">Support Ticket</span>
+                    {hasUnread('/admin/services') && (
+                      <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/services')} title="নতুন সাপোর্ট টিকিট ওপেন" />
+                    )}
                   </PrefetchNavLink>
 
                   <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
@@ -905,6 +1041,9 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   >
                     <span className="nav-icon"><Mail size={18} /></span>
                     <span className="nav-text">Contact Messages</span>
+                    {hasUnread('/admin/contact-messages') && (
+                      <SidebarGreenDot isCollapsed={isCollapsed} isActive={isActive('/admin/contact-messages')} title="নতুন কন্টাক্ট বার্তা এসেছে" />
+                    )}
                   </PrefetchNavLink>
                 </>
               )}
@@ -956,10 +1095,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   title={isCollapsed ? 'System Health' : undefined}
                 >
                   <span className="nav-icon"><Activity size={18} color="#00B875" /></span>
-                  <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <span>System Health</span>
-                    <span style={{ fontSize: 10, background: '#00B87520', color: '#00B875', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>100%</span>
-                  </span>
+                  <span className="nav-text">System Health</span>
                 </PrefetchNavLink>
               )}
 
@@ -974,10 +1110,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   title={isCollapsed ? 'System Pulse' : undefined}
                 >
                   <span className="nav-icon"><Activity size={18} color="#3b82f6" /></span>
-                  <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <span>Pulse (APM)</span>
-                    <span style={{ fontSize: 10, background: '#3b82f620', color: '#3b82f6', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>SSO ↗</span>
-                  </span>
+                  <span className="nav-text">Pulse (APM)</span>
                 </button>
               )}
 
@@ -992,10 +1125,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                   title={isCollapsed ? 'Laravel Horizon' : undefined}
                 >
                   <span className="nav-icon"><Gauge size={18} color="#8b5cf6" /></span>
-                  <span className="nav-text" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                    <span>Horizon (Queues)</span>
-                    <span style={{ fontSize: 10, background: '#8b5cf620', color: '#8b5cf6', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>SSO ↗</span>
-                  </span>
+                  <span className="nav-text">Horizon (Queues)</span>
                 </button>
               )}
             </SidebarSection>

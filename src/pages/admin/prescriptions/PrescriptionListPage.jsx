@@ -14,6 +14,7 @@ import SearchableSelect from '../../../components/common/SearchableSelect'
 import EmptyState from '../../../components/common/EmptyState'
 import CompactUlid from '../../../components/common/CompactUlid'
 import TableFooter from '../../../components/admin/TableFooter'
+import { PulseLight } from '../../../components/common/NewItemPulseLight'
 import useTableUrlFilters from '../../../hooks/useTableUrlFilters'
 import { getErrorMessage } from '../../../utils/errorHelper'
 import { FileText, PenLine, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
@@ -242,6 +243,7 @@ export default function PrescriptionListPage() {
       } else {
         await deletePrescription(deleteTarget.id)
         queryClient.invalidateQueries({ queryKey: queryKeys.prescriptions.all })
+        window.dispatchEvent(new Event('unread-count-sync'))
       }
     } catch (err) {
     } finally {
@@ -610,7 +612,10 @@ export default function PrescriptionListPage() {
                       <CompactUlid value={p.public_id || p.id} />
                     </td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{p.patient_name || (p.patient ? p.patient.name : '—')}</div>
+                      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {p.status === 'draft' && <PulseLight size={8} title="খসড়া প্রেসক্রিপশন" />}
+                        <span>{p.patient_name || (p.patient ? p.patient.name : '—')}</span>
+                      </div>
                       {p.patient_id && <div style={{ fontSize: 11, color: '#2563eb', fontWeight: 600 }}>{p.patient_id}</div>}
                       {p.patient_phone && <div style={{ fontSize: 11, color: 'var(--admin-text-muted)' }}>{p.patient_phone}</div>}
                     </td>

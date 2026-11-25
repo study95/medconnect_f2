@@ -1,10 +1,12 @@
 import { DetailSkeleton } from '../../../components/common/Skeletons'
 // AppointmentViewPage.jsx — Premium Detailed Appointment View
+import { useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAdminAppointmentDetail, useAdminAppointmentMutations } from '../../../features/appointments/useAdminAppointments'
 import { useAuth } from '../../../context/AuthContext'
 import StatusBadge from '../../../components/admin/StatusBadge'
 import CompactUlid from '../../../components/common/CompactUlid'
+import { markItemSeen } from '../../../utils/seenTracker'
 
 export default function AppointmentViewPage() {
   const { id } = useParams()
@@ -12,6 +14,12 @@ export default function AppointmentViewPage() {
   const navigate = useNavigate()
   const { appointment: appt, isLoading: loading } = useAdminAppointmentDetail(id)
   const { updateAppointmentStatus, isUpdatingStatus: updating } = useAdminAppointmentMutations()
+
+  useEffect(() => {
+    if (id) {
+      markItemSeen('appointments', id)
+    }
+  }, [id])
 
   const handleCashCollect = async () => {
     try {

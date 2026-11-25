@@ -37,6 +37,7 @@ import agentApi from '../../api/agentApi'
 import axiosInstance from '../../api/axiosInstance'
 import PresignedDropzone from '../../features/agent/components/PresignedDropzone'
 import { getMediaUrl } from '../../utils/mediaUtils'
+import { useActiveMedicalDegrees } from '../../features/credentials/useDoctorCredentials'
 
 const enToBnDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBengaliNumber = (str) => (str !== null && str !== undefined && str !== '') ? String(str).replace(/\d/g, d => enToBnDigits[d] || d) : ''
@@ -71,6 +72,7 @@ const INITIAL_DOCTOR_FORM = {
 export default function DoctorOnboardWizardPage() {
   const navigate = useNavigate()
   const { user, isAdmin, isSuperAdmin } = useAuth()
+  const { degrees: masterDegrees = [] } = useActiveMedicalDegrees()
   const isAgentSuspended = !isAdmin && !isSuperAdmin && (user?.agent?.status === 'suspended' || user?.agent?.status === 'inactive')
 
   const [searchParams] = useSearchParams()
@@ -1839,6 +1841,7 @@ export default function DoctorOnboardWizardPage() {
                   <input
                     type="text"
                     name="degree"
+                    list="wizard-doctor-degrees"
                     required
                     autoComplete="off"
                     value={formData.degree}
@@ -1856,6 +1859,13 @@ export default function DoctorOnboardWizardPage() {
                     onFocus={(e) => e.target.style.borderColor = '#00B875'}
                     onBlur={(e) => e.target.style.borderColor = '#CBD5E1'}
                   />
+                  <datalist id="wizard-doctor-degrees">
+                    {masterDegrees.map((d) => (
+                      <option key={d.id} value={d.title}>
+                        {d.title_bn ? `${d.title} (${d.title_bn})` : d.title}
+                      </option>
+                    ))}
+                  </datalist>
                 </div>
 
                 <div>

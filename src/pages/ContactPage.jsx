@@ -10,6 +10,7 @@ import {
   Search, RefreshCw, Calendar, ArrowLeft, X
 } from 'lucide-react'
 import { getContent, fetchContentFromBackend } from '../utils/contentService'
+import { safeHttpUrl } from '../utils/sanitizeHtml'
 import axiosInstance from '../api/axiosInstance'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 
@@ -274,6 +275,11 @@ export default function ContactPage() {
 
       setNewCidToken(generatedCid)
       setShowSuccessModal(true)
+
+      try {
+        window.dispatchEvent(new Event('unread-count-sync'))
+        localStorage.setItem('unread-count-sync-broadcast', Date.now().toString())
+      } catch {}
 
       // Start 10-minute browser cooldown (Standard anti-spam window)
       try {
@@ -1804,7 +1810,7 @@ export default function ContactPage() {
 
               <div style={{ marginTop: 18, position: 'relative', zIndex: 2 }}>
                 <a 
-                  href={messengerUrl}
+                  href={safeHttpUrl(messengerUrl, '#')}
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{
@@ -2832,29 +2838,26 @@ export default function ContactPage() {
                   </div>
 
                   <div style={{ borderRadius: 16, overflow: 'hidden', height: 260, position: 'relative' }}>
-                    {contact.map_embed ? (
-                      <iframe 
-                        src={contact.map_embed} 
-                        width="100%" 
-                        height="260" 
-                        style={{ border: 0 }} 
-                        allowFullScreen 
-                        loading="lazy" 
-                        referrerPolicy="no-referrer-when-downgrade" 
-                        title="Doctor Booklet Office Location Map" 
-                      />
-                    ) : (
-                      <iframe
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14608.036944849319!2d90.36710724874272!3d23.747049993356064!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755b8b33cffc3fb%3A0x4a826f475fd312af!2sDhanmondi%2C%20Dhaka!5e0!3m2!1sen!2sbd!4v1710000000000!5m2!1sen!2sbd"
-                        width="100%"
-                        height="260"
-                        style={{ border: 0 }}
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                        title="Doctor Booklet Dhanmondi Map"
-                      />
-                    )}
+                    {(() => {
+                      const defaultEmbed = 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14608.036944849319!2d90.36710724874272!3d23.747049993356064!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3755b8b33cffc3fb%3A0x4a826f475fd312af!2sDhanmondi%2C%20Dhaka!5e0!3m2!1sen!2sbd!4v1710000000000!5m2!1sen!2sbd'
+                      const candidate = safeHttpUrl(contact.map_embed)
+                      const isAllowedMapHost = candidate && (
+                        candidate.startsWith('https://www.google.com/maps/embed') ||
+                        candidate.startsWith('https://maps.google.com/maps')
+                      )
+                      return (
+                        <iframe
+                          src={isAllowedMapHost ? candidate : defaultEmbed}
+                          width="100%"
+                          height="260"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                          title="Doctor Booklet Office Location Map"
+                        />
+                      )
+                    })()}
                   </div>
                 </div>
 
