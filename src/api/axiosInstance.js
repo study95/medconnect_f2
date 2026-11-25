@@ -32,7 +32,14 @@ export const getDeviceFingerprint = () => {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'
+const resolveDefaultApiBaseUrl = () => {
+  if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
+    return 'http://localhost:8000/api'
+  }
+  return 'http://127.0.0.1:8000/api'
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || resolveDefaultApiBaseUrl()
 const API_ORIGIN = API_BASE_URL.replace(/\/api(\/v\d+)?\/?$/i, '')
 
 const axiosInstance = axios.create({
@@ -49,12 +56,22 @@ const axiosInstance = axios.create({
 })
 
 let csrfCookiePromise = null
-const hasXsrfCookie = () =>
-  typeof document !== 'undefined' && document.cookie.split('; ').some((c) => c.startsWith('XSRF-TOKEN='))
+const getXsrfTokenFromCookie = () => {
+  if (typeof document === 'undefined') return ''
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('XSRF-TOKEN='))
+  if (!match) return ''
+  try {
+    return decodeURIComponent(match.slice('XSRF-TOKEN='.length))
+  } catch {
+    return match.slice('XSRF-TOKEN='.length)
+  }
+}
 
 export const ensureCsrfCookie = async (force = false) => {
   if (typeof window === 'undefined') return
-  if (!force && hasXsrfCookie()) return
+  if (!force && getXsrfTokenFromCookie()) return
   if (!csrfCookiePromise) {
     csrfCookiePromise = axios
       .get(`${API_ORIGIN}/sanctum/csrf-cookie`, {
@@ -75,6 +92,10 @@ axiosInstance.interceptors.request.use(
     const method = (config.method || 'get').toLowerCase()
     if (['post', 'put', 'patch', 'delete'].includes(method)) {
       await ensureCsrfCookie(false)
+      const xsrfToken = getXsrfTokenFromCookie()
+      if (xsrfToken) {
+        config.headers['X-XSRF-TOKEN'] = xsrfToken
+      }
     }
     config.withCredentials = true
     config.headers['X-Auth-Mode'] = 'cookie'

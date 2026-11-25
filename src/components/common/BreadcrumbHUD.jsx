@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Container } from 'react-bootstrap'
 
-export default function BreadcrumbHUD({ links = [], variant = 'dark' }) {
+export default function BreadcrumbHUD({ links = [], variant = 'dark', showBack = true }) {
   const navigate = useNavigate()
 
   return (
@@ -48,37 +48,39 @@ export default function BreadcrumbHUD({ links = [], variant = 'dark' }) {
             ))}
           </nav>
           
-          <button 
-            onClick={() => navigate(-1)} 
-            style={{ 
-              background: variant === 'light' ? 'rgba(255,255,255,0.1)' : '#F1F5F9', 
-              border: variant === 'light' ? '1px solid rgba(255,255,255,0.2)' : 'none', 
-              color: variant === 'light' ? 'white' : '#00A88C', 
-              fontWeight: 900, 
-              fontSize: 11, 
-              padding: '8px 18px', 
-              borderRadius: 12, 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 8,
-              transition: '0.4s',
-              boxShadow: variant === 'light' ? 'none' : '0 4px 12px rgba(0,0,0,0.03)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}
-            onMouseEnter={e => {
-              e.target.style.background = '#00A88C'
-              e.target.style.color = 'white'
-              e.target.style.transform = 'translateY(-1px)'
-            }}
-            onMouseLeave={e => {
-              e.target.style.background = variant === 'light' ? 'rgba(255,255,255,0.1)' : '#F1F5F9'
-              e.target.style.color = variant === 'light' ? 'white' : '#00A88C'
-              e.target.style.transform = 'translateY(0)'
-            }}
-          >
-            ← ফিরে যান
-          </button>
+          {showBack && (
+            <button 
+              onClick={() => navigate(-1)} 
+              style={{ 
+                background: variant === 'light' ? 'rgba(255,255,255,0.1)' : '#F1F5F9', 
+                border: variant === 'light' ? '1px solid rgba(255,255,255,0.2)' : 'none', 
+                color: variant === 'light' ? 'white' : '#00A88C', 
+                fontWeight: 900, 
+                fontSize: 11, 
+                padding: '8px 18px', 
+                borderRadius: 12, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 8,
+                transition: '0.4s',
+                boxShadow: variant === 'light' ? 'none' : '0 4px 12px rgba(0,0,0,0.03)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}
+              onMouseEnter={e => {
+                e.target.style.background = '#00A88C'
+                e.target.style.color = 'white'
+                e.target.style.transform = 'translateY(-1px)'
+              }}
+              onMouseLeave={e => {
+                e.target.style.background = variant === 'light' ? 'rgba(255,255,255,0.1)' : '#F1F5F9'
+                e.target.style.color = variant === 'light' ? 'white' : '#00A88C'
+                e.target.style.transform = 'translateY(0)'
+              }}
+            >
+              ← ফিরে যান
+            </button>
+          )}
         </div>
       </Container>
     </div>

@@ -30,10 +30,8 @@ export default function DoctorDetailPage() {
   const { doctor, chambers, isLoading: loading, refetch } = useAdminDoctorDetail(id)
 
   useEffect(() => {
-    if (id) {
-      markItemSeen('doctors', id)
-    }
-  }, [id])
+    markItemSeen('doctors', id, doctor?.id, doctor?.public_id)
+  }, [id, doctor?.id, doctor?.public_id])
 
   const handleApprove = async () => {
     const ok = await showDialog({

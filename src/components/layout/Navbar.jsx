@@ -1200,6 +1200,9 @@ function AppNavbar() {
                             <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
                               <User size={15} className="me-2" /> প্রোফাইল
                             </Link>
+                            <Link to="/blood-donors/register" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                              <Droplet size={15} className="me-2 text-danger" /> রক্তদাতা প্রোফাইল
+                            </Link>
                             {!isDoctor && !isManager && (
                               <Link to="/my-appointments" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
                                 <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
@@ -1522,6 +1525,9 @@ function AppNavbar() {
                   <>
                     <Link to="/profile" onClick={closeMenu} className="mobile-drawer-sub-item">
                       <User size={16} className="text-secondary" /> <span>প্রোফাইল</span>
+                    </Link>
+                    <Link to="/blood-donors/register" onClick={closeMenu} className="mobile-drawer-sub-item">
+                      <Droplet size={16} className="text-danger" /> <span>রক্তদাতা প্রোফাইল</span>
                     </Link>
                     {!isDoctor && !isManager && (
                       <Link to="/my-appointments" onClick={closeMenu} className="mobile-drawer-sub-item">

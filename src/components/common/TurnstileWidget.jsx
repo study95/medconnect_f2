@@ -1,17 +1,21 @@
 import { useEffect, useRef } from 'react'
+import { getRuntimeConfig, useRuntimeConfig } from '../../utils/runtimeConfig'
 
 const TURNSTILE_SCRIPT_ID = 'cf-turnstile-script'
 const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
 
 export function isTurnstileEnabled() {
+  const cfg = getRuntimeConfig()
+  if (cfg?._loaded) {
+    return Boolean(cfg.turnstile?.enabled && cfg.turnstile?.site_key)
+  }
   return Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY)
 }
 
 /**
  * Reusable Cloudflare Turnstile anti-bot widget.
- * Renders nothing when VITE_TURNSTILE_SITE_KEY is not configured (safe for local dev).
- * When enabled in production, loads the official Turnstile script (permitted by Strict CSP)
- * and invokes onVerify(token) / onExpire() automatically.
+ * Reads live enabled/site_key from /api/v1/public/runtime-config (Admin System Settings)
+ * with fallback to VITE_TURNSTILE_SITE_KEY so admins can toggle it live with zero rebuild.
  */
 export default function TurnstileWidget({
   onVerify,
@@ -22,7 +26,11 @@ export default function TurnstileWidget({
   size = 'flexible',
   className = '',
 }) {
-  const siteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
+  const runtime = useRuntimeConfig()
+  const enabled = runtime?._loaded
+    ? Boolean(runtime.turnstile?.enabled && runtime.turnstile?.site_key)
+    : Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY)
+  const siteKey = enabled ? (runtime?.turnstile?.site_key || import.meta.env.VITE_TURNSTILE_SITE_KEY || '') : ''
   const containerRef = useRef(null)
   const widgetIdRef = useRef(null)
   const callbacksRef = useRef({ onVerify, onExpire, onError })

@@ -25,8 +25,9 @@ export function useUnreadIndicators() {
         return {}
       }
     },
-    staleTime: 1000 * 15, // 15s fresh
-    refetchInterval: 1000 * 20, // sync every 20s
+    staleTime: 1000 * 3, // 3s fresh
+    refetchInterval: 1000 * 5, // fast sync every 5s for real-time responsiveness
+    refetchIntervalInBackground: true,
     refetchOnWindowFocus: true,
   })
 
@@ -51,8 +52,10 @@ export function useUnreadIndicators() {
       return Number(actionRequired.unread_contact_messages || 0)
     }
     if (clean.endsWith('/doctors')) {
+      if (Array.isArray(actionRequired.pending_doctors)) {
+        return actionRequired.pending_doctors.filter(d => !isItemSeen('doctors', d.id, d.public_id)).length
+      }
       if (Array.isArray(actionRequired.pending_doctor_ids)) {
-        pruneSeenItems('doctors', actionRequired.pending_doctor_ids)
         return actionRequired.pending_doctor_ids.filter(id => !isItemSeen('doctors', id)).length
       }
       const raw = Number(actionRequired.inactive_doctors || 0)
@@ -60,8 +63,10 @@ export function useUnreadIndicators() {
       return Math.max(0, raw - seen)
     }
     if (clean.endsWith('/hospitals') || clean.includes('/my-hospital')) {
+      if (Array.isArray(actionRequired.pending_hospitals)) {
+        return actionRequired.pending_hospitals.filter(h => !isItemSeen('hospitals', h.id, h.public_id)).length
+      }
       if (Array.isArray(actionRequired.pending_hospital_ids)) {
-        pruneSeenItems('hospitals', actionRequired.pending_hospital_ids)
         return actionRequired.pending_hospital_ids.filter(id => !isItemSeen('hospitals', id)).length
       }
       const raw = Number(actionRequired.inactive_hospitals || 0)
@@ -74,8 +79,10 @@ export function useUnreadIndicators() {
       return Math.max(0, raw - seen)
     }
     if (clean.includes('/appointments')) {
+      if (Array.isArray(actionRequired.pending_appointments_list)) {
+        return actionRequired.pending_appointments_list.filter(a => !isItemSeen('appointments', a.id, a.public_id)).length
+      }
       if (Array.isArray(actionRequired.pending_appointment_ids)) {
-        pruneSeenItems('appointments', actionRequired.pending_appointment_ids)
         return actionRequired.pending_appointment_ids.filter(id => !isItemSeen('appointments', id)).length
       }
       const raw = Number(actionRequired.pending_appointments || 0)
@@ -125,11 +132,13 @@ export function useUnreadIndicators() {
   useEffect(() => {
     const handleSync = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() })
+      queryClient.refetchQueries({ queryKey: queryKeys.dashboard.stats() })
       setSyncTick(t => t + 1)
     }
     const handleStorage = (e) => {
       if (e.key === 'unread-count-sync-broadcast') {
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.stats() })
+        queryClient.refetchQueries({ queryKey: queryKeys.dashboard.stats() })
         setSyncTick(t => t + 1)
       }
     }

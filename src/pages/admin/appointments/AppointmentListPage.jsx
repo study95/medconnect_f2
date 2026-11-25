@@ -887,8 +887,17 @@ export default function AppointmentListPage() {
                           </div>
                           <div>
                             <div style={{ fontWeight: 700, color: 'var(--admin-text)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              {appt.status === 'pending' && !isSeen(appt.id) && (
-                                <PulseLight size={6.5} title="নতুন / অপেক্ষমাণ অ্যাপয়েন্টমেন্ট (দেখা হয়নি)" />
+                              {appt.status === 'pending' && !isSeen(appt.id, appt.public_id) && (
+                                <span
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    markSeen(appt.id, appt.public_id)
+                                  }}
+                                  style={{ cursor: 'pointer', display: 'inline-flex' }}
+                                  title="নতুন / অপেক্ষমাণ অ্যাপয়েন্টমেন্ট (ক্লিক করে দেখা হয়েছে চিহ্নিত করুন)"
+                                >
+                                  <PulseLight size={6.5} />
+                                </span>
                               )}
                               <span>{appt.patient?.name || appt.patient_name || appt.user_name || 'Unknown Patient'}</span>
                             </div>
@@ -1103,7 +1112,7 @@ export default function AppointmentListPage() {
                       </td>
                       <td style={{ textAlign: 'right', paddingRight: 24 }}>
                         <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                          <Link to={`/admin/appointments/view/${appt.id}`} onClick={() => markSeen(appt.id)} className="admin-action-btn admin-action-btn-view" title="View Details">
+                          <Link to={`/admin/appointments/view/${appt.id}`} onClick={() => markSeen(appt.id, appt.public_id)} className="admin-action-btn admin-action-btn-view" title="View Details">
                             <img src="/icons/view.png" alt="View" />
                           </Link>
                           {isAdmin && (

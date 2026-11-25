@@ -29,10 +29,8 @@ export default function HospitalDetailPage() {
   const { hospital, doctors, chambers, isLoading: loading, refetch } = useAdminHospitalDetail(id)
 
   useEffect(() => {
-    if (id) {
-      markItemSeen('hospitals', id)
-    }
-  }, [id])
+    markItemSeen('hospitals', id, hospital?.id, hospital?.public_id)
+  }, [id, hospital?.id, hospital?.public_id])
 
   const handleApprove = async () => {
     const ok = await showDialog({

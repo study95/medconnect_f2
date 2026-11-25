@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getDoctor } from '../../../api/adminApi'
+import { markItemSeen } from '../../../utils/seenTracker'
 import { useAdminDoctorLookups, useAdminDoctorMutations } from '../../../features/doctors/useAdminDoctors'
 import { FormSkeleton } from '../../../components/common/Skeletons'
 import { Award, Plus, Trash2 } from 'lucide-react'
@@ -291,6 +292,7 @@ export default function DoctorFormPage() {
     try {
       const res = await getDoctor(id)
       const d = res.data?.data || res.data
+      markItemSeen('doctors', id, d?.id, d?.public_id)
       
       // Explicit mapping to keep state clean and avoid relation objects
       const mappedData = {

@@ -17,27 +17,37 @@ export function getSeenIds(category) {
 }
 
 /**
- * Check if a specific item has been seen
+ * Check if a specific item (or any of its alternative IDs, e.g. id or public_id) has been seen
  */
-export function isItemSeen(category, id) {
-  if (!id) return false
-  const ids = getSeenIds(category)
-  return ids.includes(String(id))
+export function isItemSeen(category, ...ids) {
+  if (!ids || ids.length === 0) return false
+  const seen = getSeenIds(category)
+  return ids.some(id => id && seen.includes(String(id)))
 }
 
 /**
- * Mark an item as seen by the admin, broadcasting instant sync to UI
+ * Mark item(s) as seen by the admin, broadcasting instant sync to UI
+ * Accepts multiple IDs (e.g. markItemSeen('doctors', doctor.id, doctor.public_id))
  */
-export function markItemSeen(category, id) {
-  if (!id || typeof window === 'undefined') return
+export function markItemSeen(category, ...ids) {
+  if (typeof window === 'undefined' || !ids || ids.length === 0) return
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     const data = raw ? JSON.parse(raw) : {}
     const list = Array.isArray(data[category]) ? data[category].map(String) : []
-    const strId = String(id)
 
-    if (!list.includes(strId)) {
-      list.push(strId)
+    let changed = false
+    ids.forEach(id => {
+      if (id !== null && id !== undefined && id !== '') {
+        const strId = String(id)
+        if (!list.includes(strId)) {
+          list.push(strId)
+          changed = true
+        }
+      }
+    })
+
+    if (changed) {
       data[category] = list
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 
@@ -60,10 +70,10 @@ export function getSeenCount(category) {
 }
 
 /**
- * Automatically prunes seen IDs that are no longer in the pending list (e.g. approved or deleted)
+ * Safe prune: only prune when explicitly provided a non-empty list of valid IDs
  */
 export function pruneSeenItems(category, validPendingIds = []) {
-  if (typeof window === 'undefined' || !Array.isArray(validPendingIds)) return
+  if (typeof window === 'undefined' || !Array.isArray(validPendingIds) || validPendingIds.length === 0) return
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     const data = raw ? JSON.parse(raw) : {}
@@ -99,6 +109,7 @@ export function clearSeenItems(category) {
 /**
  * React Hook for components (DoctorListPage, HospitalListPage, etc.)
  * Provides reactive `isSeen` and `markSeen` that trigger instant component re-render.
+ * Also synchronizes on window focus and pageshow (bfcache navigation).
  */
 export function useSeenTracker(category) {
   const [seenIds, setSeenIds] = useState(() => getSeenIds(category))
@@ -109,20 +120,28 @@ export function useSeenTracker(category) {
     }
     window.addEventListener('unread-count-sync', handleSync)
     window.addEventListener('storage', handleSync)
+    window.addEventListener('focus', handleSync)
+    window.addEventListener('pageshow', handleSync)
+
     return () => {
       window.removeEventListener('unread-count-sync', handleSync)
       window.removeEventListener('storage', handleSync)
+      window.removeEventListener('focus', handleSync)
+      window.removeEventListener('pageshow', handleSync)
     }
   }, [category])
 
-  const markSeen = useCallback((id) => {
-    markItemSeen(category, id)
+  const markSeen = useCallback((...ids) => {
+    markItemSeen(category, ...ids)
     setSeenIds(getSeenIds(category))
   }, [category])
 
-  const isSeen = useCallback((id) => {
-    return seenIds.includes(String(id))
-  }, [seenIds])
+  const isSeen = useCallback((...ids) => {
+    if (!ids || ids.length === 0) return false
+    // Check both local reactive state and live localStorage for zero-latency accuracy
+    const liveIds = getSeenIds(category)
+    return ids.some(id => id && (seenIds.includes(String(id)) || liveIds.includes(String(id))))
+  }, [category, seenIds])
 
   return {
     seenIds,

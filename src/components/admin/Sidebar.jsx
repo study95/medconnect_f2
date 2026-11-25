@@ -56,10 +56,15 @@ function SidebarSection({ id, label, routes = [], isCollapsed: sidebarCollapsed,
               style={{
                 width: 7,
                 height: 7,
+                minWidth: 7,
+                minHeight: 7,
                 borderRadius: '50%',
-                background: '#00B875',
-                boxShadow: '0 0 6px rgba(0, 184, 117, 0.8)',
-                display: 'inline-block'
+                backgroundColor: '#10B981',
+                display: 'inline-block',
+                flexShrink: 0,
+                marginLeft: 'auto',
+                border: 'none',
+                boxShadow: 'none',
               }}
             />
           )}
@@ -713,7 +718,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               id="bookings"
               label={isDoctor ? 'My Patients' : 'Bookings'}
               routes={[
-                '/admin/patients', '/admin/appointments', '/admin/serial-display', '/admin/prescriptions',
+                '/admin/patients', '/admin/blood-donors', '/admin/appointments', '/admin/serial-display', '/admin/prescriptions',
                 '/doctor/patients', '/doctor/appointments', '/doctor/serial-display', '/doctor/prescriptions', '/doctor/notes', '/doctor/doctor-reviews',
                 '/hospital/patients', '/hospital/appointments', '/hospital/serial-display', '/hospital/prescriptions',
               ]}
@@ -729,6 +734,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Users size={18} /></span>
                   <span className="nav-text">{isDoctor ? 'My Patients' : 'Patients'}</span>
+                </PrefetchNavLink>
+              )}
+
+              {/* Blood Donors — Admin only */}
+              {isAdmin && (
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                  to="/admin/blood-donors"
+                  className={`sidebar-nav-item ${isActive('/admin/blood-donors') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Blood Donors' : undefined}
+                >
+                  <span className="nav-icon"><HeartHandshake size={18} /></span>
+                  <span className="nav-text">Blood Donors</span>
                 </PrefetchNavLink>
               )}
 
@@ -993,7 +1011,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
           {/* ── SYSTEM ── Admin, Manager, Doctor */}
           {(isAdmin || isManager || isDoctor || hasPermission('user.view') || hasPermission('content.update') || hasPermission('audit_log.view')) && (
-            <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/contact-messages', '/admin/sms-settings', '/admin/sms-logs', '/admin/audit-logs']} {...sectionProps}>
+            <SidebarSection id="system" label="System" routes={['/admin/users', '/admin/content', '/admin/services', '/admin/contact-messages', '/admin/sms-settings', '/admin/sms-logs', '/admin/system-settings', '/admin/audit-logs', '/admin/system-health']} {...sectionProps}>
               {/* Users — Admin only */}
               {(isAdmin || hasPermission('user.view')) && (
                 <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
@@ -1083,6 +1101,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><Shield size={18} /></span>
                   <span className="nav-text">Audit Log</span>
+                </PrefetchNavLink>
+              )}
+
+              {/* System Settings (Encrypted Runtime Config) — Admin only */}
+              {isAdmin && (
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                  to="/admin/system-settings"
+                  className={`sidebar-nav-item ${isActive('/admin/system-settings') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'System Settings' : undefined}
+                >
+                  <span className="nav-icon"><Settings size={18} color="#059669" /></span>
+                  <span className="nav-text">System Settings</span>
                 </PrefetchNavLink>
               )}
 

@@ -7,7 +7,8 @@ import {
   IconCircleCheck, IconClock, IconUserCheck, IconAlertCircle, IconRotate, 
   IconShieldCheck, IconX, IconChevronRight, IconShare, IconUsers, IconActivity,
   IconArrowRight, IconCalendar, IconChevronDown, IconChevronUp, IconAdjustmentsHorizontal,
-  IconBuildingHospital, IconNavigation, IconCheck
+  IconBuildingHospital, IconNavigation, IconCheck, IconGridDots, IconListDetails, IconUser,
+  IconLock
 } from '@tabler/icons-react'
 import toast from 'react-hot-toast'
 import { getBloodDonors, revealDonorContact } from '../api/bloodDonorApi'
@@ -17,10 +18,101 @@ const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
 const enToBn = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' }
 const toBn = (str) => str !== null && str !== undefined && str !== '' ? String(str).replace(/\d/g, d => enToBn[d] || d) : ''
 
+// Return name exactly as provided from database without cutting
+const getLocationRawName = (loc) => {
+  if (!loc) return ''
+  if (typeof loc === 'string') return loc.trim()
+  return (loc.bangla_name || loc.name || '').trim()
+}
+
+// Return structured address info for a donor: primary hierarchy (exact DB values) and secondary street detail
+const getDonorAddressInfo = (donor) => {
+  if (!donor) return { areaHierarchy: 'ঠিকানা দেওয়া নেই', streetAddress: '' }
+  const unionName = getLocationRawName(donor.union)
+  const upazilaName = getLocationRawName(donor.upazila)
+  const districtName = getLocationRawName(donor.district)
+  const rawParts = [unionName, upazilaName, districtName].filter(Boolean)
+  const uniqueParts = rawParts.filter((item, idx) => rawParts.indexOf(item) === idx)
+  const areaHierarchy = uniqueParts.join(', ') || 'ঠিকানা দেওয়া নেই'
+
+  let streetAddress = (donor.village_or_area || '').trim()
+  streetAddress = streetAddress.replace(/[,.\s]+$/, '')
+  return { areaHierarchy, streetAddress }
+}
+
+function BloodDonorSkeletonGrid({ count = 6, viewMode = 'grid' }) {
+  const items = Array.from({ length: count }, (_, i) => i)
+
+  if (viewMode === 'list') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {items.map(i => (
+          <div key={i} style={{
+            background: '#FFFFFF',
+            borderRadius: 16,
+            padding: '16px 20px',
+            border: '1px solid #E2E8F0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div className="blood-skeleton-box" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+              <div>
+                <div className="blood-skeleton-box" style={{ width: 140, height: 16, marginBottom: 8 }} />
+                <div className="blood-skeleton-box" style={{ width: 220, height: 12 }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="blood-skeleton-box" style={{ width: 100, height: 28, borderRadius: 99 }} />
+              <div className="blood-skeleton-box" style={{ width: 110, height: 38, borderRadius: 10 }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <Row className="g-3 g-md-4">
+      {items.map(i => (
+        <Col xs={12} sm={6} lg={4} key={i}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: 20,
+            padding: '20px 18px',
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div className="blood-skeleton-box" style={{ width: 44, height: 24, borderRadius: 8 }} />
+              <div className="blood-skeleton-box" style={{ width: 90, height: 22, borderRadius: 99 }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div className="blood-skeleton-box" style={{ width: 56, height: 56, borderRadius: '50%', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div className="blood-skeleton-box" style={{ width: '70%', height: 16, marginBottom: 8 }} />
+                <div className="blood-skeleton-box" style={{ width: '45%', height: 12 }} />
+              </div>
+            </div>
+            <div className="blood-skeleton-box" style={{ width: '90%', height: 14, marginBottom: 14 }} />
+            <div className="blood-skeleton-box" style={{ width: '60%', height: 14, marginBottom: 18 }} />
+            <div className="blood-skeleton-box" style={{ width: '100%', height: 42, borderRadius: 12 }} />
+          </div>
+        </Col>
+      ))}
+    </Row>
+  )
+}
+
 export default function BloodDonorsPage() {
   const navigate = useNavigate()
 
   // Filter States
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedGroup, setSelectedGroup] = useState('')
   const [divisionId, setDivisionId] = useState('')
   const [districtId, setDistrictId] = useState('')
@@ -28,13 +120,36 @@ export default function BloodDonorsPage() {
   const [unionId, setUnionId] = useState('')
   const [availableOnly, setAvailableOnly] = useState(true)
   const [showFilters, setShowFilters] = useState(false)
+  const [viewMode, setViewModeState] = useState(() => {
+    try {
+      return localStorage.getItem('blood_donors_view_mode') || 'grid'
+    } catch {
+      return 'grid'
+    }
+  })
+
+  // Debounce search input by 350ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const setViewMode = (mode) => {
+    setViewModeState(mode)
+    try {
+      localStorage.setItem('blood_donors_view_mode', mode)
+    } catch {}
+  }
 
   const activeFilterCount = (selectedGroup ? 1 : 0) + 
                             (divisionId ? 1 : 0) + 
                             (districtId ? 1 : 0) + 
                             (upazilaId ? 1 : 0) + 
                             (unionId ? 1 : 0) + 
-                            (!availableOnly ? 1 : 0)
+                            (!availableOnly ? 1 : 0) +
+                            (debouncedSearch.trim() ? 1 : 0)
 
   // Location Cascade Dropdown Options
   const [divisions, setDivisions] = useState([])
@@ -44,18 +159,21 @@ export default function BloodDonorsPage() {
 
   // Data & Pagination
   const [donors, setDonors] = useState([])
-  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0 })
+  const [perPage, setPerPage] = useState(10)
+  const [pagination, setPagination] = useState({ current_page: 1, last_page: 1, total: 0, from: 0, to: 0 })
   const [loading, setLoading] = useState(false)
 
   // Reveal Modal State
   const [revealedDonor, setRevealedDonor] = useState(null)
+  const [numberCopied, setNumberCopied] = useState(false)
   const [revealLoading, setRevealLoading] = useState(false)
+  const [securityNotice, setSecurityNotice] = useState(null)
 
   // 1. Load Divisions on Mount
   useEffect(() => {
     getDivisions()
       .then(res => setDivisions(res.data?.data || []))
-      .catch(() => toast.error('বিভাগের তালিকা লোড করা যায়নি'))
+      .catch(() => {})
   }, [])
 
   // 2. Cascade: Districts
@@ -116,14 +234,15 @@ export default function BloodDonorsPage() {
   }, [upazilaId])
 
   // 5. Fetch Donors
-  const fetchDonors = useCallback(async (page = 1) => {
+  const fetchDonors = useCallback(async (page = 1, currentPerPage = perPage) => {
     setLoading(true)
     try {
       const params = {
         page,
-        per_page: 12,
+        per_page: currentPerPage,
         available_only: availableOnly,
       }
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim()
       if (selectedGroup) params.blood_group = selectedGroup
       if (divisionId) params.division_id = divisionId
       if (districtId) params.district_id = districtId
@@ -137,20 +256,24 @@ export default function BloodDonorsPage() {
           current_page: res.data.data.current_page,
           last_page: res.data.data.last_page,
           total: res.data.data.total,
+          from: res.data.data.from,
+          to: res.data.data.to,
         })
       }
-    } catch {
-      toast.error('রক্তদাতাদের তালিকা লোড করা যায়নি')
+    } catch (err) {
+      console.error('Failed to load blood donors:', err)
     } finally {
       setLoading(false)
     }
-  }, [selectedGroup, divisionId, districtId, upazilaId, unionId, availableOnly])
+  }, [selectedGroup, divisionId, districtId, upazilaId, unionId, availableOnly, perPage, debouncedSearch])
 
   useEffect(() => {
     fetchDonors(1)
   }, [fetchDonors])
 
   const handleResetFilters = () => {
+    setSearchQuery('')
+    setDebouncedSearch('')
     setSelectedGroup('')
     setDivisionId('')
     setDistrictId('')
@@ -162,23 +285,51 @@ export default function BloodDonorsPage() {
   // Handle Contact Reveal
   const handleRevealContact = async (donor) => {
     setRevealLoading(true)
+    toast.dismiss()
     try {
       const res = await revealDonorContact(donor.id)
       if (res.data?.success) {
         setRevealedDonor({
           ...donor,
           contact_number: res.data.contact_number,
+          primary_contact_number: res.data.primary_contact_number,
           alternate_contact_number: res.data.alternate_contact_number,
+          is_alternate: Boolean(res.data.is_alternate),
           remaining: res.data.remaining_reveals_hour,
         })
       }
     } catch (err) {
+      toast.dismiss()
       if (err.response?.status === 429) {
-        toast.error(err.response.data.message || 'প্রতি ঘণ্টায় সর্বোচ্চ ৫টি নম্বর দেখা যাবে')
+        const data = err.response?.data || {}
+        setSecurityNotice({
+          type: 'rate_limit',
+          title: 'রক্তদাতা সুরক্ষা ও নিরাপত্তা সীমা',
+          subtitle: 'রক্তদাতাদের ব্যক্তিগত তথ্যের সুরক্ষা এবং স্প্যামিং প্রতিরোধে এই সীমা কার্যকর রয়েছে।',
+          message: data.message,
+          limit: data.limit || 5,
+          isGuest: data.is_guest ?? true,
+          retryAfterMinutes: data.retry_after_minutes || 60,
+          retryAfterSeconds: data.retry_after_seconds || 3600,
+          buttonText: 'বুঝেছি, ধন্যবাদ'
+        })
       } else if (err.response?.status === 401 && err.response?.data?.requires_login) {
-        toast.error('এই রক্তদাতার যোগাযোগ নম্বর দেখতে লগইন করা আবশ্যক')
+        setSecurityNotice({
+          type: 'login_required',
+          title: 'লগইন আবশ্যক',
+          subtitle: 'রক্তদাতার অনুরোধক্রমে যোগাযোগ নম্বর দেখতে সাইন-ইন প্রয়োজন।',
+          message: 'এই রক্তদাতার নিরাপত্তা ও অনুরোধক্রমে কন্টাক্ট নম্বর দেখার জন্য অ্যাকাউন্টে লগইন করা আবশ্যক।',
+          buttonText: 'লগইন করুন',
+          actionUrl: '/login?redirect=' + encodeURIComponent(window.location.pathname)
+        })
       } else {
-        toast.error(err.response?.data?.message || 'নম্বর আনলক করা যায়নি')
+        setSecurityNotice({
+          type: 'general',
+          title: 'যোগাযোগ নম্বর দেখা সম্ভব হয়নি',
+          subtitle: 'সার্ভার সংযোগে সাময়িক বিলম্ব দেখা দিয়েছে।',
+          message: err.response?.data?.message || 'অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।',
+          buttonText: 'ঠিক আছে'
+        })
       }
     } finally {
       setRevealLoading(false)
@@ -189,6 +340,21 @@ export default function BloodDonorsPage() {
     <div className="blood-page-container" style={{ background: '#F8FAFC', minHeight: '100vh', paddingBottom: 60, fontFamily: "'Hind Siliguri', 'Inter', sans-serif" }}>
 
       <style>{`
+        @keyframes bloodCardPulse {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        .blood-skeleton-box {
+          background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+          background-size: 200% 100%;
+          animation: bloodCardPulse 1.5s ease-in-out infinite;
+          border-radius: 8px;
+        }
+        .donor-search-wrap:focus-within {
+          border-color: #00A88C !important;
+          box-shadow: 0 0 0 3px rgba(0, 168, 140, 0.12) !important;
+        }
+
         .blood-page-container {
           padding-top: var(--header-height, 90px);
         }
@@ -636,6 +802,92 @@ export default function BloodDonorsPage() {
           box-shadow: 0 6px 16px rgba(0,168,140,0.28);
         }
 
+        /* ── VIEW MODE TOGGLE BUTTONS (Inspired by Doctors Page) ── */
+        .blood-view-toggle {
+          display: inline-flex;
+          align-items: center;
+          border: 1.5px solid #CBD5E1;
+          border-radius: 10px;
+          overflow: hidden;
+          background: #FFFFFF;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+        }
+        .blood-view-btn {
+          height: 32px;
+          padding: 0 12px;
+          border: none;
+          background: #FFFFFF;
+          color: #64748B;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          font-size: 13px;
+          font-weight: 700;
+          transition: all 0.2s ease;
+        }
+        .blood-view-btn.active {
+          background: #00A88C;
+          color: #FFFFFF;
+        }
+        .blood-view-btn:first-child {
+          border-right: 1px solid #CBD5E1;
+        }
+
+        /* ── LIST VIEW CARD (Horizontal Card like DoctorCard) ── */
+        .blood-list-card {
+          background: #FFFFFF;
+          border-radius: 14px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+          transition: all 0.25s ease;
+          position: relative;
+          overflow: hidden;
+          display: flex;
+          flex-direction: row;
+          align-items: stretch;
+          margin-bottom: 16px;
+        }
+        .blood-list-card:hover {
+          border-color: #94A3B8;
+          box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+        }
+        .blood-list-image-box {
+          width: 210px;
+          min-width: 210px;
+          align-self: stretch;
+          position: relative;
+          background: #F1F5F9;
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        .blood-list-image-box img {
+          width: 100% !important;
+          height: 100% !important;
+          object-fit: cover !important;
+          object-position: top center !important;
+        }
+        @media (max-width: 767px) {
+          .blood-list-card {
+            flex-direction: column !important;
+          }
+          .blood-list-image-box {
+            width: 100% !important;
+            min-width: 100% !important;
+            height: 280px !important;
+            align-self: auto !important;
+          }
+          .blood-list-image-box img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            object-position: top center !important;
+          }
+        }
+
         /* ── MOBILE-FIRST OPTIMIZATIONS ── */
         .blood-group-scroll-strip {
           display: flex;
@@ -986,6 +1238,63 @@ export default function BloodDonorsPage() {
 
       {/* ── 2. SEARCH & FILTER CARD (COLLAPSIBLE / ACCORDION) ──────────── */}
       <Container id="donor-search-filters" style={{ marginBottom: 16 }}>
+        {/* Modern Live Search Bar (Matching Doctors Page) */}
+        <div 
+          className="donor-search-wrap"
+          style={{
+            position: 'relative',
+            marginBottom: 10,
+            background: '#FFFFFF',
+            borderRadius: 14,
+            border: '1.5px solid #E2E8F0',
+            boxShadow: '0 2px 6px rgba(15, 23, 42, 0.03)',
+            display: 'flex',
+            alignItems: 'center',
+            padding: '7px 14px',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <IconSearch size={18} color="#94A3B8" style={{ flexShrink: 0, marginRight: 10 }} />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="রক্তদাতার নাম বা গ্রাম/এলাকা দিয়ে খুঁজুন... (যেমন: রহিম, ধানমন্ডি)"
+            style={{
+              border: 'none',
+              outline: 'none',
+              width: '100%',
+              fontSize: 14,
+              fontWeight: 600,
+              color: '#0F172A',
+              background: 'transparent'
+            }}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{
+                border: 'none',
+                background: '#F1F5F9',
+                borderRadius: '50%',
+                width: 22,
+                height: 22,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: '#64748B',
+                marginLeft: 8,
+                flexShrink: 0
+              }}
+              title="মুছে ফেলুন"
+            >
+              <IconX size={13} />
+            </button>
+          )}
+        </div>
+
         <div className="filter-card-container" style={{ padding: 0, overflow: 'hidden' }}>
           {/* Clickable Header Bar to Open/Close Filter (Strictly Single Row) */}
           <div 
@@ -1241,47 +1550,56 @@ export default function BloodDonorsPage() {
 
       {/* ── 3. DONORS LIST ───────────────────────────────────── */}
       <Container style={{ marginTop: 14, marginBottom: 50 }}>
-        {/* Results Count Bar */}
+        {/* Results Count & View Mode Toggle Bar (Single Row, No Wrap) */}
         <div style={{ 
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
           marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0',
-          flexWrap: 'wrap', gap: 8
+          gap: 10
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Left: Title & Count */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 10,
+              width: 32, height: 32, borderRadius: 10, flexShrink: 0,
               background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
               <IconUsers size={18} color="#00A88C" />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <h4 style={{ fontWeight: 900, color: '#0F172A', fontSize: 17, margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flexWrap: 'nowrap' }}>
+              <h4 style={{ fontWeight: 900, color: '#0F172A', fontSize: 16, margin: 0, whiteSpace: 'nowrap' }}>
                 রক্তদাতাদের তালিকা
               </h4>
               <span style={{
                 background: '#E6F6F4', color: '#047857', border: '1px solid #A7F3D0',
-                padding: '2px 8px', borderRadius: 99, fontSize: 12, fontWeight: 800
+                padding: '2px 8px', borderRadius: 99, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0
               }}>
                 {toBn(pagination.total)} জন
               </span>
             </div>
           </div>
 
-          <div style={{
-            background: '#FFFFFF', padding: '4px 12px', borderRadius: 8,
-            border: '1px solid #E2E8F0', fontSize: 12, fontWeight: 700, color: '#64748B'
-          }}>
-            পৃষ্ঠা: <b style={{ color: '#0F172A' }}>{toBn(pagination.current_page)}</b> / {toBn(pagination.last_page)}
+          {/* Right: Grid & List Toggle in the same row */}
+          <div className="blood-view-toggle" style={{ flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`blood-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
+              title="গ্রিড ভিউ"
+            >
+              <IconGridDots size={17} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`blood-view-btn ${viewMode === 'list' ? 'active' : ''}`}
+              title="লিস্ট ভিউ"
+            >
+              <IconListDetails size={17} />
+            </button>
           </div>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-            <Spinner animation="border" style={{ color: '#E11D48', width: 44, height: 44 }} />
-            <p style={{ marginTop: 14, color: '#64748B', fontWeight: 700, fontSize: 14.5 }}>
-              রক্তদাতাদের তালিকা অনুসন্ধান করা হচ্ছে...
-            </p>
-          </div>
+          <BloodDonorSkeletonGrid count={perPage <= 10 ? 6 : 9} viewMode={viewMode} />
         ) : donors.length === 0 ? (
           <div style={{ 
             background: '#FFFFFF', borderRadius: 24, padding: '60px 24px', 
@@ -1307,101 +1625,167 @@ export default function BloodDonorsPage() {
               সকল রক্তদাতা দেখুন
             </button>
           </div>
-        ) : (
-          <Row className="g-4">
+        ) : viewMode === 'grid' ? (
+          /* ── GRID VIEW CARDS (Matching DoctorCard Pic & Text) ── */
+          <Row className="g-3 g-md-4">
             {donors.map(donor => (
               <Col key={donor.id} xs={12} sm={6} lg={4}>
-                <div className="blood-card" style={{ padding: '24px 20px' }}>
+                <div
+                  className="blood-card"
+                  style={{
+                    background: 'white',
+                    borderRadius: 14,
+                    border: '1px solid #E5E7EB',
+                    padding: '16px',
+                    transition: 'all 0.25s ease',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+                  }}
+                >
                   <div>
-                    {/* Card Top Header: Blood Badge & Status */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        background: '#FFF1F2', color: '#BE123C',
-                        padding: '6px 14px', borderRadius: 12,
-                        fontWeight: 900, fontSize: 18,
-                        border: '1.5px solid #FECDD3'
-                      }}>
-                        <IconDroplet size={18} color="#E11D48" />
-                        {donor.blood_group}
+                    {/* Doctor-style Top Avatar & Main Info */}
+                    <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+                      {/* Avatar Container (90px x 95px, rounded-12) */}
+                      <div style={{ flexShrink: 0, position: 'relative', width: 90, height: 95 }}>
+                        <div style={{
+                          width: 90, height: 95, borderRadius: 12, overflow: 'hidden',
+                          background: '#F1F5F9', border: '1px solid #E2E8F0'
+                        }}>
+                          {donor.photo_url ? (
+                            <img
+                              src={donor.photo_url}
+                              alt={donor.name}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '100%', height: '100%',
+                              background: '#F8FAFC',
+                              color: '#94A3B8', display: 'flex',
+                              alignItems: 'center', justifyContent: 'center'
+                            }}>
+                              <IconUser size={38} color="#CBD5E1" />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {donor.is_ready_to_donate ? (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          background: '#ECFDF5', color: '#065F46',
-                          border: '1px solid #A7F3D0', padding: '4px 10px',
-                          borderRadius: 99, fontSize: 12, fontWeight: 800
-                        }}>
-                          <IconCircleCheck size={14} color="#10B981" />
-                          প্রস্তুত
-                        </span>
-                      ) : (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 4,
-                          background: '#FFFBEB', color: '#92400E',
-                          border: '1px solid #FDE68A', padding: '4px 10px',
-                          borderRadius: 99, fontSize: 12, fontWeight: 800
-                        }}>
-                          <IconClock size={14} color="#D97706" />
-                          বিশ্রামে ({toBn(donor.days_until_available || 90)} দিন বাকি)
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Donor Avatar & Name */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-                      <div style={{
-                        width: 52, height: 52, borderRadius: 16,
-                        background: '#F1F5F9', color: '#0F172A',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 22, fontWeight: 900, flexShrink: 0,
-                        overflow: 'hidden', border: '2px solid #E2E8F0'
-                      }}>
-                        {donor.photo_url ? (
-                          <img src={donor.photo_url} alt={donor.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          donor.name.charAt(0)
-                        )}
-                      </div>
-
-                      <div>
-                        <h5 style={{ fontWeight: 900, color: '#0F172A', fontSize: 17, marginBottom: 3 }}>
+                      {/* Right Text Column (Matching DoctorCard text hierarchy) */}
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                        <h4 style={{
+                          fontWeight: 800, color: '#0F172A', fontSize: 16,
+                          margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          fontFamily: "'Hind Siliguri', sans-serif",
+                          lineHeight: 1.25
+                        }} title={donor.name}>
                           {donor.name}
-                        </h5>
-                        <span style={{ fontSize: 12.5, color: '#64748B' }}>
+                        </h4>
+
+                        {/* Ribbon Badge for Blood Group */}
+                        <div style={{ marginTop: 2, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            background: '#E11D48',
+                            color: 'white',
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            padding: '2px 10px 2px 8px',
+                            borderRadius: '4px 2px 2px 4px',
+                            clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}>
+                            রক্তদাতা ({donor.blood_group})
+                          </span>
+                        </div>
+
+                        {/* Gender & Age Subtitle */}
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
                           {donor.gender === 'male' ? 'পুরুষ' : donor.gender === 'female' ? 'নারী' : 'অন্যান্য'}
                           {donor.age ? ` • বয়স: ${toBn(donor.age)} বছর` : ''}
-                        </span>
+                        </div>
+
+                        {/* Total Donations moved to top beside avatar */}
+                        <div style={{ fontSize: 12, color: '#475569', marginTop: 3, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                          মোট রক্তদান: <b style={{ color: '#0F172A' }}>{toBn(donor.total_donations || 0)} বার</b>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Location Box (5-tier with Union) */}
+                    {/* Detailed Location & Readiness Box */}
                     <div style={{
-                      background: '#F8FAFC', borderRadius: 14,
-                      padding: '12px 14px', border: '1px solid #E2E8F0',
-                      marginBottom: 18, fontSize: 13, color: '#475569'
+                      background: '#F8FAFC', borderRadius: 10,
+                      padding: '10px 12px', border: '1px solid #E2E8F0',
+                      marginBottom: 14, fontSize: 12, color: '#475569'
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginBottom: 6 }}>
-                        <IconMapPin size={16} color="#00A88C" style={{ marginTop: 2, flexShrink: 0 }} />
-                        <span style={{ fontWeight: 600, lineHeight: 1.4 }}>
-                          {[
-                            donor.village_or_area,
-                            donor.union?.bangla_name || donor.union?.name,
-                            donor.upazila?.bangla_name || donor.upazila?.name,
-                            donor.district?.bangla_name || donor.district?.name,
-                          ].filter(Boolean).join(', ') || 'ঠিকানা দেওয়া নেই'}
-                        </span>
-                      </div>
+                      {(() => {
+                        const { areaHierarchy, streetAddress } = getDonorAddressInfo(donor);
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                              <IconMapPin size={15} color="#00A88C" style={{ marginTop: 2, flexShrink: 0 }} />
+                              <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 12.5, lineHeight: 1.4, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                                {areaHierarchy}
+                              </span>
+                            </div>
+                            {streetAddress && (
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'baseline',
+                                gap: 5,
+                                paddingLeft: 21,
+                                fontSize: 11.5,
+                                color: '#64748B',
+                                fontFamily: "'Hind Siliguri', sans-serif",
+                                lineHeight: 1.35
+                              }}>
+                                <span style={{
+                                  background: '#EDF2F7',
+                                  color: '#475569',
+                                  padding: '1px 6px',
+                                  borderRadius: 4,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  flexShrink: 0
+                                }}>
+                                  ঠিকানা
+                                </span>
+                                <span style={{ color: '#334155', fontWeight: 500 }}>
+                                  {streetAddress}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        fontSize: 11.5, color: '#64748B', paddingTop: 8,
-                        borderTop: '1px solid #EEF2F6', marginTop: 4
-                      }}>
-                        <span>মোট রক্তদান: <b>{toBn(donor.total_donations || 0)} বার</b></span>
+                      {/* Readiness status & last donation in grid view */}
+                      <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+                        {donor.is_ready_to_donate ? (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            color: '#065F46', fontSize: 11, fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif"
+                          }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                            বর্তমানে রক্ত দিতে প্রস্তুত আছেন
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            color: '#92400E', fontSize: 11, fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif"
+                          }}>
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
+                            বর্তমানে বিশ্রামে আছেন {donor.days_until_available ? `(${toBn(donor.days_until_available)} দিন পর)` : ''}
+                          </span>
+                        )}
                         {donor.last_donated_at && (
-                          <span>সর্বশেষ: <b>{toBn(donor.last_donated_at)}</b></span>
+                          <span style={{ fontSize: 10.5, color: '#64748B' }}>
+                            সর্বশেষ: <b style={{ color: '#0F172A' }}>{toBn(donor.last_donated_at)}</b>
+                          </span>
                         )}
                       </div>
                     </div>
@@ -1409,14 +1793,245 @@ export default function BloodDonorsPage() {
 
                   {/* Card Bottom: Masked Contact & Call Button */}
                   <div style={{
-                    paddingTop: 14, borderTop: '1px solid #F1F5F9',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    paddingTop: 10, borderTop: '1px solid #F1F5F9',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 8
                   }}>
                     <div>
-                      <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', color: '#94A3B8' }}>
+                      <span style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#64748B', lineHeight: 1.3, fontFamily: "'Hind Siliguri', sans-serif" }}>
                         যোগাযোগ নম্বর
                       </span>
-                      <span style={{ fontSize: 14.5, fontWeight: 800, letterSpacing: '0.05em', color: '#1E293B' }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: '#0F172A', letterSpacing: '0.02em', lineHeight: 1.4 }}>
+                        {donor.masked_contact}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRevealContact(donor)}
+                      disabled={revealLoading}
+                      className="reveal-btn"
+                      style={{ padding: '8px 14px', fontSize: 12.5 }}
+                    >
+                      <IconPhoneCall size={15} />
+                      <span>নম্বর দেখুন</span>
+                    </button>
+                  </div>
+                </div>
+              </Col>
+            ))}
+          </Row>
+        ) : (
+          /* ── LIST VIEW CARDS (Matching DoctorCard List View) ── */
+          <div>
+            {donors.map(donor => (
+              <div
+                key={donor.id}
+                className="blood-list-card"
+                style={{
+                  background: 'white',
+                  borderRadius: 14,
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                  padding: 0,
+                  transition: 'all 0.25s ease',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'stretch',
+                  marginBottom: 16
+                }}
+              >
+                {/* Left Featured Image Box (Matching DoctorCard doc-list-image-box) */}
+                <div className="blood-list-image-box" style={{
+                  width: 170,
+                  minWidth: 170,
+                  alignSelf: 'stretch',
+                  position: 'relative',
+                  background: '#F1F5F9',
+                  flexShrink: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  {donor.photo_url ? (
+                    <img
+                      src={donor.photo_url}
+                      alt={donor.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: '100%', height: '100%', minHeight: 140,
+                      background: '#F8FAFC',
+                      color: '#94A3B8', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <IconUser size={52} color="#CBD5E1" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Details Box (Matching DoctorCard Right Box) */}
+                <div style={{
+                  flex: 1,
+                  padding: '16px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  minWidth: 0
+                }}>
+                  <div>
+                    {/* Top Title & Ribbon */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, width: '100%' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h3 style={{
+                          fontSize: 18,
+                          fontWeight: 800,
+                          color: '#0F172A',
+                          margin: '0 0 6px 0',
+                          fontFamily: "'Hind Siliguri', sans-serif",
+                          lineHeight: 1.3
+                        }}>
+                          {donor.name}
+                        </h3>
+
+                        {/* Blood Group Ribbon + Gender/Age placed with Right Side Text */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                          <span style={{
+                            display: 'inline-block',
+                            background: '#E11D48',
+                            color: 'white',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            padding: '2px 10px 2px 8px',
+                            borderRadius: '4px 2px 2px 4px',
+                            clipPath: 'polygon(0 0, calc(100% - 6px) 0, 100% 50%, calc(100% - 6px) 100%, 0 100%)',
+                            fontFamily: "'Hind Siliguri', sans-serif"
+                          }}>
+                            রক্তের গ্রুপ: {donor.blood_group}
+                          </span>
+
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                            {donor.gender === 'male' ? 'পুরুষ' : donor.gender === 'female' ? 'নারী' : 'অন্যান্য'}
+                            {donor.age ? ` • বয়স: ${toBn(donor.age)} বছর` : ''}
+                          </span>
+                        </div>
+
+                        {/* Location Section - Clean Professional Presentation */}
+                        {(() => {
+                          const { areaHierarchy, streetAddress } = getDonorAddressInfo(donor);
+                          return (
+                            <div style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {/* Primary Geographic Hierarchy */}
+                              <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                color: '#0F172A',
+                                fontSize: 13.5,
+                                fontWeight: 700,
+                                fontFamily: "'Hind Siliguri', sans-serif",
+                                lineHeight: 1.3
+                              }}>
+                                <IconMapPin size={16} color="#00A88C" style={{ flexShrink: 0 }} />
+                                <span>{areaHierarchy}</span>
+                              </div>
+
+                              {/* Street/Village Detail if available */}
+                              {streetAddress && (
+                                <div style={{
+                                  display: 'flex',
+                                  alignItems: 'baseline',
+                                  gap: 6,
+                                  paddingLeft: 22,
+                                  fontSize: 12,
+                                  color: '#64748B',
+                                  fontFamily: "'Hind Siliguri', sans-serif",
+                                  lineHeight: 1.4
+                                }}>
+                                  <span style={{
+                                    background: '#F1F5F9',
+                                    color: '#475569',
+                                    padding: '1px 7px',
+                                    borderRadius: 4,
+                                    fontSize: 10.5,
+                                    fontWeight: 700,
+                                    flexShrink: 0,
+                                    border: '1px solid #E2E8F0'
+                                  }}>
+                                    ঠিকানা
+                                  </span>
+                                  <span style={{ color: '#334155', fontWeight: 500 }}>
+                                    {streetAddress}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Badges strip */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: '#64748B', flexWrap: 'wrap' }}>
+                          <span>মোট রক্তদান: <b style={{ color: '#0F172A' }}>{toBn(donor.total_donations || 0)} বার</b></span>
+                          {donor.last_donated_at && (
+                            <span>সর্বশেষ রক্তদান: <b style={{ color: '#0F172A' }}>{toBn(donor.last_donated_at)}</b></span>
+                          )}
+                        </div>
+
+                        {/* Readiness Status indicator: moved here cleanly */}
+                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          {donor.is_ready_to_donate ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              background: '#ECFDF5',
+                              color: '#065F46',
+                              border: '1px solid #A7F3D0',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              padding: '3px 10px',
+                              borderRadius: 8,
+                              fontFamily: "'Hind Siliguri', sans-serif"
+                            }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#10B981', display: 'inline-block' }} />
+                              বর্তমানে রক্ত দিতে প্রস্তুত আছেন
+                            </span>
+                          ) : (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              background: '#FFFBEB',
+                              color: '#92400E',
+                              border: '1px solid #FDE68A',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              padding: '3px 10px',
+                              borderRadius: 8,
+                              fontFamily: "'Hind Siliguri', sans-serif"
+                            }}>
+                              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', display: 'inline-block' }} />
+                              বর্তমানে বিশ্রামে আছেন {donor.days_until_available ? `(পরবর্তী রক্তদান: ${toBn(donor.days_until_available)} দিন পর)` : ''}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom: Contact & Reveal Button */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    marginTop: 14, paddingTop: 10, borderTop: '1px solid #F1F5F9'
+                  }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#64748B', lineHeight: 1.3, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        যোগাযোগ নম্বর
+                      </span>
+                      <span style={{ fontSize: 13.5, fontWeight: 700, color: '#0F172A', letterSpacing: '0.02em', lineHeight: 1.4 }}>
                         {donor.masked_contact}
                       </span>
                     </div>
@@ -1428,33 +2043,128 @@ export default function BloodDonorsPage() {
                       className="reveal-btn"
                     >
                       <IconPhoneCall size={16} />
-                      নম্বর দেখুন
+                      <span>নম্বর দেখুন</span>
                     </button>
                   </div>
                 </div>
-              </Col>
+              </div>
             ))}
-          </Row>
+          </div>
         )}
 
-        {/* Pagination */}
-        {pagination.last_page > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 40 }}>
-            {Array.from({ length: pagination.last_page }, (_, i) => i + 1).map(page => (
-              <button
-                key={page}
-                onClick={() => fetchDonors(page)}
+        {/* Standard Enterprise Pagination Footer (matching Image 2) */}
+        {pagination.total > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 16,
+            marginTop: 36,
+            padding: '16px 20px',
+            background: '#FFFFFF',
+            borderRadius: 14,
+            border: '1px solid #E2E8F0',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+          }}>
+            {/* Left: Show [ per_page ] entries */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: '#475569', fontWeight: 600 }}>
+              <span>Show</span>
+              <select
+                value={perPage}
+                onChange={(e) => {
+                  const newPerPage = Number(e.target.value)
+                  setPerPage(newPerPage)
+                  fetchDonors(1, newPerPage)
+                }}
                 style={{
-                  width: 38, height: 38, borderRadius: 10,
-                  border: `1.5px solid ${pagination.current_page === page ? '#00A88C' : '#CBD5E1'}`,
-                  background: pagination.current_page === page ? '#00A88C' : '#FFFFFF',
-                  color: pagination.current_page === page ? '#FFFFFF' : '#334155',
-                  fontWeight: 800, fontSize: 14, cursor: 'pointer', transition: '0.2s'
+                  padding: '5px 12px',
+                  borderRadius: 8,
+                  border: '1.5px solid #CBD5E1',
+                  background: '#FFFFFF',
+                  color: '#0F172A',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  outline: 'none'
                 }}
               >
-                {toBn(page)}
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>entries</span>
+            </div>
+
+            {/* Middle: Showing X-Y of Z entries */}
+            <div style={{ fontSize: 13.5, color: '#475569', fontWeight: 600 }}>
+              Showing {pagination.from ?? ((pagination.current_page - 1) * perPage + (pagination.total > 0 ? 1 : 0))}-{pagination.to ?? Math.min(pagination.current_page * perPage, pagination.total)} of {pagination.total} entries
+            </div>
+
+            {/* Right: Pagination Controls */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <button
+                type="button"
+                disabled={pagination.current_page <= 1}
+                onClick={() => fetchDonors(pagination.current_page - 1)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  border: '1.5px solid #CBD5E1',
+                  background: pagination.current_page <= 1 ? '#F8FAFC' : '#FFFFFF',
+                  color: pagination.current_page <= 1 ? '#94A3B8' : '#334155',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: pagination.current_page <= 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Previous
               </button>
-            ))}
+
+              {Array.from({ length: Math.max(1, pagination.last_page || 1) }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => fetchDonors(page)}
+                  style={{
+                    minWidth: 34,
+                    height: 34,
+                    padding: '0 8px',
+                    borderRadius: 8,
+                    border: `1.5px solid ${pagination.current_page === page ? '#00A88C' : '#CBD5E1'}`,
+                    background: pagination.current_page === page ? '#00A88C' : '#FFFFFF',
+                    color: pagination.current_page === page ? '#FFFFFF' : '#334155',
+                    fontSize: 13,
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  {page}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={pagination.current_page >= (pagination.last_page || 1)}
+                onClick={() => fetchDonors(pagination.current_page + 1)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  border: '1.5px solid #CBD5E1',
+                  background: pagination.current_page >= (pagination.last_page || 1) ? '#F8FAFC' : '#FFFFFF',
+                  color: pagination.current_page >= (pagination.last_page || 1) ? '#94A3B8' : '#334155',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: pagination.current_page >= (pagination.last_page || 1) ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </Container>
@@ -1466,37 +2176,162 @@ export default function BloodDonorsPage() {
         centered
         dialogClassName="blood-reveal-modal"
       >
-        <Modal.Body style={{ padding: '32px 24px', textAlign: 'center', borderRadius: 24, background: '#FFFFFF' }}>
+        <Modal.Body style={{ padding: '32px 24px', textAlign: 'center', borderRadius: 24, background: '#FFFFFF', position: 'relative' }}>
+          {/* Close Button in top right */}
+          <button
+            type="button"
+            onClick={() => setRevealedDonor(null)}
+            aria-label="Close"
+            style={{
+              position: 'absolute',
+              top: 14,
+              right: 14,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: '#F1F5F9',
+              border: 'none',
+              color: '#64748B',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              padding: 0,
+              zIndex: 10
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#E2E8F0'
+              e.currentTarget.style.color = '#0F172A'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = '#F1F5F9'
+              e.currentTarget.style.color = '#64748B'
+            }}
+          >
+            <IconX size={18} />
+          </button>
+
           {revealedDonor && (
             <>
+              {/* Modern Centered Donor Avatar with Blood Group Badge */}
               <div style={{
-                width: 60, height: 60, borderRadius: '50%',
-                background: '#E6F6F4', color: '#00A88C',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                marginBottom: 14
+                position: 'relative',
+                width: 80,
+                height: 80,
+                margin: '0 auto 12px auto'
               }}>
-                <IconPhoneCall size={30} />
+                <div style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  border: '3px solid #00A88C',
+                  boxShadow: '0 4px 14px rgba(0, 168, 140, 0.2)',
+                  background: '#F1F5F9'
+                }}>
+                  {revealedDonor.photo_url ? (
+                    <img
+                      src={revealedDonor.photo_url}
+                      alt={revealedDonor.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAFC' }}>
+                      <IconUser size={38} color="#94A3B8" />
+                    </div>
+                  )}
+                </div>
+                {/* Blood Group Badge attached to bottom of Avatar */}
+                <span style={{
+                  position: 'absolute',
+                  bottom: -6,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#E11D48',
+                  color: '#FFFFFF',
+                  fontSize: 12,
+                  fontWeight: 800,
+                  padding: '2px 9px',
+                  borderRadius: 12,
+                  border: '2px solid #FFFFFF',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.35)',
+                  whiteSpace: 'nowrap',
+                  fontFamily: "'Hind Siliguri', sans-serif"
+                }}>
+                  {revealedDonor.blood_group}
+                </span>
               </div>
 
-              <div style={{
-                display: 'inline-block',
-                background: '#FFF1F2', color: '#BE123C',
-                padding: '4px 12px', borderRadius: 99,
-                fontSize: 13, fontWeight: 900, marginBottom: 8,
-                border: '1px solid #FECDD3'
-              }}>
-                ব্লাড গ্রুপ: {revealedDonor.blood_group}
-              </div>
-
-              <h4 style={{ fontWeight: 900, color: '#0F172A', fontSize: 20, marginBottom: 4 }}>
+              {/* Donor Name */}
+              <h4 style={{ fontWeight: 800, color: '#0F172A', fontSize: 20, margin: '14px 0 3px 0', fontFamily: "'Hind Siliguri', sans-serif" }}>
                 {revealedDonor.name}
               </h4>
-              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 22 }}>
-                {[revealedDonor.union?.bangla_name, revealedDonor.upazila?.bangla_name, revealedDonor.district?.bangla_name].filter(Boolean).join(', ')}
-              </p>
+
+              {/* Gender, Age & Status */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12.5, color: '#64748B', marginBottom: 12, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                <span>{revealedDonor.gender === 'male' ? 'পুরুষ' : revealedDonor.gender === 'female' ? 'নারী' : 'অন্যান্য'}</span>
+                {revealedDonor.age && <span>• বয়স: {toBn(revealedDonor.age)} বছর</span>}
+                <span>•</span>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  color: revealedDonor.is_ready_to_donate ? '#059669' : '#D97706',
+                  fontWeight: 700
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: revealedDonor.is_ready_to_donate ? '#10B981' : '#F59E0B' }} />
+                  {revealedDonor.is_ready_to_donate ? 'রক্তদানে প্রস্তুত' : 'বিশ্রামে আছেন'}
+                </span>
+              </div>
+
+              {/* Location Card */}
+              {(() => {
+                const { areaHierarchy, streetAddress } = getDonorAddressInfo(revealedDonor);
+                return (
+                  <div style={{
+                    background: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    borderRadius: 12,
+                    padding: '8px 14px',
+                    marginBottom: 20,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 3,
+                    maxWidth: '100%'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#0F172A', fontSize: 13, fontWeight: 700, fontFamily: "'Hind Siliguri', sans-serif" }}>
+                      <IconMapPin size={15} color="#00A88C" style={{ flexShrink: 0 }} />
+                      <span>{areaHierarchy}</span>
+                    </div>
+                    {streetAddress && (
+                      <div style={{ fontSize: 12, color: '#64748B', fontFamily: "'Hind Siliguri', sans-serif" }}>
+                        {streetAddress}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Direct Call & Copy Buttons */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                {revealedDonor.is_alternate && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    padding: '6px 12px',
+                    borderRadius: 10,
+                    background: '#F0FDF4',
+                    border: '1px solid #BBF7D0',
+                    color: '#15803D',
+                    fontSize: 12.5,
+                    fontWeight: 700
+                  }}>
+                    <IconCircleCheck size={16} />
+                    রক্তদানের জন্য রক্তদাতার নির্ধারিত নম্বর
+                  </div>
+                )}
+
                 <a
                   href={`tel:${revealedDonor.contact_number}`}
                   style={{
@@ -1517,15 +2352,19 @@ export default function BloodDonorsPage() {
                     type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(revealedDonor.contact_number)
-                      toast.success('নম্বর কপি করা হয়েছে')
+                      setNumberCopied(true)
+                      setTimeout(() => setNumberCopied(false), 2000)
                     }}
                     style={{
                       flex: 1, padding: '10px', borderRadius: 12,
-                      background: '#F8FAFC', color: '#334155', border: '1px solid #CBD5E1',
-                      fontWeight: 700, fontSize: 13, cursor: 'pointer'
+                      background: numberCopied ? '#ECFDF5' : '#F8FAFC',
+                      color: numberCopied ? '#059669' : '#334155',
+                      border: `1px solid ${numberCopied ? '#A7F3D0' : '#CBD5E1'}`,
+                      fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    নম্বর কপি করুন
+                    {numberCopied ? '✓ কপি হয়েছে!' : 'নম্বর কপি করুন'}
                   </button>
 
                   <a
@@ -1543,17 +2382,17 @@ export default function BloodDonorsPage() {
                   </a>
                 </div>
 
-                {revealedDonor.alternate_contact_number && (
+                {revealedDonor.primary_contact_number && revealedDonor.is_alternate && revealedDonor.primary_contact_number !== revealedDonor.contact_number && (
                   <a
-                    href={`tel:${revealedDonor.alternate_contact_number}`}
+                    href={`tel:${revealedDonor.primary_contact_number}`}
                     style={{
                       width: '100%', padding: '11px', borderRadius: 12,
-                      background: '#F1F5F9', color: '#334155',
-                      fontWeight: 700, fontSize: 13.5, textDecoration: 'none',
+                      background: '#F1F5F9', color: '#475569',
+                      fontWeight: 700, fontSize: 13, textDecoration: 'none',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                     }}
                   >
-                    বিকল্প নম্বর: {revealedDonor.alternate_contact_number}
+                    অন্যান্য যোগাযোগ নম্বর: {revealedDonor.primary_contact_number}
                   </a>
                 )}
               </div>
@@ -1565,6 +2404,225 @@ export default function BloodDonorsPage() {
                 <IconShieldCheck size={16} color="#00A88C" />
                 স্প্যাম প্রতিরোধে সুরক্ষিত (ঘণ্টায় অবশিষ্ট: {toBn(revealedDonor.remaining || 0)}টি)
               </div>
+            </>
+          )}
+        </Modal.Body>
+      </Modal>
+
+      {/* ── PROFESSIONAL SECURITY & RATE LIMIT NOTICE MODAL ──────────── */}
+      <Modal 
+        show={!!securityNotice} 
+        onHide={() => setSecurityNotice(null)}
+        centered
+        dialogClassName="blood-security-modal"
+      >
+        <Modal.Body style={{ padding: '32px 24px 28px', textAlign: 'center', borderRadius: 24, background: '#FFFFFF', position: 'relative' }}>
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => setSecurityNotice(null)}
+            aria-label="Close"
+            style={{
+              position: 'absolute',
+              top: 14,
+              right: 14,
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: '#F1F5F9',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#64748B',
+              cursor: 'pointer'
+            }}
+          >
+            <IconX size={16} />
+          </button>
+
+          {securityNotice && (
+            <>
+              {/* Icon Stage */}
+              <div style={{
+                width: 68,
+                height: 68,
+                borderRadius: '50%',
+                background: securityNotice.type === 'rate_limit'
+                  ? 'linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)'
+                  : securityNotice.type === 'login_required'
+                  ? 'linear-gradient(135deg, #E0F2FE 0%, #BAE6FD 100%)'
+                  : 'linear-gradient(135deg, #FFE4E6 0%, #FECDD3 100%)',
+                color: securityNotice.type === 'rate_limit'
+                  ? '#D97706'
+                  : securityNotice.type === 'login_required'
+                  ? '#0284C7'
+                  : '#E11D48',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 16,
+                boxShadow: securityNotice.type === 'rate_limit'
+                  ? '0 6px 18px rgba(217, 119, 6, 0.2)'
+                  : securityNotice.type === 'login_required'
+                  ? '0 6px 18px rgba(2, 132, 199, 0.2)'
+                  : '0 6px 18px rgba(225, 29, 72, 0.2)'
+              }}>
+                {securityNotice.type === 'rate_limit' ? (
+                  <IconShieldCheck size={36} />
+                ) : securityNotice.type === 'login_required' ? (
+                  <IconLock size={34} />
+                ) : (
+                  <IconAlertCircle size={36} />
+                )}
+              </div>
+
+              {/* Title & Subtitle */}
+              <h4 style={{ fontWeight: 900, color: '#0F172A', fontSize: 19, marginBottom: 6 }}>
+                {securityNotice.title}
+              </h4>
+              <p style={{ fontSize: 13, color: '#64748B', fontWeight: 600, maxWidth: 360, margin: '0 auto 18px', lineHeight: 1.5 }}>
+                {securityNotice.subtitle}
+              </p>
+
+              {/* Informative Security Policy Box */}
+              <div style={{
+                background: '#F8FAFC',
+                borderRadius: 16,
+                padding: '16px 16px',
+                border: '1px solid #E2E8F0',
+                textAlign: 'left',
+                marginBottom: 20
+              }}>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+                  <IconShieldCheck size={18} color="#00A88C" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.5 }}>
+                    <strong>তথ্য সুরক্ষা নীতি:</strong>{' '}
+                    {securityNotice.isGuest ? (
+                      <>
+                        অতিথি হিসেবে প্রতি ঘণ্টায় সর্বোচ্চ <b>{toBn(securityNotice.limit || 5)} জন</b> রক্তদাতার নম্বর দেখা যায়। অ্যাকাউন্টে লগইন করলে আপনার কোটা দ্বিগুণ হয়ে প্রতি ঘণ্টায় <b>১০ জন</b> হবে।
+                      </>
+                    ) : (
+                      <>
+                        রক্তদাতাদের নম্বর সুরক্ষিত রাখতে ভেরিফাইড অ্যাকাউন্টের জন্য প্রতি ঘণ্টায় সর্বোচ্চ <b>{toBn(securityNotice.limit || 10)} জন</b> রক্তদাতার নম্বর উন্মুক্ত রাখা হয়।
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <IconClock size={18} color="#D97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ fontSize: 12.5, color: '#334155', lineHeight: 1.5 }}>
+                    <strong>পরবর্তী আনলক:</strong>{' '}
+                    {securityNotice.retryAfterMinutes && securityNotice.retryAfterMinutes > 1 ? (
+                      <>আর প্রায় <b>{toBn(securityNotice.retryAfterMinutes)} মিনিট</b> পর স্বয়ংক্রিয়ভাবে আপনার কোটা পুনরায় চালু হবে।</>
+                    ) : (
+                      <>আর ১ মিনিটেরও কম সময়ে আপনার কোটা পুনরায় চালু হবে।</>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Helpline Strip */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                gap: 6,
+                fontSize: 12.5,
+                color: '#64748B',
+                marginBottom: 20
+              }}>
+                <span>জরুরি রক্তের প্রয়োজনে সরাসরি হেল্পলাইনে কল করুন:</span>
+                <a
+                  href="tel:09613868438"
+                  style={{
+                    color: '#E11D48',
+                    fontWeight: 800,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}
+                >
+                  <IconPhone size={13} />
+                  09613868438
+                </a>
+              </div>
+
+              {/* Action Button */}
+              {securityNotice.type === 'login_required' ? (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSecurityNotice(null)}
+                    style={{
+                      flex: 1, padding: '11px', borderRadius: 12,
+                      background: '#F1F5F9', color: '#475569',
+                      fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer'
+                    }}
+                  >
+                    পরে করব
+                  </button>
+                  <Link
+                    to={securityNotice.actionUrl || '/login'}
+                    style={{
+                      flex: 1, padding: '11px', borderRadius: 12,
+                      background: '#00A88C', color: '#FFFFFF',
+                      fontWeight: 800, fontSize: 14, textDecoration: 'none',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                    }}
+                  >
+                    লগইন করুন
+                  </Link>
+                </div>
+              ) : securityNotice.type === 'rate_limit' && securityNotice.isGuest ? (
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => setSecurityNotice(null)}
+                    style={{
+                      flex: 1, padding: '11px', borderRadius: 12,
+                      background: '#F1F5F9', color: '#475569',
+                      fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer'
+                    }}
+                  >
+                    বুঝেছি
+                  </button>
+                  <Link
+                    to={`/login?redirect=${encodeURIComponent(window.location.pathname)}`}
+                    style={{
+                      flex: 1.4, padding: '11px', borderRadius: 12,
+                      background: '#00A88C', color: '#FFFFFF',
+                      fontWeight: 800, fontSize: 13, textDecoration: 'none',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      boxShadow: '0 4px 12px rgba(0, 168, 140, 0.25)'
+                    }}
+                  >
+                    লগইন করে কোটা বাড়ান (১০টি)
+                  </Link>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSecurityNotice(null)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: 14,
+                    background: '#0F172A',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    fontSize: 14,
+                    border: 'none',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(15, 23, 42, 0.15)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {securityNotice.buttonText || 'বুঝেছি, ধন্যবাদ'}
+                </button>
+              )}
             </>
           )}
         </Modal.Body>

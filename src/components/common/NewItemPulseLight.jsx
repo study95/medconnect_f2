@@ -1,70 +1,48 @@
 import React from 'react'
 
 /**
- * Facebook-style Subtle Twinkling Emerald Green Dot Component.
- * Designed to be compact, elegant, and gently breathing ("mitmit kore"),
- * avoiding any overwhelming disc or distraction.
+ * Pure Solid Green Ball Notification Indicator.
+ * - Just a clean, solid, steady green dot (7px).
+ * - No outer ring, no border, no white circle, no halo, no blinking.
  */
-
 export function PulseLight({
-  size = 6.5,
+  size = 7,
   title = 'নতুন আইটেম (New / Unread)',
   dotColor = '#10B981',
-  auraColor = '#10B981',
   isActive = false,
   className = '',
   style = {}
 }) {
   const isWhite = isActive || dotColor === '#FFFFFF'
+  const color = isWhite ? '#FFFFFF' : '#10B981'
 
   return (
     <span
-      className={`pulse-light-container ${className}`}
+      className={`admin-green-dot ${className}`}
       title={title}
       style={{
-        position: 'relative',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: 'inline-block',
         width: size,
         height: size,
+        minWidth: size,
+        minHeight: size,
+        borderRadius: '50%',
+        backgroundColor: color,
+        border: 'none',
+        outline: 'none',
+        boxShadow: 'none',
         flexShrink: 0,
+        verticalAlign: 'middle',
         ...style
       }}
-    >
-      {/* Subtle micro ring */}
-      <span
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '50%',
-          background: isWhite ? '#FFFFFF' : auraColor,
-          opacity: 0,
-          animation: 'subtlePulseRing 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite',
-          pointerEvents: 'none',
-        }}
-      />
-      {/* Core twinkling dot */}
-      <span
-        style={{
-          position: 'relative',
-          width: size,
-          height: size,
-          borderRadius: '50%',
-          background: isWhite ? '#FFFFFF' : dotColor,
-          animation: isWhite
-            ? 'subtleMitMitWhite 2.2s ease-in-out infinite'
-            : 'subtleMitMit 2.2s ease-in-out infinite',
-        }}
-      />
-    </span>
+    />
   )
 }
 
 /**
  * Specialized Sidebar Green Dot.
- * Compact (6.5px), clean, and right-aligned with gentle twinkling.
- * When active page has green background, turns into a crisp white twinkling dot.
+ * Just a single clean ball right-aligned.
+ * If the row is active (green background), turns solid white for crisp contrast.
  */
 export function SidebarGreenDot({ isCollapsed = false, isActive = false, title = 'নতুন নোটিফিকেশন আছে' }) {
   const dotColor = isActive ? '#FFFFFF' : '#10B981'
@@ -74,12 +52,13 @@ export function SidebarGreenDot({ isCollapsed = false, isActive = false, title =
       <span
         style={{
           position: 'absolute',
-          top: 7,
-          right: 7,
+          top: 8,
+          right: 8,
           zIndex: 3,
+          display: 'inline-flex',
         }}
       >
-        <PulseLight size={6} title={title} dotColor={dotColor} isActive={isActive} />
+        <PulseLight size={6.5} title={title} dotColor={dotColor} isActive={isActive} />
       </span>
     )
   }
@@ -95,7 +74,7 @@ export function SidebarGreenDot({ isCollapsed = false, isActive = false, title =
         flexShrink: 0,
       }}
     >
-      <PulseLight size={6.5} title={title} dotColor={dotColor} isActive={isActive} />
+      <PulseLight size={7} title={title} dotColor={dotColor} isActive={isActive} />
     </span>
   )
 }

@@ -89,6 +89,18 @@ body {
   position: relative;
 }
 
+/* ===================================================
+   MODAL SCROLLBAR & LAYOUT SHIFT FIX
+   Prevents the page content, centered containers, and fixed header
+   from jumping / shifting horizontally when a modal opens/closes.
+=================================================== */
+body.modal-open,
+body.modal-open .fixed-top,
+body.modal-open .sticky-top,
+.modal {
+  padding-right: 0 !important;
+}
+
 button, input, select, textarea {
   font-family: 'Noto Sans Bengali', 'Hind Siliguri', 'Inter', system-ui, -apple-system, sans-serif !important;
 }

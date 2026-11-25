@@ -644,6 +644,35 @@ export default function HospitalListPage() {
                 )}
               </div>
             )}
+            {(() => {
+              const unreadHosps = (hospitals || []).filter(h => 
+                (h.verification_status === 'submitted' || h.verification_status === 'in_review') && 
+                !isSeen(h.id, h.public_id)
+              )
+              if (unreadHosps.length === 0) return null
+              return (
+                <button
+                  type="button"
+                  onClick={() => unreadHosps.forEach(h => markSeen(h.id, h.public_id))}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#047857',
+                    background: '#ECFDF5',
+                    border: '1px solid #A7F3D0',
+                    padding: '4px 10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="এই তালিকার সকল নতুন হাসপাতাল আবেদন দেখা হয়েছে চিহ্নিত করুন"
+                >
+                  ✓ সব দেখা হয়েছে ({unreadHosps.length})
+                </button>
+              )
+            })()}
             <div
               style={{
                 fontSize: 13,
@@ -734,12 +763,21 @@ export default function HospitalListPage() {
                         </Link>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {(!h.is_active || h.verification_status === 'submitted' || h.verification_status === 'in_review') && !isSeen(h.id) && (
-                              <PulseLight size={6.5} title="নতুন হাসপাতাল আবেদন (দেখা হয়নি)" />
+                            {(h.verification_status === 'submitted' || h.verification_status === 'in_review') && !isSeen(h.id, h.public_id) && (
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  markSeen(h.id, h.public_id)
+                                }}
+                                style={{ cursor: 'pointer', display: 'inline-flex' }}
+                                title="নতুন হাসপাতাল আবেদন (ক্লিক করে দেখা হয়েছে চিহ্নিত করুন)"
+                              >
+                                <PulseLight size={6.5} />
+                              </span>
                             )}
                             <Link 
                               to={`/admin/hospitals/view/${h.id}`} 
-                              onClick={() => markSeen(h.id)}
+                              onClick={() => markSeen(h.id, h.public_id)}
                               style={{ textDecoration: 'none', fontWeight: 700, color: 'var(--admin-text)', display: 'inline-block' }}
                               onMouseEnter={(e) => e.currentTarget.style.color = 'var(--admin-primary, #00A88C)'}
                               onMouseLeave={(e) => e.currentTarget.style.color = 'var(--admin-text)'}
@@ -932,7 +970,7 @@ export default function HospitalListPage() {
                     </td>
                     <td style={{ textAlign: 'right', paddingRight: 24 }}>
                       <div className="admin-actions" style={{ justifyContent: 'flex-end' }}>
-                        <button className="admin-action-btn admin-action-btn-view" onClick={() => { markSeen(h.id); navigate(`/admin/hospitals/view/${h.id}`); }} title="View Detail">
+                        <button className="admin-action-btn admin-action-btn-view" onClick={() => { markSeen(h.id, h.public_id); navigate(`/admin/hospitals/view/${h.id}`); }} title="View Detail">
                           <img src="/icons/view.png" alt="View" />
                         </button>
                         {safeHttpUrl(h.url) && (
@@ -940,7 +978,7 @@ export default function HospitalListPage() {
                             🌐 Site
                           </a>
                         )}
-                        <button className="admin-action-btn admin-action-btn-edit" onClick={() => { markSeen(h.id); navigate(`/admin/hospitals/edit/${h.id}`); }} title="Edit Hospital">
+                        <button className="admin-action-btn admin-action-btn-edit" onClick={() => { markSeen(h.id, h.public_id); navigate(`/admin/hospitals/edit/${h.id}`); }} title="Edit Hospital">
                           <img src="/icons/edit.png" alt="Edit" />
                         </button>
                         {isAdmin && (

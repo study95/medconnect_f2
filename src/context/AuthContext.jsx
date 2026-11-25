@@ -11,6 +11,7 @@ import { queryClient } from '../lib/queryClient'
 import { invalidateDoctors, invalidateHospitals } from '../lib/cacheInvalidation'
 import { clearPersistedCache } from '../lib/cachePersister'
 import useIdleTimeout, { getRoleIdleTimeoutMs } from '../hooks/useIdleTimeout'
+import { useRuntimeConfig } from '../utils/runtimeConfig'
 import IdleWarningModal from '../components/auth/IdleWarningModal'
 import SudoVerifyModal from '../components/auth/SudoVerifyModal'
 
@@ -720,7 +721,14 @@ export function AuthProvider({ children }) {
     getRoles,
   }
 
-  const idleTimeoutMs = getRoleIdleTimeoutMs(userType, isAdmin, isStaff, isAgent)
+  const runtimeConfig = useRuntimeConfig()
+  const idleTimeoutMs = getRoleIdleTimeoutMs(
+    userType,
+    isAdmin,
+    isStaff,
+    isAgent,
+    runtimeConfig?.idle_timeouts_minutes
+  )
   const { showWarning, remainingSeconds, stayLoggedIn } = useIdleTimeout({
     enabled: !!user?.id,
     timeoutMs: idleTimeoutMs,

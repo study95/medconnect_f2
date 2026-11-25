@@ -16,10 +16,8 @@ export default function AppointmentViewPage() {
   const { updateAppointmentStatus, isUpdatingStatus: updating } = useAdminAppointmentMutations()
 
   useEffect(() => {
-    if (id) {
-      markItemSeen('appointments', id)
-    }
-  }, [id])
+    markItemSeen('appointments', id, appt?.id, appt?.public_id)
+  }, [id, appt?.id, appt?.public_id])
 
   const handleCashCollect = async () => {
     try {

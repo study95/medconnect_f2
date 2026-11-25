@@ -18,6 +18,7 @@ import AgentLayout   from './components/agent/AgentLayout'
 import AdminLayout   from './components/admin/AdminLayout'
 import SubscriptionGate from './components/admin/SubscriptionGate'
 import DashboardRedirect from './components/common/DashboardRedirect'
+import SystemNoticeOverlay from './components/common/SystemNoticeOverlay'
 
 // Public pages
 const HomePage            = lazy(() => import('./pages/HomePage'))
@@ -117,6 +118,7 @@ const ServiceFormPage    = lazy(() => import('./pages/admin/services/ServiceForm
 const ContactMessageListPage = lazy(() => import('./pages/admin/contact/ContactMessageListPage'))
 const PatientListPage     = lazy(() => import('./pages/admin/patients/PatientListPage'))
 const PatientFormPage     = lazy(() => import('./pages/admin/patients/PatientFormPage'))
+const AdminBloodDonorsPage = lazy(() => import('./pages/admin/AdminBloodDonorsPage'))
 
 // Doctor Leave pages
 const DoctorLeavePage      = lazy(() => import('./pages/admin/leaves/DoctorLeavePage'))
@@ -165,6 +167,7 @@ const AdminSecurityPage      = lazy(() => import('./pages/admin/AdminSecurityPag
 // Audit Log
 const AuditLogPage           = lazy(() => import('./pages/admin/audit/AuditLogPage'))
 const SystemHealthPage       = lazy(() => import('./pages/admin/SystemHealthPage'))
+const AdminSystemSettingsPage = lazy(() => import('./pages/admin/AdminSystemSettingsPage'))
 
 // Review Moderation, Dispute Reports & Portals
 const ReviewModerationPage   = lazy(() => import('./pages/admin/reviews/ReviewModerationPage'))
@@ -288,6 +291,7 @@ function App() {
   return (
     <ErrorBoundary message="The application encountered an error. Please refresh the page.">
       <ScrollToTop />
+      <SystemNoticeOverlay />
 
       <Suspense fallback={<PageLoader />}>
         <Routes>
@@ -371,6 +375,9 @@ function App() {
             <Route path="patients/edit/:id" element={<PatientFormPage />} />
             <Route path="patients/view/:id" element={<PatientProfilePage />} />
             <Route path="patients/:id" element={<PatientProfilePage />} />
+
+            {/* Blood Donors Management (Admin) */}
+            <Route path="blood-donors" element={<AdminBloodDonorsPage />} />
 
             {/* Users */}
             <Route path="users" element={<UserListPage />} />
@@ -463,6 +470,7 @@ function App() {
 
             {/* Enterprise System Health & Observability */}
             <Route path="system-health" element={<SystemHealthPage />} />
+            <Route path="system-settings" element={<AdminSystemSettingsPage />} />
 
             {/* Field Agent & Provider Governance Desk */}
             <Route path="agents" element={<AgentDirectoryPage />} />

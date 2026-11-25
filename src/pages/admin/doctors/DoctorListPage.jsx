@@ -1994,6 +1994,35 @@ export default function DoctorListPage() {
                 )}
               </div>
             )}
+            {(() => {
+              const unreadDocs = (doctors || []).filter(d => 
+                (d.verification_status === 'submitted' || d.verification_status === 'in_review') && 
+                !isSeen(d.id, d.public_id)
+              )
+              if (unreadDocs.length === 0) return null
+              return (
+                <button
+                  type="button"
+                  onClick={() => unreadDocs.forEach(d => markSeen(d.id, d.public_id))}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: '#047857',
+                    background: '#ECFDF5',
+                    border: '1px solid #A7F3D0',
+                    padding: '4px 10px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                  title="এই তালিকার সকল নতুন আবেদন দেখা হয়েছে চিহ্নিত করুন"
+                >
+                  ✓ সব দেখা হয়েছে ({unreadDocs.length})
+                </button>
+              )
+            })()}
             <div
               style={{
                 fontSize: 13,
@@ -2059,13 +2088,21 @@ export default function DoctorListPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{
-                          width: 44, height: 44, minWidth: 44, borderRadius: 10, overflow: 'hidden',
-                          background: 'rgba(0, 168, 140, 0.06)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          border: '1px solid rgba(0, 168, 140, 0.15)',
-                          flexShrink: 0
-                        }}>
+                        <div 
+                          onClick={() => {
+                            markSeen(doctor.id, doctor.public_id)
+                            navigate(`/admin/doctors/view/${doctor.id}`)
+                          }}
+                          style={{
+                            width: 44, height: 44, minWidth: 44, borderRadius: 10, overflow: 'hidden',
+                            background: 'rgba(0, 168, 140, 0.06)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: '1px solid rgba(0, 168, 140, 0.15)',
+                            flexShrink: 0,
+                            cursor: 'pointer'
+                          }}
+                          title="View Profile"
+                        >
                           {doctor.photo ? (
                             <img
                               src={getMediaUrl(doctor.photo)}
@@ -2084,10 +2121,26 @@ export default function DoctorListPage() {
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {(!doctor.is_active || doctor.verification_status === 'submitted' || doctor.verification_status === 'in_review') && !isSeen(doctor.id) && (
-                              <PulseLight size={6.5} title="নতুন আবেদন (দেখা হয়নি)" />
+                            {(doctor.verification_status === 'submitted' || doctor.verification_status === 'in_review') && !isSeen(doctor.id, doctor.public_id) && (
+                              <span
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  markSeen(doctor.id, doctor.public_id)
+                                }}
+                                style={{ cursor: 'pointer', display: 'inline-flex' }}
+                                title="নতুন আবেদন (ক্লিক করে দেখা হয়েছে চিহ্নিত করুন)"
+                              >
+                                <PulseLight size={6.5} />
+                              </span>
                             )}
-                            <span style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <span 
+                              onClick={() => {
+                                markSeen(doctor.id, doctor.public_id)
+                                navigate(`/admin/doctors/view/${doctor.id}`)
+                              }}
+                              style={{ fontWeight: 700, color: 'var(--admin-text)', fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }}
+                              title="View Profile"
+                            >
                               {doctor.name}
                             </span>
                           </div>
@@ -2178,7 +2231,10 @@ export default function DoctorListPage() {
                                   href={getMediaUrl(doctor.bmdc_document)}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    markSeen(doctor.id, doctor.public_id)
+                                  }}
                                   title="BMDC সনদ দেখুন (নতুন ট্যাবে খুলুন)"
                                   style={{
                                     display: 'inline-flex',
@@ -2224,7 +2280,10 @@ export default function DoctorListPage() {
                                   href={getMediaUrl(doctor.nid_document)}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    markSeen(doctor.id, doctor.public_id)
+                                  }}
                                   title="NID কার্ড দেখুন (নতুন ট্যাবে খুলুন)"
                                   style={{
                                     display: 'inline-flex',
@@ -2307,7 +2366,7 @@ export default function DoctorListPage() {
                           className="admin-action-btn admin-action-btn-view" 
                           title="View Profile" 
                           onClick={() => {
-                            markSeen(doctor.id)
+                            markSeen(doctor.id, doctor.public_id)
                             navigate(`/admin/doctors/view/${doctor.id}`)
                           }}
                         >
@@ -2319,7 +2378,7 @@ export default function DoctorListPage() {
                               className="admin-action-btn admin-action-btn-edit" 
                               title="Edit Doctor" 
                               onClick={() => {
-                                markSeen(doctor.id)
+                                markSeen(doctor.id, doctor.public_id)
                                 navigate(`/admin/doctors/edit/${doctor.id}`)
                               }}
                             >

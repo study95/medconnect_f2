@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext'
 import { useDialog } from '../../../hooks/useDialog'
 import { DIALOG_MESSAGES } from '../../../utils/dialogMessages'
 import { getHospital } from '../../../api/adminApi'
+import { markItemSeen } from '../../../utils/seenTracker'
 import { useAdminHospitalLookups, useAdminHospitalMutations } from '../../../features/hospitals/useAdminHospitals'
 import { FormSkeleton } from '../../../components/common/Skeletons'
 
@@ -217,6 +218,7 @@ export default function HospitalFormPage() {
     try {
       const res = await getHospital(id)
       const h = res.data?.data || res.data
+      markItemSeen('hospitals', id, h?.id, h?.public_id)
       setForm({
         name: h.name || '',
         name_bn: h.name_bn || '',

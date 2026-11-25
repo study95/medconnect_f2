@@ -313,6 +313,7 @@ export default function ContactMessageListPage() {
     refetch,
   } = useQuery({
     queryKey: ['admin-contact-messages', { search, tab: filterTab, status: filterStatus, department: filterDept, dateFrom, dateTo, perPage, currentPage }],
+    refetchInterval: 1000 * 5,
     queryFn: async () => {
       const res = await axiosInstance.get('/admin/contact-messages', {
         params: {
