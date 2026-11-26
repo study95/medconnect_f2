@@ -6,7 +6,7 @@ import {
   IconDroplet, IconHeart, IconCalendar, IconMapPin, IconPhone, IconUpload, 
   IconShieldCheck, IconClock, IconArrowLeft, IconActivity, IconUser, 
   IconCheck, IconAlertCircle, IconCircleCheck, IconChevronDown, IconCamera,
-  IconArrowRight, IconSparkles, IconInfoCircle, IconLock, IconX
+  IconArrowRight, IconSparkles, IconInfoCircle, IconLock, IconX, IconExternalLink, IconEdit
 } from '@tabler/icons-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
@@ -28,6 +28,7 @@ export default function BloodDonorRegisterPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [isExisting, setIsExisting] = useState(false)
+  const [isEditMode, setIsEditMode] = useState(false)
   const [donorData, setDonorData] = useState(null)
   const [autoFilled, setAutoFilled] = useState(false)
 
@@ -61,6 +62,45 @@ export default function BloodDonorRegisterPage() {
   const [showAltPhoneHint, setShowAltPhoneHint] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({})
   const initialLoadedRef = useRef(false)
+
+  // Helper to populate all form fields from donor data cleanly
+  const populateFormFromDonor = (d) => {
+    if (!d) return
+    setName(d.name || '')
+    setBloodGroup(d.blood_group || 'A+')
+    setGender(d.gender || 'male')
+    setDateOfBirth(d.date_of_birth ? d.date_of_birth.substring(0, 10) : '')
+    setContactNumber(d.contact_number || '')
+    setAltContactNumber(d.alternate_contact_number || '')
+    setVillageOrArea(d.village_or_area || '')
+    setAddressLine(d.address_line || '')
+    setLastDonatedAt(d.last_donated_at ? d.last_donated_at.substring(0, 10) : '')
+    setIsAvailable(d.is_available ?? true)
+    setHideContactPublicly(d.hide_contact_publicly ?? false)
+    if (d.photo_url) setPhotoPreview(d.photo_url)
+
+    if (d.division_id) {
+      getDistricts({ division_id: d.division_id })
+        .then(dRes => setDistricts(dRes.data?.data || []))
+        .catch(() => {})
+    }
+    if (d.district_id) {
+      getUpazilas({ district_id: d.district_id })
+        .then(uRes => setUpazilas(uRes.data?.data || []))
+        .catch(() => {})
+    }
+    if (d.upazila_id) {
+      getUnions({ upazila_id: d.upazila_id })
+        .then(unRes => setUnions(unRes.data?.data || []))
+        .catch(() => {})
+    }
+
+    setDivisionId(d.division_id ? String(d.division_id) : '')
+    setDistrictId(d.district_id ? String(d.district_id) : '')
+    setUpazilaId(d.upazila_id ? String(d.upazila_id) : '')
+    setUnionId(d.union_id ? String(d.union_id) : '')
+  }
+
 
   // Handle Alternate Phone Input with strict 11-digit Bangladeshi filter
   const handleAltContactChange = (e) => {
@@ -160,23 +200,11 @@ export default function BloodDonorRegisterPage() {
           const d = res.data.data
           setIsExisting(true)
           setDonorData(d)
-          setName(d.name || '')
-          setBloodGroup(d.blood_group || 'A+')
-          setGender(d.gender || 'male')
-          setDateOfBirth(d.date_of_birth ? d.date_of_birth.substring(0, 10) : '')
-          setContactNumber(d.contact_number || '')
-          setAltContactNumber(d.alternate_contact_number || '')
-          setDivisionId(d.division_id ? String(d.division_id) : '')
-          setDistrictId(d.district_id ? String(d.district_id) : '')
-          setUpazilaId(d.upazila_id ? String(d.upazila_id) : '')
-          setUnionId(d.union_id ? String(d.union_id) : '')
-          setVillageOrArea(d.village_or_area || '')
-          setAddressLine(d.address_line || '')
-          setLastDonatedAt(d.last_donated_at ? d.last_donated_at.substring(0, 10) : '')
-          setIsAvailable(d.is_available ?? true)
-          setHideContactPublicly(d.hide_contact_publicly ?? false)
-          if (d.photo_url) setPhotoPreview(d.photo_url)
+          populateFormFromDonor(d)
+          setIsEditMode(false)
         } else {
+          setIsExisting(false)
+          setIsEditMode(true)
           // User is logged in but not registered as donor yet -> Smart pre-fill from user profile!
           try {
             const profileRes = await getMyProfile()
@@ -200,11 +228,22 @@ export default function BloodDonorRegisterPage() {
             if (profileBg && BLOOD_GROUPS.includes(profileBg)) setBloodGroup(profileBg)
             if (profileGender) setGender(profileGender)
             if (profileDob) setDateOfBirth(profileDob.substring(0, 10))
+            if (profilePhoto) setPhotoPreview(profilePhoto)
+
+            if (profileDivId) {
+              getDistricts({ division_id: profileDivId }).then(dRes => setDistricts(dRes.data?.data || [])).catch(() => {})
+            }
+            if (profileDistId) {
+              getUpazilas({ district_id: profileDistId }).then(uRes => setUpazilas(uRes.data?.data || [])).catch(() => {})
+            }
+            if (profileUpzId) {
+              getUnions({ upazila_id: profileUpzId }).then(unRes => setUnions(unRes.data?.data || [])).catch(() => {})
+            }
+
             if (profileDivId) setDivisionId(String(profileDivId))
             if (profileDistId) setDistrictId(String(profileDistId))
             if (profileUpzId) setUpazilaId(String(profileUpzId))
             if (profileUnId) setUnionId(String(profileUnId))
-            if (profilePhoto) setPhotoPreview(profilePhoto)
 
             if (profileName || profilePhone || profileBg) {
               setAutoFilled(true)
@@ -222,21 +261,45 @@ export default function BloodDonorRegisterPage() {
       .finally(() => setLoading(false))
   }, [isLoggedIn, authLoading, user])
 
-  // Location Cascades
-  useEffect(() => {
-    if (!divisionId) { setDistricts([]); return }
-    getDistricts({ division_id: divisionId }).then(res => setDistricts(res.data?.data || [])).catch(() => {})
-  }, [divisionId])
+  // Explicit Location Cascade Handlers
+  const handleDivisionChange = (newDivId) => {
+    setDivisionId(newDivId)
+    setDistrictId('')
+    setUpazilaId('')
+    setUnionId('')
+    clearError('division_id')
+    if (newDivId) {
+      getDistricts({ division_id: newDivId }).then(res => setDistricts(res.data?.data || [])).catch(() => {})
+    } else {
+      setDistricts([])
+      setUpazilas([])
+      setUnions([])
+    }
+  }
 
-  useEffect(() => {
-    if (!districtId) { setUpazilas([]); return }
-    getUpazilas({ district_id: districtId }).then(res => setUpazilas(res.data?.data || [])).catch(() => {})
-  }, [districtId])
+  const handleDistrictChange = (newDistId) => {
+    setDistrictId(newDistId)
+    setUpazilaId('')
+    setUnionId('')
+    clearError('district_id')
+    if (newDistId) {
+      getUpazilas({ district_id: newDistId }).then(res => setUpazilas(res.data?.data || [])).catch(() => {})
+    } else {
+      setUpazilas([])
+      setUnions([])
+    }
+  }
 
-  useEffect(() => {
-    if (!upazilaId) { setUnions([]); return }
-    getUnions({ upazila_id: upazilaId }).then(res => setUnions(res.data?.data || [])).catch(() => {})
-  }, [upazilaId])
+  const handleUpazilaChange = (newUpzId) => {
+    setUpazilaId(newUpzId)
+    setUnionId('')
+    clearError('upazila_id')
+    if (newUpzId) {
+      getUnions({ upazila_id: newUpzId }).then(res => setUnions(res.data?.data || [])).catch(() => {})
+    } else {
+      setUnions([])
+    }
+  }
 
   // Handle Form Submit with Precise Validation and Smooth Auto-Scroll
   const handleSubmit = async (e) => {
@@ -294,7 +357,10 @@ export default function BloodDonorRegisterPage() {
       const res = await saveDonorProfile(formData)
       if (res.data?.success) {
         setIsExisting(true)
-        setDonorData(res.data.data)
+        const updated = res.data.data
+        setDonorData(updated)
+        populateFormFromDonor(updated)
+        setIsEditMode(false)
         setSaveSuccessMessage(res.data.message || 'আপনার রক্তদাতা প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!')
         setShowSaveSuccessModal(true)
       }
@@ -604,6 +670,7 @@ export default function BloodDonorRegisterPage() {
           align-items: center;
           gap: 7px;
           cursor: pointer;
+          white-space: nowrap;
           transition: all 0.2s ease;
           box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
         }
@@ -943,8 +1010,66 @@ export default function BloodDonorRegisterPage() {
           cursor: not-allowed;
         }
 
+        .summary-bottom-action-wrap {
+          display: flex;
+          align-items: center;
+          justifyContent: space-between;
+          flex-wrap: wrap;
+          gap: 14px;
+          padding-top: 20px;
+          border-top: 1px solid #F1F5F9;
+        }
+        .summary-bottom-hint-text {
+          font-size: 13px;
+          color: #64748B;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+        .summary-bottom-update-btn {
+          height: 48px;
+          padding: 0 28px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #E11D48 0%, #BE123C 100%);
+          color: #FFFFFF;
+          border: none;
+          font-weight: 800;
+          font-size: 14.5px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 9px;
+          cursor: pointer;
+          white-space: nowrap;
+          box-shadow: 0 6px 20px rgba(225, 29, 72, 0.28);
+          transition: all 0.2s ease;
+        }
+        .summary-bottom-update-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 26px rgba(225, 29, 72, 0.38);
+        }
+        .summary-bottom-update-btn:active {
+          transform: translateY(0);
+        }
+
         /* ── MOBILE RESPONSIVE ── */
         @media (max-width: 767px) {
+          .summary-bottom-action-wrap {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 12px !important;
+          }
+          .summary-bottom-hint-text {
+            font-size: 12.5px !important;
+            text-align: center !important;
+            justify-content: center !important;
+          }
+          .summary-bottom-update-btn {
+            width: 100% !important;
+            height: 48px !important;
+            font-size: 14px !important;
+          }
           .donor-register-page-wrapper {
             padding-top: calc(var(--header-height, 58px) + 6px) !important;
             padding-bottom: calc(var(--mobile-bottom-nav-height, 65px) + 45px) !important;
@@ -991,20 +1116,39 @@ export default function BloodDonorRegisterPage() {
             padding: 16px 14px !important;
             border-radius: 16px !important;
           }
-          .existing-action-btns-wrap {
+          .existing-action-btns-wrap, .summary-header-btns-wrap {
             display: grid !important;
             grid-template-columns: 1fr 1fr !important;
             gap: 8px !important;
-            margin-top: 12px !important;
+            margin-top: 14px !important;
             width: 100% !important;
           }
-          .existing-action-btn, .existing-status-badge {
+          .existing-action-btn, .existing-status-badge, .summary-header-btn {
             width: 100% !important;
+            height: 42px !important;
+            min-height: 42px !important;
+            display: inline-flex !important;
+            align-items: center !important;
             justify-content: center !important;
-            padding: 9px 8px !important;
-            font-size: 12px !important;
+            padding: 0 6px !important;
+            font-size: 11.5px !important;
+            font-weight: 800 !important;
             letter-spacing: 0 !important;
             text-align: center !important;
+            white-space: nowrap !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+            gap: 5px !important;
+          }
+          .existing-action-btn svg, .existing-status-badge svg, .summary-header-btn svg {
+            flex-shrink: 0 !important;
+          }
+        }
+        @media (max-width: 380px) {
+          .existing-action-btn, .existing-status-badge, .summary-header-btn {
+            font-size: 10.5px !important;
+            padding: 0 4px !important;
+            gap: 3px !important;
           }
         }
       `}</style>
@@ -1015,7 +1159,7 @@ export default function BloodDonorRegisterPage() {
           <BreadcrumbHUD 
             links={[
               { label: 'রক্তদাতা নেটওয়ার্ক', path: '/blood-donors' },
-              { label: isExisting ? 'প্রোফাইল আপডেট' : 'নিবন্ধন' }
+              { label: isExisting ? (isEditMode ? 'প্রোফাইল তথ্য সম্পাদন' : 'রক্তদাতা প্রোফাইল') : 'নিবন্ধন' }
             ]} 
             variant="dark" 
             showBack={false}
@@ -1028,18 +1172,6 @@ export default function BloodDonorRegisterPage() {
             <Row className="align-items-center g-3" style={{ position: 'relative', zIndex: 1 }}>
               <Col md={7}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-                  <span style={{
-                    padding: '2px 9px', borderRadius: 8,
-                    background: '#FFFFFF', 
-                    color: '#BE123C',
-                    fontWeight: 900, fontSize: 13,
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    lineHeight: 1.3
-                  }}>
-                    <IconDroplet size={13} fill="#E11D48" color="#E11D48" />
-                    {donorData.blood_group}
-                  </span>
                   <h3 style={{ fontWeight: 900, fontSize: 21, margin: 0, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: 8, textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
                     স্বাগতম, {donorData.name}
                     <IconShieldCheck size={20} color="#FFFFFF" />
@@ -1048,7 +1180,7 @@ export default function BloodDonorRegisterPage() {
                 <div style={{ color: 'rgba(255, 255, 255, 0.92)', fontSize: 13.5, lineHeight: 1.6 }}>
                   <span>মোট রক্তদান: <b style={{ color: '#FDE047', fontWeight: 800 }}>{toBn(donorData.total_donations || 0)} বার</b></span>
                   <span style={{ margin: '0 8px', opacity: 0.6 }}>•</span>
-                  <span>সর্বশেষ রক্তদান: <b style={{ color: '#FFFFFF' }}>{donorData.last_donated_at ? toBn(donorData.last_donated_at) : 'রেকর্ড নেই'}</b></span>
+                  <span>সর্বশেষ রক্তদান: <b style={{ color: '#FFFFFF' }}>{donorData.last_donated_at ? toBn(donorData.last_donated_at.substring(0, 10)) : 'রেকর্ড নেই'}</b></span>
                   {donorData.days_until_available > 0 && (
                     <div style={{ color: '#FEF08A', marginTop: 4, fontWeight: 700, fontSize: 13 }}>
                       ⏳ পরবর্তী রক্তদানের জন্য {toBn(donorData.days_until_available)} দিন বাকি রয়েছে
@@ -1069,7 +1201,7 @@ export default function BloodDonorRegisterPage() {
                       className="existing-action-btn cooldown-active"
                       title="রক্তদান ইতোমধ্যে লিপিবদ্ধ আছে"
                     >
-                      <IconCircleCheck size={16} color="#059669" />
+                      <IconCircleCheck size={15} color="#059669" />
                       <span>রক্তদান লিপিবদ্ধ আছে</span>
                     </button>
                   ) : (
@@ -1079,7 +1211,7 @@ export default function BloodDonorRegisterPage() {
                       className="existing-action-btn"
                       title="আজকে রক্তদান করে থাকলে ক্লিক করে রেকর্ড আপডেট করুন"
                     >
-                      <IconActivity size={17} color="#BE123C" />
+                      <IconActivity size={15} color="#BE123C" />
                       <span>আমি আজ রক্ত দিয়েছি</span>
                     </button>
                   )}
@@ -1141,8 +1273,424 @@ export default function BloodDonorRegisterPage() {
           </div>
         )}
 
-        {/* ── MAIN FORM CONTAINER ── */}
-        <div className="register-form-card">
+        {/* ── SUBMITTED BLOOD DONOR PROFILE SUMMARY VIEW (When isExisting && donorData && !isEditMode) ── */}
+        {isExisting && donorData && !isEditMode ? (
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: 24,
+            border: '1.5px solid #FFE4E6',
+            boxShadow: '0 8px 30px rgba(225,29,72,0.06)',
+            overflow: 'hidden',
+            marginBottom: 30
+          }}>
+            {/* Top Banner Header - Clean & Elegant Identity Card */}
+            <div className="summary-profile-banner" style={{
+              position: 'relative',
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF5F6 50%, #FFE4E6 100%)',
+              padding: '24px 26px',
+              borderBottom: '1.5px solid #FECDD3',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 16
+            }}>
+              <div className="summary-donor-identity-row" style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 260 }}>
+                {/* Avatar with Red Ring & Clean Glow */}
+                <div style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  background: '#FFFFFF',
+                  border: '3px solid #E11D48',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 16px rgba(225, 29, 72, 0.2)',
+                  flexShrink: 0,
+                  color: '#BE123C'
+                }}>
+                  {(photoPreview || user?.photo || donorData.photo_url) ? (
+                    <img 
+                      src={getMediaUrl(photoPreview || user?.photo || donorData.photo_url)} 
+                      alt={donorData.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
+                  ) : (
+                    <IconUser size={38} color="#BE123C" />
+                  )}
+                </div>
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+                    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#0F172A', letterSpacing: '-0.2px' }}>
+                      {donorData.name}
+                    </h3>
+                    <span style={{
+                      background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                      color: '#FFFFFF',
+                      fontSize: 12.5,
+                      fontWeight: 900,
+                      padding: '3px 9px',
+                      borderRadius: 8,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      boxShadow: '0 2px 8px rgba(225, 29, 72, 0.28)'
+                    }}>
+                      <IconDroplet size={13} fill="#FFFFFF" color="#FFFFFF" />
+                      {donorData.blood_group}
+                    </span>
+                    <span style={{
+                      background: '#FFFFFF',
+                      border: '1px solid #FECDD3',
+                      color: '#9F1239',
+                      fontSize: 11.5,
+                      fontWeight: 800,
+                      padding: '2px 9px',
+                      borderRadius: 999
+                    }}>
+                      {donorData.gender === 'female' ? 'নারী রক্তদাতা' : (donorData.gender === 'other' ? 'অন্যান্য' : 'পুরুষ রক্তদাতা')}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 13, color: '#334155', marginTop: 4 }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700, color: '#0F172A' }}>
+                      <IconPhone size={14} color="#E11D48" />
+                      <span>{donorData.contact_number}</span>
+                    </span>
+                    {donorData.alternate_contact_number && (
+                      <span style={{ color: '#64748B', fontSize: 12.5 }}>
+                        • বিকল্প: <strong style={{ color: '#334155' }}>{donorData.alternate_contact_number}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="summary-header-btns-wrap" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditMode(true)
+                    window.scrollTo({ top: 180, behavior: 'smooth' })
+                  }}
+                  className="summary-header-btn"
+                  style={{
+                    background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: 12,
+                    fontWeight: 800,
+                    fontSize: 13.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 7,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(225, 29, 72, 0.28)',
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <IconEdit size={16} />
+                  <span>তথ্য আপডেট করুন</span>
+                </button>
+
+                <Link
+                  to="/blood-donors"
+                  className="summary-header-btn"
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1.5px solid #FECDD3',
+                    color: '#9F1239',
+                    padding: '9px 18px',
+                    borderRadius: 12,
+                    fontWeight: 800,
+                    fontSize: 13.5,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s ease',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                  }}
+                >
+                  <span>পাবলিক তালিকায় দেখুন</span>
+                  <IconExternalLink size={15} />
+                </Link>
+              </div>
+            </div>
+
+            {/* Summary Body - Grid of Structured Cards */}
+            <div style={{ padding: '28px 24px' }}>
+              <Row className="g-3" style={{ marginBottom: 24 }}>
+                {/* 1. Blood & Personal Info Card */}
+                <Col md={6}>
+                  <div style={{
+                    background: '#F8FAFC',
+                    borderRadius: 16,
+                    border: '1px solid #E2E8F0',
+                    padding: '18px 20px',
+                    height: '100%'
+                  }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: '#BE123C', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                      <IconDroplet size={18} fill="#E11D48" color="#E11D48" />
+                      <span>রক্তের গ্রুপ ও ব্যক্তিগত তথ্য</span>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>রক্তের গ্রুপ</div>
+                        <div style={{ fontSize: 16, fontWeight: 900, color: '#E11D48', marginTop: 2 }}>
+                          {donorData.blood_group}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>লিঙ্গ</div>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginTop: 2 }}>
+                          {donorData.gender === 'female' ? 'নারী' : (donorData.gender === 'other' ? 'অন্যান্য' : 'পুরুষ')}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>জন্মতারিখ</div>
+                        <div style={{ fontSize: 13.5, fontWeight: 700, color: '#1E293B', marginTop: 2 }}>
+                          {donorData.date_of_birth ? toBn(donorData.date_of_birth.substring(0, 10)) : 'দেওয়া হয়নি'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>বয়স ও স্বাস্থ্যগত যোগ্যতা</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#059669', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <IconCheck size={14} /> ১৮+ বছর ও উপযুক্ত
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+
+                {/* 2. Contact Details Card */}
+                <Col md={6}>
+                  <div style={{
+                    background: '#F8FAFC',
+                    borderRadius: 16,
+                    border: '1px solid #E2E8F0',
+                    padding: '18px 20px',
+                    height: '100%'
+                  }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: '#00A88C', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                      <IconPhone size={18} />
+                      <span>যোগাযোগের নম্বরসমূহ</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>প্রধান মোবাইল নম্বর (অ্যাকাউন্ট)</div>
+                        <div style={{ fontSize: 14.5, fontWeight: 800, color: '#0F172A', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{donorData.contact_number}</span>
+                          <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '1px 6px', borderRadius: 6, fontWeight: 700 }}>
+                            <IconLock size={10} /> অপরিবর্তনীয়
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>বিকল্প মোবাইল নম্বর (পাবলিক তালিকায় প্রদর্শিত)</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: donorData.alternate_contact_number ? '#0F172A' : '#94A3B8', marginTop: 2 }}>
+                          {donorData.alternate_contact_number || 'কোনো বিকল্প নম্বর যুক্ত করা হয়নি'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>নম্বর প্রদর্শনের নিয়ম</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: donorData.hide_contact_publicly ? '#D97706' : '#059669', marginTop: 2 }}>
+                          {donorData.hide_contact_publicly ? '🔒 পাবলিক তালিকায় নম্বর গোপন (শুধু লগইনকৃতরা দেখতে পারবেন)' : '🌐 পাবলিক তালিকায় উন্মুক্ত'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+
+                {/* 3. Location & Area Card */}
+                <Col md={6}>
+                  <div style={{
+                    background: '#F8FAFC',
+                    borderRadius: 16,
+                    border: '1px solid #E2E8F0',
+                    padding: '18px 20px',
+                    height: '100%'
+                  }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: '#00A88C', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                      <IconMapPin size={18} />
+                      <span>রক্তদানের এলাকা ও বর্তমান ঠিকানা</span>
+                    </div>
+
+                    <div style={{ fontSize: 14, color: '#1E293B', fontWeight: 800, marginBottom: 8 }}>
+                      {[
+                        donorData.union?.bn_name || donorData.union?.name,
+                        donorData.upazila?.bn_name || donorData.upazila?.name,
+                        donorData.district?.bn_name || donorData.district?.name,
+                        donorData.division?.bn_name || donorData.division?.name,
+                      ].filter(Boolean).join(', ') || 'এলাকা নির্ধারিত হয়নি'}
+                    </div>
+
+                    {donorData.village_or_area && (
+                      <div style={{ fontSize: 12.5, color: '#475569', marginBottom: 4 }}>
+                        <strong>গ্রাম/পাড়া/মহল্লা:</strong> {donorData.village_or_area}
+                      </div>
+                    )}
+                    {donorData.address_line && (
+                      <div style={{ fontSize: 12.5, color: '#475569' }}>
+                        <strong>বিস্তারিত ঠিকানা:</strong> {donorData.address_line}
+                      </div>
+                    )}
+                  </div>
+                </Col>
+
+                {/* 4. Donation Status & Readiness Card */}
+                <Col md={6}>
+                  <div style={{
+                    background: '#F8FAFC',
+                    borderRadius: 16,
+                    border: '1px solid #E2E8F0',
+                    padding: '18px 20px',
+                    height: '100%'
+                  }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: '#BE123C', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                      <IconActivity size={18} />
+                      <span>রক্তদানের ইতিহাস ও প্রাপ্যতা</span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>মোট রক্তদান</div>
+                        <div style={{ fontSize: 15, fontWeight: 900, color: '#0F172A', marginTop: 2 }}>
+                          {toBn(donorData.total_donations || 0)} বার
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700 }}>সর্বশেষ রক্তদান</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', marginTop: 2 }}>
+                          {donorData.last_donated_at ? toBn(donorData.last_donated_at.substring(0, 10)) : 'পূর্বে দেওয়া হয়নি'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ fontSize: 11.5, color: '#64748B', fontWeight: 700, marginBottom: 4 }}>বর্তমান প্রাপ্যতা</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {isCooldown ? (
+                          <span style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <IconClock size={14} color="#D97706" />
+                            বিশ্রামে (Cooldown) - {toBn(donorData.days_until_available)} দিন বাকি
+                          </span>
+                        ) : (
+                          <span style={{ background: donorData.is_available ? '#ECFDF5' : '#F1F5F9', border: `1px solid ${donorData.is_available ? '#A7F3D0' : '#E2E8F0'}`, color: donorData.is_available ? '#065F46' : '#64748B', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <span className={`live-status-dot ${donorData.is_available ? 'ready' : 'paused'}`} />
+                            {donorData.is_available ? 'রক্তদানের জন্য প্রস্তুত' : 'সাময়িক স্থগিত'}
+                          </span>
+                        )}
+
+                        <span style={{ background: '#FFF1F2', border: '1px solid #FECDD3', color: '#BE123C', fontSize: 12, fontWeight: 700, padding: '4px 10px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <IconHeart size={13} fill="#E11D48" color="#E11D48" />
+                          জরুরি প্রয়োজনে সক্রিয়
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Col>
+              </Row>
+
+              {/* Bottom Actions Bar */}
+              <div className="summary-bottom-action-wrap">
+                <div className="summary-bottom-hint-text">
+                  <IconSparkles size={16} color="#E11D48" style={{ flexShrink: 0 }} />
+                  <span>রক্তদাতা প্রোফাইলের তথ্য পরিবর্তন বা হালনাগাদ করতে পাশের বাটনে ক্লিক করুন।</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditMode(true)
+                    window.scrollTo({ top: 180, behavior: 'smooth' })
+                  }}
+                  className="summary-bottom-update-btn"
+                >
+                  <IconEdit size={18} />
+                  <span>তথ্য পরিবর্তন / আপডেট করুন</span>
+                  <IconArrowRight size={17} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ── MAIN FORM CONTAINER ── */
+          <div className="register-form-card">
+            {/* Reassuring Edit Profile Banner (When isExisting && isEditMode) */}
+            {isExisting && isEditMode && (
+              <div style={{
+                background: '#FFF1F2',
+                border: '1.5px solid #FECDD3',
+                borderRadius: 14,
+                padding: '14px 18px',
+                marginBottom: 24,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: '#FFE4E6', color: '#BE123C',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <IconEdit size={20} color="#BE123C" />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: '#9F1239' }}>
+                      রক্তদাতা তথ্য সম্পাদন মোড চালু রয়েছে
+                    </div>
+                    <div style={{ fontSize: 12.5, color: '#BE123C', marginTop: 2 }}>
+                      প্রয়োজনীয় তথ্য পরিবর্তন করে নিচে 'রক্তদাতা তথ্য আপডেট করুন' বাটনে ক্লিক করুন।
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (donorData) populateFormFromDonor(donorData)
+                    setFieldErrors({})
+                    setGeneralSubmitError('')
+                    setIsEditMode(false)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1.5px solid #FECDD3',
+                    color: '#9F1239',
+                    padding: '7px 14px',
+                    borderRadius: 10,
+                    fontWeight: 800,
+                    fontSize: 12.5,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}
+                >
+                  <IconX size={15} />
+                  <span>বাতিল / পূর্বাবস্থায় ফিরুন</span>
+                </button>
+              </div>
+            )}
+
           <Form onSubmit={handleSubmit}>
             
             {/* Autofill Notification Banner */}
@@ -1510,7 +2058,7 @@ export default function BloodDonorRegisterPage() {
                     <select
                       required
                       value={divisionId}
-                      onChange={e => { setDivisionId(e.target.value); clearError('division_id') }}
+                      onChange={e => handleDivisionChange(e.target.value)}
                       className={`select-box-styled ${fieldErrors.division_id ? 'has-field-error' : ''}`}
                     >
                       <option value="">সকল বিভাগ</option>
@@ -1535,7 +2083,7 @@ export default function BloodDonorRegisterPage() {
                     <select
                       required
                       value={districtId}
-                      onChange={e => { setDistrictId(e.target.value); clearError('district_id') }}
+                      onChange={e => handleDistrictChange(e.target.value)}
                       disabled={!divisionId}
                       className={`select-box-styled ${fieldErrors.district_id ? 'has-field-error' : ''}`}
                     >
@@ -1561,7 +2109,7 @@ export default function BloodDonorRegisterPage() {
                     <select
                       required
                       value={upazilaId}
-                      onChange={e => { setUpazilaId(e.target.value); clearError('upazila_id') }}
+                      onChange={e => handleUpazilaChange(e.target.value)}
                       disabled={!districtId}
                       className={`select-box-styled ${fieldErrors.upazila_id ? 'has-field-error' : ''}`}
                     >
@@ -1774,22 +2322,60 @@ export default function BloodDonorRegisterPage() {
             )}
 
             {/* ── SUBMIT BUTTON ── */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 12, paddingBottom: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, paddingTop: 14, paddingBottom: 6, flexWrap: 'wrap' }}>
+              {isExisting && isEditMode && (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => {
+                    if (donorData) populateFormFromDonor(donorData)
+                    setFieldErrors({})
+                    setGeneralSubmitError('')
+                    setIsEditMode(false)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  style={{
+                    background: '#F1F5F9',
+                    color: '#475569',
+                    border: '1.5px solid #CBD5E1',
+                    padding: '12px 20px',
+                    borderRadius: 14,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <IconX size={17} />
+                  <span>বাতিল করুন</span>
+                </button>
+              )}
+
               <button
                 type="submit"
                 disabled={saving}
                 className="register-submit-btn"
+                style={{
+                  background: 'linear-gradient(135deg, #E11D48 0%, #BE123C 100%)',
+                  padding: '13px 28px',
+                  borderRadius: 14,
+                  fontWeight: 800,
+                  fontSize: 15,
+                  boxShadow: '0 6px 20px rgba(225, 29, 72, 0.28)'
+                }}
               >
                 {saving ? (
                   <>
                     <Spinner animation="border" size="sm" />
-                    <span style={{ whiteSpace: 'nowrap' }}>সংরক্ষণ হচ্ছে...</span>
+                    <span style={{ whiteSpace: 'nowrap' }}>সংরক্ষণ ও আপডেট হচ্ছে...</span>
                   </>
                 ) : (
                   <>
-                    <IconHeart size={18} style={{ flexShrink: 0 }} />
+                    <IconHeart size={19} style={{ flexShrink: 0 }} />
                     <span style={{ whiteSpace: 'nowrap' }}>
-                      {isExisting ? 'প্রোফাইল আপডেট করুন' : 'রক্তদাতা নিবন্ধন করুন'}
+                      {isExisting ? 'রক্তদাতা তথ্য আপডেট করুন' : 'রক্তদাতা হিসেবে নিবন্ধন সম্পন্ন করুন'}
                     </span>
                     <IconArrowRight size={17} style={{ flexShrink: 0 }} />
                   </>
@@ -1798,6 +2384,7 @@ export default function BloodDonorRegisterPage() {
             </div>
           </Form>
         </div>
+        )}
       </Container>
 
       {/* ── LOG DONATION CONFIRMATION MODAL ── */}
@@ -2229,10 +2816,10 @@ export default function BloodDonorRegisterPage() {
           </div>
 
           <h4 style={{ fontWeight: 900, color: '#0F172A', fontSize: 20, marginBottom: 8 }}>
-            প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে!
+            {isExisting ? 'প্রোফাইল সফলভাবে আপডেট হয়েছে!' : 'রক্তদাতা নিবন্ধন সফল হয়েছে!'}
           </h4>
           <p style={{ fontSize: 13.5, color: '#475569', fontWeight: 600, maxWidth: 360, margin: '0 auto 20px', lineHeight: 1.6 }}>
-            {saveSuccessMessage || 'আপনার রক্তদাতা প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে। মানবসেবায় এগিয়ে আসার জন্য ধন্যবাদ!'}
+            {saveSuccessMessage || (isExisting ? 'আপনার রক্তদাতা প্রোফাইলের হালনাগাদ তথ্য সফলভাবে সংরক্ষিত হয়েছে।' : 'আপনার রক্তদাতা প্রোফাইল সফলভাবে সংরক্ষিত হয়েছে। মানবসেবায় এগিয়ে আসার জন্য ধন্যবাদ!')}
           </p>
 
           <div style={{ display: 'flex', gap: 10 }}>

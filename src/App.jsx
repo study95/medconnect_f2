@@ -46,6 +46,9 @@ const ServiceDetailPage      = lazy(() => import('./pages/ServiceDetailPage'))
 const ContactPage           = lazy(() => import('./pages/ContactPage'))
 const BloodDonorsPage       = lazy(() => import('./pages/BloodDonorsPage'))
 const BloodDonorRegisterPage = lazy(() => import('./pages/BloodDonorRegisterPage'))
+const PharmacyRegisterPage   = lazy(() => import('./pages/PharmacyRegisterPage'))
+const PharmacyListPage       = lazy(() => import('./pages/PharmacyListPage'))
+const AmbulancesPage         = lazy(() => import('./pages/AmbulancesPage'))
 
 // Auth pages (NEW — dual patient/doctor system)
 const RegistrationChoicePage = lazy(() => import('./pages/auth/RegistrationChoicePage'))
@@ -119,6 +122,7 @@ const ContactMessageListPage = lazy(() => import('./pages/admin/contact/ContactM
 const PatientListPage     = lazy(() => import('./pages/admin/patients/PatientListPage'))
 const PatientFormPage     = lazy(() => import('./pages/admin/patients/PatientFormPage'))
 const AdminBloodDonorsPage = lazy(() => import('./pages/admin/AdminBloodDonorsPage'))
+const AdminPharmaciesPage  = lazy(() => import('./pages/admin/AdminPharmaciesPage'))
 
 // Doctor Leave pages
 const DoctorLeavePage      = lazy(() => import('./pages/admin/leaves/DoctorLeavePage'))
@@ -378,6 +382,9 @@ function App() {
 
             {/* Blood Donors Management (Admin) */}
             <Route path="blood-donors" element={<AdminBloodDonorsPage />} />
+
+            {/* Pharmacies Management (Admin) */}
+            <Route path="pharmacies" element={<AdminPharmaciesPage />} />
 
             {/* Users */}
             <Route path="users" element={<UserListPage />} />
@@ -727,6 +734,9 @@ function App() {
                   <Route path="/contact"         element={<ContactPage />} />
                   <Route path="/blood-donors"    element={<BloodDonorsPage />} />
                   <Route path="/blood-donors/register" element={<ProtectedRoute><BloodDonorRegisterPage /></ProtectedRoute>} />
+                  <Route path="/pharmacies"      element={<PharmacyListPage />} />
+                  <Route path="/pharmacy-register" element={<ProtectedRoute><PharmacyRegisterPage /></ProtectedRoute>} />
+                  <Route path="/ambulances"      element={<AmbulancesPage />} />
                   
                   {/* Info Routes */}
                   <Route path="/about"           element={<AboutPage />} />

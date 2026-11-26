@@ -19,7 +19,7 @@ import {
   ShoppingCart, Users, UserPlus, FileEdit, Zap, History, Bell, Package, Ticket,
   Gift, MessageSquare, Shield, Tv, CalendarOff, DollarSign, Layers, Settings,
   Tag, Clock, Megaphone, Mail, Activity, Gauge, FlaskConical, HeartHandshake,
-  GraduationCap
+  GraduationCap, Store
 } from 'lucide-react'
 
 // ─── Collapsible Section Component ────────────────────────────────────────────
@@ -718,7 +718,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               id="bookings"
               label={isDoctor ? 'My Patients' : 'Bookings'}
               routes={[
-                '/admin/patients', '/admin/blood-donors', '/admin/appointments', '/admin/serial-display', '/admin/prescriptions',
+                '/admin/patients', '/admin/blood-donors', '/admin/pharmacies', '/admin/appointments', '/admin/serial-display', '/admin/prescriptions',
                 '/doctor/patients', '/doctor/appointments', '/doctor/serial-display', '/doctor/prescriptions', '/doctor/notes', '/doctor/doctor-reviews',
                 '/hospital/patients', '/hospital/appointments', '/hospital/serial-display', '/hospital/prescriptions',
               ]}
@@ -747,6 +747,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 >
                   <span className="nav-icon"><HeartHandshake size={18} /></span>
                   <span className="nav-text">Blood Donors</span>
+                </PrefetchNavLink>
+              )}
+
+              {/* Pharmacies Management — Admin only */}
+              {isAdmin && (
+                <PrefetchNavLink onHoverPrefetch={handleHoverPrefetch}
+                  to="/admin/pharmacies"
+                  className={`sidebar-nav-item ${isActive('/admin/pharmacies') ? 'active' : ''}`}
+                  onClick={onClose}
+                  title={isCollapsed ? 'Pharmacies' : undefined}
+                >
+                  <span className="nav-icon"><Store size={18} /></span>
+                  <span className="nav-text">ফার্মেসি ভেরিফিকেশন</span>
                 </PrefetchNavLink>
               )}
 

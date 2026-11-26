@@ -10,7 +10,7 @@ import {
   IconHome, IconStethoscope, IconBuildingHospital, 
   IconInfoCircle, IconServer, IconMessage, IconUserPlus, IconDashboard, 
   IconHelp, IconShieldCheck, IconLock, IconReceiptRefund,
-  IconPlus, IconMinus
+  IconPlus, IconMinus, IconBuildingStore, IconDroplet, IconAmbulance
 } from '@tabler/icons-react'
 
 function Footer() {
@@ -75,11 +75,16 @@ function Footer() {
     { label: 'হোম', to: '/', icon: <IconHome size={16} /> },
     { label: 'সকল ডাক্তার', to: '/doctors', icon: <IconStethoscope size={16} /> },
     { label: 'সকল হাসপাতাল', to: '/hospitals', icon: <IconBuildingHospital size={16} /> },
+    { label: 'ফার্মেসি ডিরেক্টরি', to: '/pharmacies', icon: <IconBuildingStore size={16} /> },
+    { label: 'রক্তদাতা নেটওয়ার্ক', to: '/blood-donors', icon: <IconDroplet size={16} /> },
+    { label: 'জরুরি অ্যাম্বুলেন্স', to: '/ambulances', icon: <IconAmbulance size={16} /> },
     { label: 'স্বাস্থ্য সেবা', to: '/services', icon: <IconServer size={16} /> },
     { label: 'যোগাযোগ করুন', to: '/contact', icon: <IconMessage size={16} /> },
   ]
 
   const PARTNER_LINKS = [
+    { label: 'ফার্মেসি নিবন্ধন করুন', to: '/pharmacy-register', icon: <IconBuildingStore size={16} /> },
+    { label: 'রক্তদাতা নিবন্ধন', to: '/blood-donors/register', icon: <IconDroplet size={16} /> },
     { label: 'আপনি কি রোগী?', to: '/register-patient', icon: <IconUserPlus size={16} /> },
     { label: 'আপনি কি ডাক্তার?', to: '/register-doctor', icon: <IconUserPlus size={16} /> },
     { label: 'আপনার কি হাসপাতাল আছে?', to: '/register-hospital', icon: <IconBuildingHospital size={16} /> },

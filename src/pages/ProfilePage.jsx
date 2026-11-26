@@ -152,6 +152,74 @@ function ProfilePage() {
   const [loadingUserTickets, setLoadingUserTickets] = useState(false)
   const [userTicketsError, setUserTicketsError] = useState('') // null=landing, 'new_ticket', 'tracking', 'list'
 
+  // Mobile Sequential Navigation (Step 1: Main Menu -> Step 2: Sub-view -> Step 3: Support View)
+  const openMobileSubView = (view) => {
+    setMobileSubView(view)
+    setSupportView(null)
+    setEditing(false)
+    window.history.pushState({ mobileSubView: view, supportView: null }, '')
+  }
+
+  const openSupportView = (subView) => {
+    setSupportView(subView)
+    window.history.pushState({ mobileSubView: 'support', supportView: subView }, '')
+  }
+
+  const handleMobileBack = () => {
+    if (window.history.state?.mobileSubView) {
+      window.history.back()
+    } else {
+      if (supportView) {
+        setSupportView(null)
+      } else if (mobileSubView) {
+        setMobileSubView(null)
+      }
+    }
+  }
+
+  const handleMobileHome = () => {
+    setMobileSubView(null)
+    setSupportView(null)
+    setEditing(false)
+    if (window.history.state?.supportView) {
+      window.history.go(-2)
+    } else if (window.history.state?.mobileSubView) {
+      window.history.go(-1)
+    }
+  }
+
+  useEffect(() => {
+    const handlePopState = (e) => {
+      const state = e.state
+      if (state && state.mobileSubView) {
+        setMobileSubView(state.mobileSubView)
+        setSupportView(state.supportView || null)
+        if (state.mobileSubView !== 'profile') {
+          setEditing(false)
+        }
+      } else {
+        setMobileSubView(null)
+        setSupportView(null)
+        setEditing(false)
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  const getMobileHeaderTitle = () => {
+    if (mobileSubView === 'profile') return 'প্রোফাইল বিবরণ'
+    if (mobileSubView === 'fav_doctors') return 'পছন্দের ডাক্তার'
+    if (mobileSubView === 'fav_hospitals') return 'পছন্দের হাসপাতাল'
+    if (mobileSubView === 'support') {
+      if (supportView === 'new_ticket') return 'নতুন টিকিট / অভিযোগ'
+      if (supportView === 'list') return 'জমা দেওয়া টিকিট লিস্ট'
+      if (supportView === 'tracking') return 'টিকিট ট্র্যাকিং'
+      return 'সাপোর্ট / অভিযোগ পোর্টাল'
+    }
+    return ''
+  }
+
   useEffect(() => {
     const contactVal = form.mobile || form.email || user?.mobile || user?.email || ''
     const nameVal = form.name || user?.name || ''
@@ -1333,7 +1401,7 @@ function ProfilePage() {
 
                     {/* Item 2: Profile See Sub-Page */}
                     <button
-                      onClick={() => setMobileSubView('profile')}
+                      onClick={() => openMobileSubView('profile')}
                       style={{
                         width: '100%',
                         padding: '16px 18px',
@@ -1457,7 +1525,7 @@ function ProfilePage() {
 
                     {/* Item 6: Support Portal */}
                     <button
-                      onClick={() => setMobileSubView('support')}
+                      onClick={() => openMobileSubView('support')}
                       style={{
                         width: '100%',
                         padding: '16px 18px',
@@ -1493,7 +1561,7 @@ function ProfilePage() {
                   <>
                     {/* Item 1: Profile See Sub-Page */}
                 <button
-                  onClick={() => setMobileSubView('profile')}
+                  onClick={() => openMobileSubView('profile')}
                   style={{
                     width: '100%',
                     padding: '16px 18px',
@@ -1586,7 +1654,7 @@ function ProfilePage() {
 
                 {/* Item 3: Favorite Doctor List -> Saved Doctors Sub-Page */}
                 <button
-                  onClick={() => setMobileSubView('fav_doctors')}
+                  onClick={() => openMobileSubView('fav_doctors')}
                   style={{
                     width: '100%',
                     padding: '16px 18px',
@@ -1617,7 +1685,7 @@ function ProfilePage() {
 
                 {/* Item 4: Favorite Hospital List -> Saved Hospitals Sub-Page */}
                 <button
-                  onClick={() => setMobileSubView('fav_hospitals')}
+                  onClick={() => openMobileSubView('fav_hospitals')}
                   style={{
                     width: '100%',
                     padding: '16px 18px',
@@ -1648,7 +1716,7 @@ function ProfilePage() {
 
                 {/* Item 5: Support Ticket / অভিযোগ পোর্টাল */}
                 <button
-                  onClick={() => setMobileSubView('support')}
+                  onClick={() => openMobileSubView('support')}
                   style={{
                     width: '100%',
                     padding: '16px 18px',
@@ -1753,48 +1821,71 @@ function ProfilePage() {
           ) : (
             /* DEDICATED FULL MOBILE SUB-PAGE SCREEN */
             <div>
-              {/* STICKY NAVIGATION HEADER */}
+              {/* Sleek Mobile Navigation Bar (Active Sub-Page) */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: 12,
-                marginBottom: 16,
-                background: 'white',
-                padding: '12px 16px',
+                justifyContent: 'space-between',
+                background: '#FFFFFF',
+                padding: '10px 14px',
                 borderRadius: 14,
                 border: '1px solid #E2E8F0',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.03)'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                marginBottom: 14
               }}>
-                <button
-                  onClick={() => { setMobileSubView(null); setEditing(false); setSupportView(null); }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    background: '#F0FDF4',
-                    color: '#00B875',
-                    border: '1px solid #DCFCE7',
-                    padding: '8px 14px',
-                    borderRadius: 10,
-                    fontWeight: 800,
-                    fontSize: 13.5,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <IconArrowLeft size={18} />
-                  <span>ফিরে যান</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <button
+                    type="button"
+                    onClick={handleMobileBack}
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: '#F0FDF4',
+                      color: '#00B875',
+                      border: '1px solid #DCFCE7',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      transition: 'all 0.2s ease'
+                    }}
+                    title="পেছনে ফিরে যান"
+                  >
+                    <IconArrowLeft size={18} strokeWidth={2.5} />
+                  </button>
+                  <div style={{ minWidth: 0 }}>
+                    <h5 style={{ margin: 0, fontWeight: 800, fontSize: 15, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {getMobileHeaderTitle()}
+                    </h5>
+                    <div style={{ fontSize: 11, color: '#64748B', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                      <span>প্রোফাইল</span>
+                      {mobileSubView === 'support' && <span>› সাপোর্ট</span>}
+                      {supportView && <span>› {supportView === 'new_ticket' ? 'নতুন টিকিট' : supportView === 'tracking' ? 'ট্র্যাকিং' : 'তালিকা'}</span>}
+                    </div>
+                  </div>
+                </div>
 
-                <h5 style={{ margin: 0, fontWeight: 800, fontSize: 16, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {mobileSubView === 'profile' && 'প্রোফাইল বিবরণ'}
-                  {mobileSubView === 'fav_doctors' && 'পছন্দের ডাক্তার'}
-                  {mobileSubView === 'fav_hospitals' && 'পছন্দের হাসপাতাল'}
-                  {mobileSubView === 'support' && 'সাপোর্ট / অভিযোগ'}
-                </h5>
+                {supportView && (
+                  <button
+                    type="button"
+                    onClick={handleMobileHome}
+                    style={{
+                      background: '#F8FAFC',
+                      border: '1px solid #E2E8F0',
+                      borderRadius: 8,
+                      padding: '5px 10px',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    মূল মেনু
+                  </button>
+                )}
               </div>
 
               {/* ── SUB-PAGE 1: PROFILE DETAILS & EDIT ── */}
@@ -1847,9 +1938,19 @@ function ProfilePage() {
                         
                         <h4 style={{ fontWeight: 900, color: '#0F172A', fontSize: 20, margin: '0 0 4px' }}>{displayName}</h4>
                         
-                        {/* ADDRESS IN ONE ROW */}
-                        <div style={{ fontSize: 13, color: '#059669', fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <IconMapPin size={15} style={{ flexShrink: 0 }} />
+                        {/* ADDRESS */}
+                        <div style={{
+                          fontSize: 12.5,
+                          color: '#059669',
+                          fontWeight: 700,
+                          margin: '0 auto 10px',
+                          textAlign: 'center',
+                          lineHeight: 1.5,
+                          maxWidth: '100%',
+                          padding: '0 12px',
+                          wordBreak: 'break-word'
+                        }}>
+                          <IconMapPin size={15} style={{ display: 'inline-block', verticalAlign: '-2.5px', marginRight: 4, color: '#059669' }} />
                           <span>{displayAddress}</span>
                         </div>
 
@@ -2155,7 +2256,7 @@ function ProfilePage() {
                       
                       {/* Button 1: Ticket List */}
                       <button
-                        onClick={() => setSupportView('list')}
+                        onClick={() => openSupportView('list')}
                         style={{
                           width: '100%',
                           padding: '16px 18px',
@@ -2183,7 +2284,7 @@ function ProfilePage() {
 
                       {/* Button 2: New Ticket */}
                       <button
-                        onClick={() => setSupportView('new_ticket')}
+                        onClick={() => openSupportView('new_ticket')}
                         style={{
                           width: '100%',
                           padding: '16px 18px',
@@ -2211,7 +2312,7 @@ function ProfilePage() {
 
                       {/* Button 3: Track Ticket */}
                       <button
-                        onClick={() => setSupportView('tracking')}
+                        onClick={() => openSupportView('tracking')}
                         style={{
                           width: '100%',
                           padding: '16px 18px',
@@ -2267,7 +2368,7 @@ function ProfilePage() {
                             </div>
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <button onClick={() => { setSupportView('tracking'); setProfileTrackId(submittedTicket.id); }} style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#00B875', color: 'white', border: 'none', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 18px rgba(0,184,117,0.25)' }}>
+                            <button onClick={() => { openSupportView('tracking'); setProfileTrackId(submittedTicket.id); }} style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#00B875', color: 'white', border: 'none', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 18px rgba(0,184,117,0.25)' }}>
                               টিকিট স্ট্যাটাস দেখুন →
                             </button>
                             <button onClick={() => setSubmittedTicket(null)} style={{ width: '100%', padding: '12px', borderRadius: 14, background: 'white', color: '#475569', border: '1.5px solid #E2E8F0', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
@@ -2705,7 +2806,7 @@ function ProfilePage() {
                                   <button
                                     onClick={() => {
                                       setProfileTrackId(t.ticket_number || ('TID-' + t.id));
-                                      setSupportView('tracking');
+                                      openSupportView('tracking');
                                     }}
                                     style={{
                                       background: '#00B875',
@@ -2740,7 +2841,7 @@ function ProfilePage() {
                           <div style={{ fontWeight: 800, fontSize: 15.5, color: '#1E293B', marginBottom: 4 }}>কোনো টিকিট পাওয়া যায়নি</div>
                           <div style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600, marginBottom: 16 }}>আপনি পূর্বে কোনো সাপোর্ট টিকিট জমা দেননি।</div>
                           <button
-                            onClick={() => setSupportView('new_ticket')}
+                            onClick={() => openSupportView('new_ticket')}
                             style={{
                               padding: '11px 20px',
                               borderRadius: 12,

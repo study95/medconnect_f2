@@ -5,7 +5,7 @@ export default function BreadcrumbHUD({ links = [], variant = 'dark', showBack =
   const navigate = useNavigate()
 
   return (
-    <div style={{ 
+    <div className="breadcrumb-hud-wrapper d-none d-md-block" style={{ 
       padding: '24px 0 0', 
       position: 'relative', 
       zIndex: 100,

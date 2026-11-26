@@ -7,7 +7,7 @@ import {
   LayoutGrid, User, LogOut, Calendar, Phone, Mail, ChevronDown, ChevronUp, 
   CalendarCheck, LogIn, UserPlus, Stethoscope, Building2, 
   ShieldCheck, FileText, HelpCircle, Home, Menu, X,
-  Bell, Search, ChevronRight, Activity, Headphones, Hourglass, Droplet
+  Bell, Search, ChevronRight, Activity, Headphones, Hourglass, Droplet, Store, Ambulance
 } from 'lucide-react'
 import NotificationDropdown from './NotificationDropdown'
 import { getContent, useSiteSettings } from '../../utils/contentService'
@@ -487,7 +487,9 @@ function AppNavbar() {
     { label: 'হোম', path: '/', isHome: true },
     { label: 'ডাক্তার', path: '/doctors' },
     { label: 'হাসপাতাল', path: '/hospitals' },
+    { label: 'ফার্মেসি', path: '/pharmacies' },
     { label: 'রক্তদাতা', path: '/blood-donors' },
+    { label: 'অ্যাম্বুলেন্স', path: '/ambulances' },
     { label: 'সেবা সমূহ', path: '/services' },
     { label: 'যোগাযোগ', path: '/contact' },
   ]
@@ -496,7 +498,9 @@ function AppNavbar() {
     { label: 'হোম', path: '/', icon: <Home size={17} /> },
     { label: 'ডাক্তার', path: '/doctors', icon: <Stethoscope size={17} /> },
     { label: 'হাসপাতাল', path: '/hospitals', icon: <Building2 size={17} /> },
+    { label: 'ফার্মেসি', path: '/pharmacies', icon: <Store size={17} /> },
     { label: 'রক্তদাতা', path: '/blood-donors', icon: <Droplet size={17} /> },
+    { label: 'অ্যাম্বুলেন্স', path: '/ambulances', icon: <Ambulance size={17} /> },
     { label: 'সেবা সমূহ', path: '/services', icon: <Activity size={17} /> },
     { label: 'যোগাযোগ', path: '/contact', icon: <Headphones size={17} /> },
   ]
@@ -1203,6 +1207,9 @@ function AppNavbar() {
                             <Link to="/blood-donors/register" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
                               <Droplet size={15} className="me-2 text-danger" /> রক্তদাতা প্রোফাইল
                             </Link>
+                            <Link to="/pharmacy-register" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
+                              <Store size={15} className="me-2 text-success" /> আমার ফার্মেসি
+                            </Link>
                             {!isDoctor && !isManager && (
                               <Link to="/my-appointments" onClick={() => setUserMenuOpen(false)} className="user-dropdown-item">
                                 <Calendar size={15} className="me-2" /> আমার অ্যাপয়েন্টমেন্ট
@@ -1528,6 +1535,9 @@ function AppNavbar() {
                     </Link>
                     <Link to="/blood-donors/register" onClick={closeMenu} className="mobile-drawer-sub-item">
                       <Droplet size={16} className="text-danger" /> <span>রক্তদাতা প্রোফাইল</span>
+                    </Link>
+                    <Link to="/pharmacy-register" onClick={closeMenu} className="mobile-drawer-sub-item">
+                      <Store size={16} className="text-success" /> <span>আমার ফার্মেসি</span>
                     </Link>
                     {!isDoctor && !isManager && (
                       <Link to="/my-appointments" onClick={closeMenu} className="mobile-drawer-sub-item">
