@@ -34,7 +34,10 @@ import {
   IconBroadcast,
   IconPhone,
   IconDeviceTv,
-  IconClock
+  IconClock,
+  IconDroplet,
+  IconBuildingStore,
+  IconAmbulance
 } from '@tabler/icons-react'
 import { getContent } from '../../utils/contentService'
 import { getMediaUrl } from '../../utils/mediaUtils'
@@ -773,6 +776,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
   const [showUnifiedModal, setShowUnifiedModal] = useState(false)
   const [unifiedTab, setUnifiedTab] = useState('specialty')
   const [showAllSpecialtiesPopup, setShowAllSpecialtiesPopup] = useState(false)
+  const [showEmergencyPopup, setShowEmergencyPopup] = useState(false)
   const [specialtySearchQuery, setSpecialtySearchQuery] = useState('')
   const [activeSlide, setActiveSlide] = useState(0)
   const [selectedDate, setSelectedDate] = useState('')
@@ -1438,7 +1442,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
   // Prevent background scroll when any mobile bottom sheet is open
   useEffect(() => {
-    if (showUnifiedModal || showAllSpecialtiesPopup) {
+    if (showUnifiedModal || showAllSpecialtiesPopup || showEmergencyPopup) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = ''
@@ -1446,7 +1450,7 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
     return () => {
       document.body.style.overflow = ''
     }
-  }, [showUnifiedModal, showAllSpecialtiesPopup])
+  }, [showUnifiedModal, showAllSpecialtiesPopup, showEmergencyPopup])
 
   const getDateLabel = () => {
     if (!selectedDate) return 'তারিখ'
@@ -2780,7 +2784,10 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
           {/* 5. Emergency Red Banner */}
           <div
             className="hero-mobile-emergency-banner"
-            onClick={() => navigate('/hospitals?emergency=1')}
+            onClick={() => setShowEmergencyPopup(true)}
+            role="button"
+            tabIndex={0}
+            style={{ cursor: 'pointer' }}
           >
             {/* 3D-Style Vector Ambulance Graphic */}
             <div className="hero-mobile-emergency-img-box">
@@ -3267,6 +3274,104 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
                   <div>কোনো বিশেষজ্ঞ বিভাগ পাওয়া যায়নি</div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 6. Mobile Emergency Services Popup (Center Dialog - Informative & Beautiful) */}
+      {showEmergencyPopup && typeof document !== 'undefined' && createPortal(
+        <div
+          className="hero-emergency-sheet-overlay"
+          onClick={() => setShowEmergencyPopup(false)}
+        >
+          <div
+            className="hero-emergency-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="hero-emergency-sheet-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="hero-emergency-header-badge">
+                  <IconAmbulance size={20} color="#DC2626" stroke={2.2} />
+                </div>
+                <div>
+                  <h4 className="hero-emergency-sheet-title">জরুরি স্বাস্থ্য সেবা</h4>
+                  <p className="hero-emergency-sheet-sub">প্রয়োজনীয় সেবাটি নির্বাচন করুন</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="hero-emergency-close-btn"
+                onClick={() => setShowEmergencyPopup(false)}
+                title="বন্ধ করুন"
+              >
+                <IconX size={17} />
+              </button>
+            </div>
+
+            {/* Informative & Beautiful Cards List */}
+            <div className="hero-emergency-options-list">
+              {/* Option 1: Blood */}
+              <div
+                className="hero-emergency-info-card card-blood"
+                onClick={() => {
+                  setShowEmergencyPopup(false)
+                  navigate('/blood-donors')
+                }}
+              >
+                <div className="hero-emergency-card-icon icon-blood">
+                  <IconDroplet size={21} stroke={2.2} />
+                </div>
+                <div className="hero-emergency-card-text">
+                  <div className="hero-emergency-card-title">রক্তদাতাদের তালিকা</div>
+                  <div className="hero-emergency-card-desc">রক্তদাতার সন্ধান ও সরাসরি যোগাযোগ</div>
+                </div>
+                <div className="hero-emergency-card-arrow arrow-blood">
+                  <IconChevronRight size={17} stroke={2.4} />
+                </div>
+              </div>
+
+              {/* Option 2: Pharmacy */}
+              <div
+                className="hero-emergency-info-card card-pharmacy"
+                onClick={() => {
+                  setShowEmergencyPopup(false)
+                  navigate('/pharmacies')
+                }}
+              >
+                <div className="hero-emergency-card-icon icon-pharmacy">
+                  <IconBuildingStore size={21} stroke={2.2} />
+                </div>
+                <div className="hero-emergency-card-text">
+                  <div className="hero-emergency-card-title">অনুমোদিত ফার্মেসি তালিকা</div>
+                  <div className="hero-emergency-card-desc">নিকটস্থ ফার্মেসি ও জরুরি ওষুধ সেবা</div>
+                </div>
+                <div className="hero-emergency-card-arrow arrow-pharmacy">
+                  <IconChevronRight size={17} stroke={2.4} />
+                </div>
+              </div>
+
+              {/* Option 3: Ambulance */}
+              <div
+                className="hero-emergency-info-card card-ambulance"
+                onClick={() => {
+                  setShowEmergencyPopup(false)
+                  navigate('/ambulances')
+                }}
+              >
+                <div className="hero-emergency-card-icon icon-ambulance">
+                  <IconAmbulance size={21} stroke={2.2} />
+                </div>
+                <div className="hero-emergency-card-text">
+                  <div className="hero-emergency-card-title">জরুরি অ্যাম্বুলেন্স তালিকা</div>
+                  <div className="hero-emergency-card-desc">হাসপাতালের নিজস্ব ২৪/৭ হটলাইন</div>
+                </div>
+                <div className="hero-emergency-card-arrow arrow-ambulance">
+                  <IconChevronRight size={17} stroke={2.4} />
+                </div>
+              </div>
             </div>
           </div>
         </div>,
@@ -6655,6 +6760,230 @@ const HeroSection = memo(function HeroSection({ stats: propStats }) {
 
           .loc-popup-box { max-width: 96vw; margin: 0 8px; }
           .loc-popup-overlay { padding-top: 80px; }
+        }
+
+        /* ── 9. Emergency Services Mobile Center Modal (Informative & Beautiful) ── */
+        .hero-emergency-sheet-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.62);
+          z-index: 999999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px 16px;
+          backdrop-filter: blur(5px);
+          -webkit-backdrop-filter: blur(5px);
+          animation: locFadeIn 0.2s ease;
+        }
+
+        .hero-emergency-sheet {
+          background: #FFFFFF;
+          width: 100%;
+          max-width: 375px;
+          border-radius: 22px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 24px 60px -10px rgba(0, 0, 0, 0.35), 0 6px 20px rgba(0, 0, 0, 0.1);
+          animation: emergencyModalPopIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          padding: 18px 18px 16px;
+          border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes emergencyModalPopIn {
+          from {
+            opacity: 0;
+            transform: scale(0.92) translateY(8px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+
+        .hero-emergency-sheet-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 0 14px;
+          border-bottom: 1px solid #F1F5F9;
+          margin-bottom: 12px;
+        }
+
+        .hero-emergency-header-badge {
+          width: 38px;
+          height: 38px;
+          border-radius: 11px;
+          background: #FEF2F2;
+          border: 1.5px solid #FECACA;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .hero-emergency-sheet-title {
+          font-size: 16px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 2px 0;
+          font-family: 'Hind Siliguri', sans-serif;
+          line-height: 1.25;
+        }
+
+        .hero-emergency-sheet-sub {
+          font-size: 12px;
+          color: #64748B;
+          margin: 0;
+          font-family: 'Hind Siliguri', sans-serif;
+          font-weight: 500;
+        }
+
+        .hero-emergency-close-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: #F1F5F9;
+          border: none;
+          color: #64748B;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
+        }
+        .hero-emergency-close-btn:hover {
+          background: #E2E8F0;
+          color: #0F172A;
+        }
+
+        .hero-emergency-options-list {
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .hero-emergency-info-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 14px;
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          user-select: none;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        }
+        .hero-emergency-info-card:active {
+          transform: scale(0.985);
+        }
+
+        /* Specific card colors & subtle gradients */
+        .card-blood {
+          background: linear-gradient(135deg, #FFFFFF 0%, #FFF5F7 100%);
+          border: 1.5px solid #FECDD3;
+        }
+        .card-blood:hover {
+          border-color: #E11D48;
+          box-shadow: 0 6px 16px rgba(225, 29, 72, 0.12);
+        }
+        .icon-blood {
+          background: #FFE4E6;
+          color: #E11D48;
+        }
+        .arrow-blood {
+          color: #E11D48;
+          background: rgba(225, 29, 72, 0.08);
+        }
+
+        .card-pharmacy {
+          background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%);
+          border: 1.5px solid #A7F3D0;
+        }
+        .card-pharmacy:hover {
+          border-color: #00B875;
+          box-shadow: 0 6px 16px rgba(0, 184, 117, 0.12);
+        }
+        .icon-pharmacy {
+          background: #ECFDF5;
+          color: #00B875;
+        }
+        .arrow-pharmacy {
+          color: #00B875;
+          background: rgba(0, 184, 117, 0.08);
+        }
+
+        .card-ambulance {
+          background: linear-gradient(135deg, #FFFFFF 0%, #FEF2F2 100%);
+          border: 1.5px solid #FCA5A5;
+        }
+        .card-ambulance:hover {
+          border-color: #DC2626;
+          box-shadow: 0 6px 16px rgba(220, 38, 38, 0.12);
+        }
+        .icon-ambulance {
+          background: #FEF2F2;
+          color: #DC2626;
+        }
+        .arrow-ambulance {
+          color: #DC2626;
+          background: rgba(220, 38, 38, 0.08);
+        }
+
+        .hero-emergency-card-icon {
+          width: 40px;
+          height: 40px;
+          border-radius: 11px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
+        }
+        .hero-emergency-info-card:hover .hero-emergency-card-icon {
+          transform: scale(1.06);
+        }
+
+        .hero-emergency-card-text {
+          flex: 1;
+          min-width: 0;
+        }
+
+        .hero-emergency-card-title {
+          font-size: 14.5px;
+          font-weight: 800;
+          color: #0F172A;
+          font-family: 'Hind Siliguri', sans-serif;
+          line-height: 1.25;
+          margin-bottom: 2px;
+        }
+
+        .hero-emergency-card-desc {
+          font-size: 11.5px;
+          color: #64748B;
+          font-family: 'Hind Siliguri', sans-serif;
+          line-height: 1.3;
+          font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .hero-emergency-card-arrow {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
+        }
+        .hero-emergency-info-card:hover .hero-emergency-card-arrow {
+          transform: translateX(2px);
         }
 
         /* ── Mobile Layout Adjustments ── */
