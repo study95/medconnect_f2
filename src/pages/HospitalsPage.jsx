@@ -705,16 +705,6 @@ function HospitalsPage() {
     prevParamsRef.current = currentStr
     isSyncingFromUrlRef.current = true
 
-    // If navigated to bare /hospitals (e.g. via Navbar menu click), restore saved session filters
-    if (!currentStr && !districtParam && !upazilaParam) {
-      const savedQuery = sessionStorage.getItem('hospitals_filter_query')
-      if (savedQuery) {
-        prevParamsRef.current = savedQuery
-        setSearchParams(new URLSearchParams(savedQuery), { replace: true })
-        return
-      }
-    }
-
     const divId   = searchParams.get('division_id') || ''
     const distId  = searchParams.get('district_id') || ''
     const upaId   = searchParams.get('upazila_id') || ''
@@ -783,7 +773,15 @@ function HospitalsPage() {
     const currentStr = searchParams.toString()
     const nextStr = next.toString()
     if (nextStr) {
-      sessionStorage.setItem('hospitals_filter_query', nextStr)
+      // Don't persist transient text search query in long-lived session filters
+      const sessionNext = new URLSearchParams(next)
+      sessionNext.delete('search')
+      const sessionStr = sessionNext.toString()
+      if (sessionStr) {
+        sessionStorage.setItem('hospitals_filter_query', sessionStr)
+      } else {
+        sessionStorage.removeItem('hospitals_filter_query')
+      }
     } else {
       sessionStorage.removeItem('hospitals_filter_query')
     }
@@ -876,6 +874,19 @@ function HospitalsPage() {
     setAppliedSearch('')
     setIsDesktopTypeaheadOpen(false)
     setIsMobileTypeaheadOpen(false)
+    try {
+      const saved = sessionStorage.getItem('hospitals_filter_query')
+      if (saved) {
+        const sp = new URLSearchParams(saved)
+        sp.delete('search')
+        const remaining = sp.toString()
+        if (remaining) {
+          sessionStorage.setItem('hospitals_filter_query', remaining)
+        } else {
+          sessionStorage.removeItem('hospitals_filter_query')
+        }
+      }
+    } catch {}
     window.dispatchEvent(new CustomEvent('sync-listing-search', { detail: '' }))
     updateUrlParams({ search: '' })
   }
@@ -1888,7 +1899,26 @@ function HospitalsPage() {
                 }}
               />
               {searchText && (
-                <button type="button" onClick={handleClearSearch} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: 0 }}>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    handleClearSearch()
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#94A3B8',
+                    padding: '6px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%'
+                  }}
+                  title="মুছে ফেলুন"
+                >
                   <IconX size={16} />
                 </button>
               )}
@@ -2068,7 +2098,15 @@ function HospitalsPage() {
                   <div style={{ marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #F1F5F9' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#0F172A' }}>Applied filters</span>
-                      <button type="button" onClick={handleClearAllFilters} style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          handleClearAllFilters()
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: '2px 4px' }}
+                      >
                         Clear All ✕
                       </button>
                     </div>
@@ -2076,7 +2114,11 @@ function HospitalsPage() {
                       {activeFilters.map(f => (
                         <span
                           key={f.key}
-                          onClick={f.clear}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            f.clear()
+                          }}
                           style={{
                             background: '#00B875',
                             color: 'white',

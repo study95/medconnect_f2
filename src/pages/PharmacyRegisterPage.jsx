@@ -970,7 +970,7 @@ export default function PharmacyRegisterPage() {
   // Guest Gate: If user is not logged in, prompt to login with redirect back
   if (!isLoggedIn) {
     return (
-      <div className="pharmacy-register-wrapper">
+      <div className="page-wrapper pharmacy-register-wrapper">
         <Container>
           <div style={{ marginBottom: 16 }}>
             <BreadcrumbHUD
@@ -1059,13 +1059,19 @@ export default function PharmacyRegisterPage() {
   }
 
   return (
-    <div className="pharmacy-register-wrapper">
+    <div className="page-wrapper pharmacy-register-wrapper">
       <style>{`
         .pharmacy-register-wrapper {
           background: #F8FAFC;
           min-height: 100vh;
-          padding-bottom: 60px;
+          padding-top: var(--header-height, 58px) !important;
+          padding-bottom: 120px;
           font-family: 'Hind Siliguri', 'Inter', sans-serif;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-register-wrapper {
+            padding-bottom: 70px;
+          }
         }
 
         @keyframes fieldErrorGlow {
@@ -1265,65 +1271,310 @@ export default function PharmacyRegisterPage() {
           color: #15803D;
           border-color: #86EFAC;
         }
+
+        /* ── HERO RESPONSIVE STYLING ── */
+        .pharmacy-hero-header {
+          position: relative;
+          overflow: hidden;
+          background: linear-gradient(135deg, #064E3B 0%, #065F46 50%, #047857 100%);
+          color: #FFFFFF;
+          margin: 16px 12px 20px;
+          padding: 20px 14px 24px;
+          border-radius: 18px;
+          box-shadow: 0 8px 24px rgba(6, 78, 59, 0.16);
+          border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+        @media (min-width: 768px) {
+          .pharmacy-hero-header {
+            margin: 0 0 26px 0;
+            padding: 34px 0 42px;
+            border-radius: 0;
+            border: none;
+            border-bottom: 4px solid #10B981;
+            box-shadow: 0 4px 20px rgba(6, 78, 59, 0.2);
+          }
+        }
+        .pharmacy-hero-pattern {
+          position: absolute;
+          inset: 0;
+          background-image: radial-gradient(rgba(167, 243, 208, 0.12) 1.5px, transparent 1.5px);
+          background-size: 20px 20px;
+          pointer-events: none;
+        }
+        .pharmacy-hero-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.16);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          backdrop-filter: blur(8px);
+          padding: 5px 12px;
+          border-radius: 9999px;
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #E6FFFA;
+          margin-bottom: 12px;
+          max-width: 100%;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-hero-badge {
+            font-size: 13px;
+            padding: 5px 14px;
+          }
+        }
+        .pharmacy-hero-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+          flex-wrap: nowrap;
+          overflow: hidden;
+        }
+        .pharmacy-hero-icon-box {
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
+          background: rgba(255, 255, 255, 0.18);
+          border: 1.5px solid rgba(255, 255, 255, 0.25);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #A7F3D0;
+          flex-shrink: 0;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-hero-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 13px;
+          }
+        }
+        .pharmacy-hero-title {
+          font-size: clamp(14px, 4.3vw, 30px);
+          font-weight: 900;
+          color: #FFFFFF !important;
+          letter-spacing: -0.4px;
+          margin: 0;
+          line-height: 1.25;
+          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+          font-family: 'Hind Siliguri', 'Inter', sans-serif;
+          white-space: nowrap;
+        }
+        @media (max-width: 420px) {
+          .pharmacy-hero-title {
+            font-size: 14px !important;
+            letter-spacing: -0.5px;
+          }
+          .pharmacy-hero-title-wrap {
+            gap: 8px;
+          }
+        }
+        .pharmacy-hero-desc {
+          font-size: 13px;
+          color: #D1FAE5;
+          max-width: 640px;
+          margin: 0;
+          line-height: 1.55;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-hero-desc {
+            font-size: 14.5px;
+            line-height: 1.6;
+          }
+        }
+        .pharmacy-security-box {
+          background: rgba(0, 0, 0, 0.22);
+          border-radius: 14px;
+          padding: 12px 16px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          display: block;
+          text-align: left;
+          width: 100%;
+        }
+        @media (min-width: 992px) {
+          .pharmacy-security-box {
+            display: inline-block;
+            width: auto;
+            max-width: 320px;
+          }
+        }
+
+        /* ── CONTENT CARDS RESPONSIVE STYLING ── */
+        .pharmacy-status-card {
+          border-radius: 16px;
+          padding: 14px 16px;
+          box-shadow: 0 4px 16px rgba(5, 150, 105, 0.08);
+          margin-bottom: 20px;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-status-card {
+            padding: 20px 24px;
+            border-radius: 18px;
+            margin-bottom: 24px;
+          }
+        }
+        .pharmacy-status-title {
+          font-size: clamp(12px, 3.4vw, 15.5px);
+          font-weight: 800;
+          color: #065F46;
+          white-space: nowrap;
+          letter-spacing: -0.4px;
+          line-height: 1.3;
+        }
+        @media (max-width: 420px) {
+          .pharmacy-status-title {
+            font-size: 12px !important;
+            letter-spacing: -0.5px;
+          }
+        }
+        .pharmacy-status-btn {
+          width: 100%;
+          justify-content: center;
+          margin-top: 8px;
+        }
+        @media (min-width: 576px) {
+          .pharmacy-status-btn {
+            width: auto;
+            justify-content: flex-start;
+            margin-top: 0;
+          }
+        }
+
+        .pharmacy-form-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          padding: 20px 14px 32px;
+          border: 1.5px solid #E2E8F0;
+          box-shadow: 0 6px 25px rgba(15, 23, 42, 0.04);
+          margin-bottom: 28px;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-form-card {
+            border-radius: 24px;
+            padding: 36px 36px 48px;
+            margin-bottom: 32px;
+          }
+        }
+
+        .pharmacy-summary-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1.5px solid #E2E8F0;
+          box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+          overflow: hidden;
+          margin-bottom: 28px;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-summary-card {
+            border-radius: 24px;
+            margin-bottom: 32px;
+          }
+        }
+        .pharmacy-summary-header {
+          padding: 18px 16px;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-summary-header {
+            padding: 28px 30px;
+          }
+        }
+        .pharmacy-summary-body {
+          padding: 18px 14px;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-summary-body {
+            padding: 30px;
+          }
+        }
+        .pharmacy-summary-update-btn {
+          width: 100%;
+          justify-content: center;
+        }
+        @media (min-width: 576px) {
+          .pharmacy-summary-update-btn {
+            width: auto;
+          }
+        }
+
+        .pharmacy-summary-bottom-action {
+          padding-top: 22px;
+          border-top: 1px solid #E2E8F0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          gap: 14px;
+        }
+        @media (min-width: 768px) {
+          .pharmacy-summary-bottom-action {
+            flex-direction: row;
+            justify-content: space-between;
+            text-align: left;
+          }
+        }
+
+        .pharmacy-form-action-bar {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 12px;
+          padding-top: 16px;
+          border-top: 1px solid #F1F5F9;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 576px) {
+          .pharmacy-form-action-bar {
+            flex-direction: column-reverse;
+          }
+          .pharmacy-form-action-bar > button {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+        }
       `}</style>
 
       {/* ── TOP HERO HEADER ── */}
-      <div style={{
-        background: 'linear-gradient(135deg, #064E3B 0%, #065F46 50%, #047857 100%)',
-        color: '#FFFFFF',
-        padding: '32px 0 40px',
-        borderBottom: '4px solid #10B981',
-        boxShadow: '0 4px 20px rgba(6, 78, 59, 0.15)',
-        marginBottom: 24
-      }}>
-        <Container>
-          <BreadcrumbHUD
-            links={[
-              { label: 'হোম', path: '/' },
-              { label: 'ফার্মেসি তালিকা', path: '/pharmacies' },
-              { label: isExisting ? 'আমার ফার্মেসি পোর্টাল' : 'ফার্মেসি নিবন্ধন' }
-            ]}
-            variant="light"
-          />
+      <div className="pharmacy-hero-header">
+        <div className="pharmacy-hero-pattern" />
+        <Container className="px-0 px-md-3" style={{ position: 'relative', zIndex: 1 }}>
+          <div className="d-none d-sm-block">
+            <BreadcrumbHUD
+              links={[
+                { label: 'হোম', path: '/' },
+                { label: 'ফার্মেসি তালিকা', path: '/pharmacies' },
+                { label: isExisting ? 'আমার ফার্মেসি পোর্টাল' : 'ফার্মেসি নিবন্ধন' }
+              ]}
+              variant="light"
+            />
+          </div>
 
-          <Row className="align-items-center mt-3">
+          <Row className="align-items-center mt-0 mt-sm-2">
             <Col lg={8}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: 'rgba(255,255,255,0.15)',
-                backdropFilter: 'blur(6px)',
-                padding: '5px 14px',
-                borderRadius: 20,
-                fontSize: 13,
-                fontWeight: 700,
-                marginBottom: 12
-              }}>
-                <IconShieldCheck size={16} color="#A7F3D0" />
-                <span>স্বাস্থ্য অধিদপ্তর ও ড্রাগ প্রশাসন অনুমোদিত নেটওয়ার্ক</span>
+              <div className="pharmacy-hero-badge">
+                <IconShieldCheck size={16} color="#A7F3D0" style={{ flexShrink: 0 }} />
+                <span className="d-none d-sm-inline">স্বাস্থ্য অধিদপ্তর ও ড্রাগ প্রশাসন অনুমোদিত নেটওয়ার্ক</span>
+                <span className="d-inline d-sm-none">ডিজিডিএ ও স্বাস্থ্য প্রশাসন নেটওয়ার্ক</span>
               </div>
-              <h1 style={{ fontSize: 'clamp(24px, 4vw, 34px)', fontWeight: 900, letterSpacing: '-0.5px', marginBottom: 8 }}>
-                {isExisting ? 'আমার ফার্মেসির তথ্য ও ড্রাগ লাইসেন্স' : 'ফার্মেসি লিস্টিং ও ভেরিফিকেশন আবেদন'}
-              </h1>
-              <p style={{ fontSize: 14.5, color: '#D1FAE5', maxWidth: 640, margin: 0, lineHeight: 1.6 }}>
+              <div className="pharmacy-hero-title-wrap">
+                <div className="pharmacy-hero-icon-box">
+                  <IconBuildingStore size={20} stroke={2.2} />
+                </div>
+                <h1 className="pharmacy-hero-title">
+                  {isExisting ? 'আমার ফার্মেসির তথ্য ও ড্রাগ লাইসেন্স' : 'ফার্মেসি লিস্টিং ও ভেরিফিকেশন আবেদন'}
+                </h1>
+              </div>
+              <p className="pharmacy-hero-desc">
                 আপনার ফার্মেসির সঠিক বাণিজ্যিক তথ্য এবং ড্রাগ লাইসেন্স আপলোড করুন। অ্যাডমিন ভেরিফিকেশন সম্পন্ন হলে ফার্মেসি স্বয়ংক্রিয়ভাবে <strong>ভেরিফাইড ব্যাজ</strong> সহ প্রকাশিত হবে।
               </p>
             </Col>
 
             <Col lg={4} className="text-lg-end mt-3 mt-lg-0">
-              <div style={{
-                background: 'rgba(0,0,0,0.22)',
-                borderRadius: 16,
-                padding: '14px 18px',
-                border: '1px solid rgba(255,255,255,0.18)',
-                display: 'inline-block',
-                textAlign: 'left'
-              }}>
-                <div style={{ fontSize: 11.5, color: '#A7F3D0', fontWeight: 700, marginBottom: 4 }}>
-                  🛡️ এনক্রিপ্টেড সিকিউরিটি
+              <div className="pharmacy-security-box">
+                <div style={{ fontSize: 12, color: '#A7F3D0', fontWeight: 800, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>🛡️ এনক্রিপ্টেড সিকিউরিটি</span>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.4 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: '#F0FDF4', lineHeight: 1.45 }}>
                   আপনার NID ও লাইসেন্স শুধু অ্যাডমিন দেখবেন, সাধারণ ওয়েবসাইটে কখনো প্রকাশ হবে না।
                 </div>
               </div>
@@ -1335,27 +1586,28 @@ export default function PharmacyRegisterPage() {
       <Container style={{ maxWidth: 960 }}>
         {/* ── REVIEW STATUS BANNERS ── */}
         {isExisting && pharmacyData && (
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 20 }}>
             {pharmacyData.status === 'pending' && (
-              <div style={{
-                background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
-                border: '1.5px solid #FDE68A',
-                borderRadius: 18,
-                padding: '18px 22px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                boxShadow: '0 4px 16px rgba(217, 119, 6, 0.08)'
-              }}>
+              <div
+                className="pharmacy-status-card"
+                style={{
+                  background: 'linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)',
+                  border: '1.5px solid #FDE68A',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  boxShadow: '0 4px 16px rgba(217, 119, 6, 0.08)'
+                }}
+              >
                 <div style={{
-                  width: 48, height: 48, borderRadius: '50%',
+                  width: 36, height: 36, borderRadius: '50%',
                   background: '#FEF3C7', color: '#D97706',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                 }}>
-                  <IconClock size={26} />
+                  <IconClock size={20} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15.5, fontWeight: 800, color: '#92400E', marginBottom: 2 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: '#92400E', marginBottom: 2 }}>
                     আবেদনটি অ্যাডমিন পর্যালোচনায় রয়েছে (Pending Admin Verification)
                   </div>
                   <div style={{ fontSize: 13, color: '#B45309', lineHeight: 1.5 }}>
@@ -1366,38 +1618,38 @@ export default function PharmacyRegisterPage() {
             )}
 
             {pharmacyData.status === 'active' && pharmacyData.is_verified && (
-              <div style={{
-                background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
-                border: '1.5px solid #A7F3D0',
-                borderRadius: 18,
-                padding: '18px 22px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 16,
-                boxShadow: '0 4px 16px rgba(5, 150, 105, 0.08)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div
+                className="pharmacy-status-card"
+                style={{
+                  background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+                  border: '1.5px solid #A7F3D0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 12
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0, width: '100%' }}>
                   <div style={{
-                    width: 48, height: 48, borderRadius: '50%',
+                    width: 36, height: 36, borderRadius: '50%',
                     background: '#D1FAE5', color: '#059669',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                   }}>
-                    <IconShieldCheck size={28} />
+                    <IconShieldCheck size={20} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: 15.5, fontWeight: 800, color: '#065F46', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                    <div className="pharmacy-status-title">
                       <span>আপনার ফার্মেসি সক্রিয় ও ড্রাগ লাইসেন্স যাচাইকৃত</span>
-                      <IconCircleCheck size={18} color="#059669" />
                     </div>
-                    <div style={{ fontSize: 13, color: '#047857', lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 12.5, color: '#047857', lineHeight: 1.45, marginTop: 4 }}>
                       রোগীরা এখন সরাসরি পাবলিক তালিকায় আপনার ফার্মেসির তথ্য দেখতে ও WhatsApp এ প্রেসক্রিপশন পাঠাতে পারছেন।
                     </div>
                   </div>
                 </div>
                 <Link
                   to="/pharmacies"
+                  className="pharmacy-status-btn"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -1419,25 +1671,26 @@ export default function PharmacyRegisterPage() {
             )}
 
             {pharmacyData.status === 'rejected' && (
-              <div style={{
-                background: 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)',
-                border: '1.5px solid #FECACA',
-                borderRadius: 18,
-                padding: '18px 22px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-                boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
-              }}>
+              <div
+                className="pharmacy-status-card"
+                style={{
+                  background: 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)',
+                  border: '1.5px solid #FECACA',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  boxShadow: '0 4px 16px rgba(220, 38, 38, 0.08)'
+                }}
+              >
                 <div style={{
-                  width: 48, height: 48, borderRadius: '50%',
+                  width: 36, height: 36, borderRadius: '50%',
                   background: '#FEE2E2', color: '#DC2626',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                 }}>
-                  <IconAlertCircle size={26} />
+                  <IconAlertCircle size={20} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15.5, fontWeight: 800, color: '#991B1B', marginBottom: 2 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: '#991B1B', marginBottom: 2 }}>
                     আবেদনে সংশোধনের প্রয়োজন (Action Required)
                   </div>
                   <div style={{ fontSize: 13, color: '#B91C1C', lineHeight: 1.5, marginBottom: 4 }}>
@@ -1454,32 +1707,28 @@ export default function PharmacyRegisterPage() {
 
         {/* ── SUBMITTED PHARMACY PROFILE SUMMARY VIEW (When isExisting && !isEditMode) ── */}
         {isExisting && pharmacyData && !isEditMode ? (
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: 24,
-            border: '1.5px solid #E2E8F0',
-            boxShadow: '0 8px 30px rgba(15,23,42,0.05)',
-            overflow: 'hidden'
-          }}>
+          <div className="pharmacy-summary-card">
             {/* Top Banner / Cover Header */}
-            <div style={{
-              position: 'relative',
-              background: imagePreview
-                ? `linear-gradient(180deg, rgba(15,23,42,0.45) 0%, rgba(15,23,42,0.82) 100%), url(${imagePreview}) center/cover no-repeat`
-                : 'linear-gradient(135deg, #064E3B 0%, #059669 100%)',
-              padding: '28px 30px',
-              color: '#FFFFFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 20
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+            <div
+              className="pharmacy-summary-header"
+              style={{
+                position: 'relative',
+                background: imagePreview
+                  ? `linear-gradient(180deg, rgba(15,23,42,0.45) 0%, rgba(15,23,42,0.82) 100%), url(${imagePreview}) center/cover no-repeat`
+                  : 'linear-gradient(135deg, #064E3B 0%, #059669 100%)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 16
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{
-                  width: 86,
-                  height: 86,
-                  borderRadius: 18,
+                  width: 72,
+                  height: 72,
+                  borderRadius: 16,
                   background: '#FFFFFF',
                   border: '3px solid rgba(255,255,255,0.9)',
                   overflow: 'hidden',
@@ -1493,13 +1742,13 @@ export default function PharmacyRegisterPage() {
                   {imagePreview ? (
                     <img src={imagePreview} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
-                    <IconBuildingStore size={42} />
+                    <IconBuildingStore size={36} />
                   )}
                 </div>
 
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
-                    <h3 style={{ margin: 0, fontSize: 22, fontWeight: 900, color: '#FFFFFF' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+                    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#FFFFFF' }}>
                       {pharmacyData.name || name}
                     </h3>
                     <span style={{
@@ -1515,10 +1764,10 @@ export default function PharmacyRegisterPage() {
                       {PHARMACY_TYPES.find(t => t.id === (pharmacyData.pharmacy_type || pharmacyType))?.label || 'খুচরা ফার্মেসি'}
                     </span>
                   </div>
-                  <div style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+                  <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
                     মালিক / প্রোপাইটর: <strong>{pharmacyData.proprietor_name || proprietorName}</strong>
                   </div>
-                  <div style={{ fontSize: 12.5, color: 'rgba(255,255,255,0.8)', marginTop: 3 }}>
+                  <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 3 }}>
                     প্রধান মোবাইল: <strong>{pharmacyData.contact_number || contactNumber}</strong>
                     {(pharmacyData.whatsapp_number || whatsappNumber) ? ` • WhatsApp: ${pharmacyData.whatsapp_number || whatsappNumber}` : ''}
                   </div>
@@ -1531,11 +1780,12 @@ export default function PharmacyRegisterPage() {
                   setIsEditMode(true)
                   window.scrollTo({ top: 180, behavior: 'smooth' })
                 }}
+                className="pharmacy-summary-update-btn"
                 style={{
                   background: '#FFFFFF',
                   color: '#065F46',
                   border: 'none',
-                  padding: '12px 22px',
+                  padding: '11px 20px',
                   borderRadius: 12,
                   fontWeight: 800,
                   fontSize: 14,
@@ -1553,7 +1803,7 @@ export default function PharmacyRegisterPage() {
             </div>
 
             {/* Summary Body */}
-            <div style={{ padding: '30px' }}>
+            <div className="pharmacy-summary-body">
               {/* Info Cards Grid */}
               <Row className="g-4" style={{ marginBottom: 28 }}>
                 {/* 1. Location & Address */}
@@ -1812,17 +2062,9 @@ export default function PharmacyRegisterPage() {
               </div>
 
               {/* Bottom Action Bar */}
-              <div style={{
-                paddingTop: 20,
-                borderTop: '1px solid #E2E8F0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 12
-              }}>
-                <span style={{ fontSize: 12.5, color: '#64748B', fontWeight: 600 }}>
-                  তথ্য বা ডকুমেন্ট পরিবর্তন করতে ডানপাশের <strong>“তথ্য ও ডকুমেন্ট আপডেট করুন”</strong> বাটনে ক্লিক করুন।
+              <div className="pharmacy-summary-bottom-action">
+                <span style={{ fontSize: 13, color: '#64748B', fontWeight: 600 }}>
+                  তথ্য বা ডকুমেন্ট পরিবর্তন করতে <strong style={{ color: '#0F172A' }}>“তথ্য ও ডকুমেন্ট আপডেট করুন”</strong> বাটনে ক্লিক করুন।
                 </span>
                 <button
                   type="button"
@@ -1834,15 +2076,17 @@ export default function PharmacyRegisterPage() {
                     background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
                     color: '#FFFFFF',
                     border: 'none',
-                    padding: '12px 26px',
+                    padding: '12px 28px',
                     borderRadius: 12,
                     fontWeight: 800,
                     fontSize: 14,
                     display: 'inline-flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: 8,
                     cursor: 'pointer',
-                    boxShadow: '0 6px 18px rgba(5, 150, 105, 0.25)'
+                    boxShadow: '0 6px 18px rgba(5, 150, 105, 0.25)',
+                    transition: 'all 0.2s ease'
                   }}
                 >
                   <IconEdit size={18} />
@@ -1853,13 +2097,7 @@ export default function PharmacyRegisterPage() {
           </div>
         ) : (
         /* ── MAIN FORM CONTAINER ── */
-        <div style={{
-          background: '#FFFFFF',
-          borderRadius: 24,
-          padding: '36px 32px',
-          border: '1.5px solid #E2E8F0',
-          boxShadow: '0 6px 25px rgba(15,23,42,0.04)'
-        }}>
+        <div className="pharmacy-form-card">
           {isExisting && isEditMode && (
             <div style={{
               background: '#ECFDF5',
@@ -2818,7 +3056,7 @@ export default function PharmacyRegisterPage() {
             )}
 
             {/* ── SUBMIT BUTTON ── */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, paddingTop: 16, borderTop: '1px solid #F1F5F9', flexWrap: 'wrap' }}>
+            <div className="pharmacy-form-action-bar">
               {isExisting && isEditMode && (
                 <button
                   type="button"

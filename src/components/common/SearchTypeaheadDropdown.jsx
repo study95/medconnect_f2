@@ -338,7 +338,7 @@ export default function SearchTypeaheadDropdown({
             )}
 
             {hospitals.map((hospital) => {
-              const locationText = hospital.location || hospital.address || hospital.hospital_type
+              const addressText = hospital.address || hospital.location
 
               return (
                 <div
@@ -416,7 +416,7 @@ export default function SearchTypeaheadDropdown({
                       {hospital.name}
                     </div>
 
-                    {locationText && (
+                    {addressText && (
                       <div
                         style={{
                           fontSize: '12.5px',
@@ -425,19 +425,10 @@ export default function SearchTypeaheadDropdown({
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
                           fontFamily: "'Hind Siliguri', 'Inter', sans-serif",
                         }}
                       >
-                        {hospital.hospital_type && (
-                          <span style={{ color: '#0D9488', fontWeight: 600 }}>{hospital.hospital_type}</span>
-                        )}
-                        {hospital.hospital_type && (hospital.location || hospital.address) && (
-                          <span style={{ color: '#CBD5E1' }}>•</span>
-                        )}
-                        <span>{hospital.location || hospital.address}</span>
+                        {addressText}
                       </div>
                     )}
                   </div>

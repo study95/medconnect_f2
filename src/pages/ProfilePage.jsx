@@ -15,7 +15,7 @@ import { getColor, getInitials } from '../utils/avatar'
 import BreadcrumbHUD from '../components/common/BreadcrumbHUD'
 import { 
   IconUser, IconMail, IconPhone, IconBriefcase, IconCalendar, 
-  IconDroplet, IconStethoscope, IconBuildingHospital, 
+  IconDroplet, IconStethoscope, IconBuildingHospital, IconBuildingStore,
   IconMapPin, IconEdit, IconLogout, IconX, IconCamera, 
   IconHeart, IconShieldCheck, IconCheck, IconSparkles,
   IconArrowRight, IconArrowLeft, IconActivity, IconBookmark, IconChevronDown, IconChevronUp,
@@ -108,6 +108,23 @@ function ProfilePage() {
   const [profileData, setProfileData] = useState(null)
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('')
   const [saveErrorMsg, setSaveErrorMsg] = useState('')
+
+  // Auto-dismiss save success and error messages
+  useEffect(() => {
+    if (!saveSuccessMsg) return
+    const timer = setTimeout(() => {
+      setSaveSuccessMsg('')
+    }, 4500)
+    return () => clearTimeout(timer)
+  }, [saveSuccessMsg])
+
+  useEffect(() => {
+    if (!saveErrorMsg) return
+    const timer = setTimeout(() => {
+      setSaveErrorMsg('')
+    }, 6000)
+    return () => clearTimeout(timer)
+  }, [saveErrorMsg])
 
   const [form, setForm] = useState({
     name: '', email: '', mobile: '', occupation: '',
@@ -492,9 +509,11 @@ function ProfilePage() {
       setEditing(false)
       await fetchCurrentUser()
       loadProfile()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       const msg = err.response?.data?.message || err.response?.data?.error || 'প্রোফাইল আপডেট করতে ব্যর্থ হয়েছে'
       setSaveErrorMsg(msg)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setSaving(false)
     }
@@ -663,16 +682,81 @@ function ProfilePage() {
         {/* DESKTOP MAIN CONTENT AREA */}
         <Container style={{ marginTop: 32 }}>
           {saveSuccessMsg && (
-            <div style={{ background: '#ECFDF5', border: '1.5px solid #A7F3D0', color: '#065F46', padding: '14px 20px', borderRadius: 14, fontWeight: 700, fontSize: 14.5, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 4px 14px rgba(16,185,129,0.08)' }}>
-              <IconCheck size={20} color="#10B981" />
-              {saveSuccessMsg}
+            <div style={{
+              background: '#ECFDF5',
+              border: '1.5px solid #A7F3D0',
+              color: '#065F46',
+              padding: '14px 20px',
+              borderRadius: 14,
+              fontWeight: 700,
+              fontSize: 14.5,
+              marginBottom: 24,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              boxShadow: '0 4px 14px rgba(16,185,129,0.08)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <IconCheck size={20} color="#10B981" />
+                <span>{saveSuccessMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaveSuccessMsg('')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#059669',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 6
+                }}
+                title="বন্ধ করুন"
+              >
+                <IconX size={18} />
+              </button>
             </div>
           )}
 
           {saveErrorMsg && (
-            <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', color: '#991B1B', padding: '14px 20px', borderRadius: 14, fontWeight: 700, fontSize: 14.5, marginBottom: 24, display: 'flex', alignItems: 'center', gap: 10 }}>
-              <IconX size={20} color="#EF4444" />
-              {saveErrorMsg}
+            <div style={{
+              background: '#FEF2F2',
+              border: '1.5px solid #FECACA',
+              color: '#991B1B',
+              padding: '14px 20px',
+              borderRadius: 14,
+              fontWeight: 700,
+              fontSize: 14.5,
+              marginBottom: 24,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <IconX size={20} color="#EF4444" />
+                <span>{saveErrorMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSaveErrorMsg('')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#DC2626',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: 6
+                }}
+                title="বন্ধ করুন"
+              >
+                <IconX size={18} />
+              </button>
             </div>
           )}
 
@@ -868,6 +952,20 @@ function ProfilePage() {
                       >
                         <IconDroplet size={18} color="#E11D48" />
                         রক্তদাতা প্রোফাইল ও রক্তদান
+                      </button>
+
+                      <button
+                        onClick={() => navigate('/pharmacy-register')}
+                        style={{
+                          width: '100%', padding: '13px', borderRadius: 12,
+                          background: '#ECFDF5', border: '1.5px solid #A7F3D0', color: '#065F46',
+                          fontWeight: 800, fontSize: 14.5, cursor: 'pointer',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          transition: '0.2s', marginTop: 6
+                        }}
+                      >
+                        <IconBuildingStore size={18} color="#059669" />
+                        ফার্মেসি প্রোফাইল ও ওষুধ সেবা
                       </button>
 
                       <button
@@ -1652,6 +1750,37 @@ function ProfilePage() {
                   </div>
                 </button>
 
+                {/* Item 2.6: Pharmacy Profile & Management */}
+                <button
+                  onClick={() => navigate('/pharmacy-register')}
+                  style={{
+                    width: '100%',
+                    padding: '16px 18px',
+                    borderRadius: 5,
+                    border: '1.5px solid #A7F3D0',
+                    background: '#ECFDF5',
+                    color: '#065F46',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontWeight: 800,
+                    fontSize: 15,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(5,150,105,0.06)',
+                    transition: 'all 0.25s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 5, background: '#D1FAE5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <IconBuildingStore size={20} />
+                    </div>
+                    <span>ফার্মেসি প্রোফাইল ও ওষুধ সেবা</span>
+                  </div>
+                  <div style={{ width: 28, height: 28, borderRadius: 5, background: '#D1FAE5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <IconArrowRight size={16} />
+                  </div>
+                </button>
+
                 {/* Item 3: Favorite Doctor List -> Saved Doctors Sub-Page */}
                 <button
                   onClick={() => openMobileSubView('fav_doctors')}
@@ -1890,6 +2019,68 @@ function ProfilePage() {
 
               {/* ── SUB-PAGE 1: PROFILE DETAILS & EDIT ── */}
               {mobileSubView === 'profile' && (
+                <>
+                  {saveSuccessMsg && (
+                    <div style={{
+                      background: '#ECFDF5',
+                      border: '1.5px solid #A7F3D0',
+                      color: '#065F46',
+                      padding: '12px 16px',
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 13.5,
+                      marginBottom: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      boxShadow: '0 4px 14px rgba(16,185,129,0.08)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <IconCheck size={18} color="#10B981" />
+                        <span>{saveSuccessMsg}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSaveSuccessMsg('')}
+                        style={{ background: 'transparent', border: 'none', color: '#059669', cursor: 'pointer', padding: 2 }}
+                        title="বন্ধ করুন"
+                      >
+                        <IconX size={16} />
+                      </button>
+                    </div>
+                  )}
+
+                  {saveErrorMsg && (
+                    <div style={{
+                      background: '#FEF2F2',
+                      border: '1.5px solid #FECACA',
+                      color: '#991B1B',
+                      padding: '12px 16px',
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      fontSize: 13.5,
+                      marginBottom: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <IconX size={18} color="#EF4444" />
+                        <span>{saveErrorMsg}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSaveErrorMsg('')}
+                        style={{ background: 'transparent', border: 'none', color: '#DC2626', cursor: 'pointer', padding: 2 }}
+                        title="বন্ধ করুন"
+                      >
+                        <IconX size={16} />
+                      </button>
+                    </div>
+                  )}
+
                 <div style={{ background: 'white', borderRadius: 5, border: '1.5px solid #E2E8F0', padding: '20px 18px', position: 'relative', boxShadow: '0 8px 25px rgba(0,0,0,0.04)' }}>
                   
                   {/* EDIT ICON AT TOP RIGHT OF PROFILE CARD */}
@@ -2218,6 +2409,7 @@ function ProfilePage() {
                     </div>
                   )}
                 </div>
+                </>
               )}
 
               {/* â”€â”€ SUB-PAGE 2: SAVED DOCTORS â”€â”€ */}
